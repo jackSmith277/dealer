@@ -1,0 +1,132 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    font-family: 微软雅黑, MicrosoftYahei, sans-serif;
+    color: #fff;
+
+}
+
+#app {
+    background: url('./imgs/bg.jpg') no-repeat fixed;
+    background-size: cover;
+    min-height: 3000px;
+}
+
+.fl {
+    float: left;
+}
+
+.fr {
+    float: right;
+}
+
+.tith2 {
+    text-align: center;
+    width: 100%;
+    font-size: 12px;
+    padding-top: 1.9%;
+    font-weight: normal;
+    letter-spacing: 2px;
+    overflow: hidden;
+}
+
+.lefttoday_tit {
+    overflow: hidden;
+    padding: 1.9% 5% .2%;
+    height: 6%;
+    position: relative;
+}
+
+.lefttoday_tit p.fl {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 1);
+    position: absolute;
+    left: 5%;
+    top: 22%;
+}
+
+.lefttoday_tit p.fr {
+    font-size: 12px;
+    color: rgba(255, 255, 255, .6);
+    position: absolute;
+    right: 5%;
+    top: 25%;
+}
+
+.widget-inline-box {
+    text-align: center;
+    color: rgba(255, 255, 255, .9);
+    width: 50%;
+    padding: 10% 0;
+    text-align: center;
+    font-size: 12px;
+    float: left;
+    overflow: hidden;
+}
+
+.widget-inline-box h3 {
+    font-size: 22px;
+    font-weight: 100;
+    font-weight: normal;
+}
+
+.ceeb1fd {
+    color: #eeb1fd;
+}
+
+.c24c9ff {
+    color: #24c9ff;
+}
+
+.cffff00 {
+    color: #ffff00;
+}
+
+.c11e2dd {
+    color: #11e2dd;
+}
+
+.text-muted {
+    font-size: 12px;
+    color: #789ce0;
+}
+
+.text-muted img {
+    vertical-align: middle;
+    margin: 0 3px;
+}
+
+/* 美化滚动条 */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    width: 6px;
+    background: rgba(16, 31, 28, 0.1);
+    -webkit-border-radius: 2em;
+    -moz-border-radius: 2em;
+    border-radius: 2em;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: rgba(144, 147, 153, .5);
+    background-clip: padding-box;
+    min-height: 28px;
+    -webkit-border-radius: 2em;
+    -moz-border-radius: 2em;
+    border-radius: 2em;
+    transition: background-color .3s;
+    cursor: pointer;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(144, 147, 153, .3);
+}
