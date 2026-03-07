@@ -85,6 +85,13 @@
             </li>
             <li 
               class="sub-menu-item"
+              :class="{ active: $route.path === '/dashboard/analysis-reports' }"
+              @click="$router.push('/dashboard/analysis-reports')"
+            >
+              <span class="sub-menu-title">分析报告</span>
+            </li>
+            <li 
+              class="sub-menu-item"
               :class="{ active: $route.path === '/dashboard/policy' }"
               @click="$router.push('/dashboard/policy')"
             >
@@ -155,7 +162,7 @@ export default {
     const path = this.$route.path
     if (path.includes('/profile') || path.includes('/admin/dealers')) {
       this.expandedSubMenus = ['info']
-    } else if (path.includes('/dashboard') || path.includes('/radar') || path.includes('/prediction') || path.includes('/history') || path.includes('/policy') || path.includes('/comment')) {
+    } else if (path.includes('/dashboard') || path.includes('/radar') || path.includes('/prediction') || path.includes('/history') || path.includes('/analysis-reports') || path.includes('/policy') || path.includes('/comment')) {
       this.expandedSubMenus = ['dashboard']
     }
   },
@@ -164,7 +171,7 @@ export default {
       // 路由变化时自动展开对应的子菜单
       if (newPath.includes('/profile') || newPath.includes('/admin/dealers')) {
         this.expandedSubMenus = ['info']
-      } else if (newPath.includes('/dashboard') || newPath.includes('/radar') || newPath.includes('/prediction') || newPath.includes('/history') || newPath.includes('/policy') || newPath.includes('/comment')) {
+      } else if (newPath.includes('/dashboard') || newPath.includes('/radar') || newPath.includes('/prediction') || newPath.includes('/history') || newPath.includes('/analysis-reports') || newPath.includes('/policy') || newPath.includes('/comment')) {
         this.expandedSubMenus = ['dashboard']
       }
     }
