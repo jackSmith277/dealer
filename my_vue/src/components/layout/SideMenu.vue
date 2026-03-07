@@ -8,6 +8,18 @@
     
     <div class="menu-content">
       <ul class="menu-list">
+        <!-- 系统首页 -->
+        <li class="menu-item">
+          <div 
+            class="menu-item-header" 
+            :class="{ 'menu-active': $route.path === '/dashboard/index' }"
+            @click="$router.push('/dashboard/index')"
+          >
+            <span class="menu-icon">🏠</span>
+            <span class="menu-title">系统首页</span>
+          </div>
+        </li>
+        
         <!-- 信息管理 -->
         <li class="menu-item">
           <div class="menu-item-header" @click="toggleSubMenu('info')">
@@ -229,6 +241,15 @@ export default {
 
 .menu-item-header:hover {
   background-color: #f0f8ff;
+}
+
+.menu-item-header.menu-active {
+  background-color: #e6f7ff;
+  color: #1890ff;
+}
+
+.menu-item-header.menu-active .menu-title {
+  color: #1890ff;
 }
 
 .menu-icon {

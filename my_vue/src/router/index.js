@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
+import Index from '../views/Index.vue'
 import DealerDashboard from '../views/DealerDashboard.vue'
 import FiveForcesRadar from '../views/FiveForcesRadar.vue'
 import SalesPrediction from '../views/SalesPrediction.vue'
@@ -38,6 +39,11 @@ const routes = [
       {
         path: '',
         component: DealerDashboard
+      },
+      {
+        path: 'index',
+        name: 'index',
+        component: Index
       },
       {
         path: 'radar',
