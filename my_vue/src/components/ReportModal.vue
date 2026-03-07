@@ -107,6 +107,10 @@ export default {
     cardData: {
       type: Object,
       default: () => ({})
+    },
+    dealerCode: {
+      type: String,
+      default: ''
     }
   },
   data() {
@@ -127,10 +131,23 @@ export default {
     }
   },
   watch: {
-    visible(newVal) {
-      if (newVal && !this.reportContent) {
+    visible(newVal, oldVal) {
+
+      
+      // 只在从 false 变为 true 时生成报告
+      if (newVal && !oldVal) {
         this.generateReport();
       }
+    }
+  },
+  mounted() {
+
+    
+    // 如果挂载时 visible 已经是 true，立即生成报告
+    if (this.visible && this.cardData && Object.keys(this.cardData).length > 0) {
+      this.$nextTick(() => {
+        this.generateReport();
+      });
     }
   },
   methods: {
@@ -147,33 +164,39 @@ export default {
       this.progressText = '正在连接 AI 服务...';
 
       try {
-        console.log('开始生成报告，cardData:', this.cardData);
+
         
+        // 检查 cardData 是否为空
+        if (!this.cardData || Object.keys(this.cardData).length === 0) {
+          throw new Error('没有可分析的数据，请先选择卡片后再生成报告');
+        }
+
         // 动态导入 DeepSeek 模块
         const { generateSalesReportStream } = await import('@/DS/deepseek.js');
 
         this.progress = 20;
         this.progressText = '正在分析数据...';
 
-        // 检查 cardData 是否为空
-        if (!this.cardData || Object.keys(this.cardData).length === 0) {
-          throw new Error('没有可分析的数据，请先选择卡片');
-        }
 
-        console.log('开始调用 DeepSeek API...');
+        let hasReceivedData = false;
 
         // 使用流式生成
         await generateSalesReportStream(
           this.cardData,
           (chunk) => {
-            console.log('收到数据块:', chunk);
+            hasReceivedData = true;
             this.reportContent += chunk;
             this.progress = Math.min(90, this.progress + 1);
             this.progressText = '正在生成报告...';
           }
         );
 
-        console.log('报告生成完成，内容长度:', this.reportContent.length);
+
+
+        // 检查是否真的收到了数据
+        if (!hasReceivedData || !this.reportContent) {
+          throw new Error('API 调用成功但未返回内容，请检查 API 配置或稍后重试');
+        }
 
         this.progress = 100;
         this.progressText = '生成完成！';
@@ -181,10 +204,23 @@ export default {
         this.streaming = false;
         this.generatedTime = new Date().toLocaleString('zh-CN');
 
+        // 保存报告到数据库
+        await this.saveReportToDatabase();
+
       } catch (err) {
-        console.error('生成报告失败:', err);
-        console.error('错误详情:', err.stack);
-        this.error = err.message || '生成报告失败，请稍后重试';
+
+        
+        // 提供更友好的错误信息
+        let errorMessage = err.message || '生成报告失败，请稍后重试';
+        
+        // 针对常见错误提供具体的解决方案
+        if (errorMessage.includes('API Key')) {
+          errorMessage += '\n\n解决方案：\n1. 在项目根目录创建 .env 文件\n2. 添加配置：VITE_DEEPSEEK_API_KEY=你的密钥\n3. 重启开发服务器';
+        } else if (errorMessage.includes('fetch')) {
+          errorMessage = '网络请求失败，请检查网络连接或 API 地址配置';
+        }
+        
+        this.error = errorMessage;
         this.generating = false;
         this.streaming = false;
       }
@@ -219,6 +255,46 @@ export default {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+    },
+
+    async saveReportToDatabase() {
+      try {
+        // 获取当前登录用户信息
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const username = user.username || 'unknown';
+        
+        // 使用传入的经销商代码（当前选择的经销商）
+        const dealerCode = this.dealerCode || 'unknown';
+
+        // 准备保存的数据
+        const reportData = {
+          username: username,  // 当前登录用户
+          dealer_code: dealerCode,  // 当前选择的经销商
+          selected_cards: JSON.stringify(this.cardData),
+          report_content: this.reportContent
+        };
+
+        console.log('保存分析报告到数据库:', reportData);
+
+        // 发送保存请求
+        const response = await fetch('http://localhost:5000/api/analysis-reports', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(reportData)
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('分析报告保存成功:', result.data.id);
+        } else {
+          console.error('保存分析报告失败:', result.message);
+        }
+      } catch (error) {
+        console.error('保存分析报告到数据库时出错:', error);
+      }
     }
   }
 };
@@ -421,6 +497,9 @@ export default {
   color: #666;
   margin-bottom: 30px;
   text-align: center;
+  white-space: pre-wrap;
+  max-width: 600px;
+  line-height: 1.6;
 }
 
 /* 报告内容 */

@@ -10,48 +10,50 @@
  * @returns {object} - 提取的数据对象
  */
 export function extractCardData(vm, selectedCards) {
+  console.log('=== extractCardData 被调用 ===');
+  console.log('selectedCards:', selectedCards);
+  console.log('vm.currentDealer:', vm.currentDealer);
+  
   const cardData = {};
-
-  console.log('开始提取数据，选中的卡片:', selectedCards);
-
   selectedCards.forEach(cardId => {
-    console.log('处理卡片:', cardId);
+    console.log(`处理卡片: ${cardId}`);
+
     switch (cardId) {
       case 'trend':
         cardData.trend = extractTrendData(vm);
-        console.log('提取 trend 数据:', cardData.trend);
+
         break;
       case 'funnel':
         cardData.funnel = extractFunnelData(vm);
-        console.log('提取 funnel 数据:', cardData.funnel);
+
         break;
       case 'snapshot':
         cardData.snapshot = extractSnapshotData(vm);
-        console.log('提取 snapshot 数据:', cardData.snapshot);
+
         break;
       case 'metrics':
         cardData.metrics = extractMetricsData(vm);
-        console.log('提取 metrics 数据:', cardData.metrics);
+
         break;
       case 'rate':
         cardData.rate = extractRateData(vm);
-        console.log('提取 rate 数据:', cardData.rate);
+   
         break;
       case 'responseTime':
         cardData.responseTime = extractResponseTimeData(vm);
-        console.log('提取 responseTime 数据:', cardData.responseTime);
+
         break;
       case 'gsev':
         cardData.gsev = extractGsevData(vm);
-        console.log('提取 gsev 数据:', cardData.gsev);
+
         break;
       case 'policy':
         cardData.policy = extractPolicyData(vm);
-        console.log('提取 policy 数据:', cardData.policy);
+
         break;
       case 'review':
         cardData.review = extractReviewData(vm);
-        console.log('提取 review 数据:', cardData.review);
+
         break;
       // 兼容旧的ID
       case 'conversion':
@@ -74,7 +76,10 @@ export function extractCardData(vm, selectedCards) {
     }
   });
 
-  console.log('数据提取完成，总共提取了', Object.keys(cardData).length, '个卡片的数据');
+  console.log('=== extractCardData 完成 ===');
+  console.log('最终的 cardData:', cardData);
+  console.log('cardData 的键:', Object.keys(cardData));
+
   return cardData;
 }
 
@@ -91,11 +96,7 @@ function extractTrendData(vm) {
   const leadsData = vm.getSeries ? vm.getSeries('线索量').map(v => parseFloat(v.toFixed(2))) : [];
   const potentialData = vm.getSeries ? vm.getSeries('潜客量').map(v => parseFloat(v.toFixed(2))) : [];
   
-  console.log('提取趋势数据 - 月份:', months);
-  console.log('提取趋势数据 - 销量:', salesData);
-  console.log('提取趋势数据 - 客流量:', trafficData);
-  console.log('提取趋势数据 - 线索:', leadsData);
-  console.log('提取趋势数据 - 潜客:', potentialData);
+
   
   return {
     months: months,
@@ -135,13 +136,7 @@ function extractFunnelData(vm) {
   const storeRate = avgPotential > 0 ? parseFloat(((avgTraffic / avgPotential) * 100).toFixed(2)) : 0;
   const salesRate = avgTraffic > 0 ? parseFloat(((avgSales / avgTraffic) * 100).toFixed(2)) : 0;
   
-  console.log('提取漏斗数据 - 线索均值:', avgLeads);
-  console.log('提取漏斗数据 - 潜客均值:', avgPotential);
-  console.log('提取漏斗数据 - 进店均值:', avgTraffic);
-  console.log('提取漏斗数据 - 成交均值:', avgSales);
-  console.log('提取漏斗数据 - 线索转化率:', leadConversionRate);
-  console.log('提取漏斗数据 - 进店率:', storeRate);
-  console.log('提取漏斗数据 - 成交率:', salesRate);
+
   
   return {
     leads: avgLeads,  // 均值，保留两位小数
@@ -161,7 +156,7 @@ function extractSnapshotData(vm) {
   // 使用真实的 monthSnapshots computed 属性
   const snapshots = vm.monthSnapshots || [];
   
-  console.log('提取快照数据 - 快照数量:', snapshots.length);
+
   
   return {
     count: snapshots.length,
@@ -177,34 +172,103 @@ function extractSnapshotData(vm) {
 }
 
 /**
- * 提取核心指标数据
+ * 提取核心指标数据 - 与页面显示保持一致
  */
 function extractMetricsData(vm) {
-  // 从真实数据计算核心指标
-  const salesData = vm.getSeries ? vm.getSeries('销量') : [];
-  const trafficData = vm.getSeries ? vm.getSeries('客流量') : [];
-  const leadsData = vm.getSeries ? vm.getSeries('线索量') : [];
-  const potentialData = vm.getSeries ? vm.getSeries('潜客量') : [];
-  const rateData = vm.getSeries ? vm.getSeries('成交率') : [];
+  // 使用与页面 headlineMetrics 计算属性相同的逻辑
+  const metrics = [
+    { key: '销量', unit: '辆' },
+    { key: '客流量', unit: '人次' },
+    { key: '线索量', unit: '条' },
+    { key: '潜客量', unit: '人' },
+  ];
   
-  const totalSales = parseFloat(salesData.reduce((sum, val) => sum + val, 0).toFixed(2));
-  const totalTraffic = parseFloat(trafficData.reduce((sum, val) => sum + val, 0).toFixed(2));
-  const totalLeads = parseFloat(leadsData.reduce((sum, val) => sum + val, 0).toFixed(2));
-  const totalPotential = parseFloat(potentialData.reduce((sum, val) => sum + val, 0).toFixed(2));
-  const avgConversionRate = rateData.length > 0 
-    ? parseFloat((rateData.reduce((sum, val) => sum + val, 0) / rateData.length * 100).toFixed(2))
-    : 0;
-  
-  console.log('提取核心指标 - 总销量:', totalSales);
-  console.log('提取核心指标 - 总客流:', totalTraffic);
-  
-  return {
-    totalSales: totalSales,  // 保留两位小数
-    totalTraffic: totalTraffic,  // 保留两位小数
-    totalLeads: totalLeads,  // 保留两位小数
-    totalPotential: totalPotential,  // 保留两位小数
-    avgConversionRate: avgConversionRate  // 保留两位小数
+  const result = {
+    displayMode: vm.metricDisplayMode || 'peak',
+    metrics: []
   };
+  
+  metrics.forEach((m) => {
+    const metricKeys = {
+      销量: (month) => `${month}销量`,
+      客流量: (month) => `${month}客流量`,
+      潜客量: (month) => `${month}潜客量`,
+      线索量: (month) => `${month}线索量`,
+    };
+    
+    const months = vm.months || [];
+    const series = months.map((mo) => {
+      const val = vm.currentDealer ? vm.currentDealer[metricKeys[m.key](mo)] : 0;
+      return Number.isFinite(Number(val)) ? Number(val) : 0;
+    });
+    
+    // 找到峰值和谷值的索引
+    let peakIdx = 0;
+    let valleyIdx = 0;
+    let maxValue = series[0] || 0;
+    let minValue = series[0] || 0;
+    
+    series.forEach((v, i) => {
+      if (v > maxValue) {
+        maxValue = v;
+        peakIdx = i;
+      } else if (v === maxValue) {
+        peakIdx = i; // 选择最后一个出现的最大值
+      }
+      
+      if (v < minValue) {
+        minValue = v;
+        valleyIdx = i;
+      } else if (v === minValue) {
+        valleyIdx = i; // 选择最后一个出现的最小值
+      }
+    });
+    
+    const peakValue = series[peakIdx] || 0;
+    const valleyValue = series[valleyIdx] || 0;
+    const peakMonth = months[peakIdx] || '-';
+    const valleyMonth = months[valleyIdx] || '-';
+    
+    // 格式化数值显示
+    const formatValue = (val) => {
+      if (val >= 10000) return `${(val / 10000).toFixed(1)}万`;
+      return val.toLocaleString();
+    };
+    
+    let display = '';
+    let bestMonth = '';
+    let worstMonth = '';
+    
+    if (vm.metricDisplayMode === 'peak') {
+      display = `${formatValue(peakValue)}${m.unit}`;
+      bestMonth = peakMonth;
+      worstMonth = '-';
+    } else if (vm.metricDisplayMode === 'valley') {
+      display = `${formatValue(valleyValue)}${m.unit}`;
+      bestMonth = valleyMonth;
+      worstMonth = '-';
+    } else if (vm.metricDisplayMode === 'both') {
+      display = `${formatValue(peakValue)}${m.unit} / ${formatValue(valleyValue)}${m.unit}`;
+      bestMonth = peakMonth;
+      worstMonth = valleyMonth;
+    }
+    
+    result.metrics.push({
+      label: m.key,
+      display: display,
+      bestMonth: bestMonth,
+      worstMonth: worstMonth,
+      peakValue: peakValue,
+      valleyValue: valleyValue,
+      peakMonth: peakMonth,
+      valleyMonth: valleyMonth,
+      rawSeries: series
+    });
+  });
+  
+
+  
+  return result;
 }
 
 /**
@@ -251,8 +315,7 @@ function extractRateData(vm) {
     ? parseFloat((defeatRateData.reduce((sum, val) => sum + val, 0) / defeatRateData.length).toFixed(2))
     : 0;
   
-  console.log('提取成交率数据 - 月度成交率:', successRateData);
-  console.log('提取战败率数据 - 月度战败率:', defeatRateData);
+
   
   return {
     months: months,
@@ -287,7 +350,7 @@ function extractGsevData(vm) {
     else if (secondAvg < firstAvg * 0.95) trend = '下降';
   }
   
-  console.log('提取GSEV数据 - 月度GSEV:', gsevData);
+
   
   return {
     months: months,
@@ -314,8 +377,7 @@ function extractReviewData(vm) {
   const goodRate = totalReviews > 0 ? parseFloat(((totalGood / totalReviews) * 100).toFixed(2)) : 0;
   const badRate = totalReviews > 0 ? parseFloat(((totalBad / totalReviews) * 100).toFixed(2)) : 0;
   
-  console.log('提取评价数据 - 总评价数:', totalReviews);
-  console.log('提取评价数据 - 好评率:', goodRate + '%');
+
   
   return {
     months: months,
@@ -348,8 +410,7 @@ function extractResponseTimeData(vm) {
     ? ((parseFloat(avgSuccess) + parseFloat(avgDefeat)) / 2).toFixed(2)
     : 0;
   
-  console.log('提取响应时间 - 成交响应时间:', successResponseData);
-  console.log('提取响应时间 - 战败响应时间:', defeatResponseData);
+
   
   return {
     success: parseFloat(avgSuccess),
@@ -419,8 +480,7 @@ function extractPolicyData(vm) {
     else if (secondAvg < firstAvg * 0.8) impact = '减弱';
   }
   
-  console.log('提取政策数据 - 月度政策数:', policyData);
-  console.log('提取政策数据 - 总政策数:', totalPolicies);
+
   
   return {
     months: months,

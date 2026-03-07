@@ -5,6 +5,7 @@ import DealerDashboard from '../views/DealerDashboard.vue'
 import FiveForcesRadar from '../views/FiveForcesRadar.vue'
 import SalesPrediction from '../views/SalesPrediction.vue'
 import HistoryRecords from '../views/HistoryRecords.vue'
+import AnalysisReports from '../views/AnalysisReports.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Profile from '../views/Profile.vue'
@@ -59,6 +60,11 @@ const routes = [
         path: 'history',
         name: 'history',
         component: HistoryRecords
+      },
+      {
+        path: 'analysis-reports',
+        name: 'analysisReports',
+        component: AnalysisReports
       },
       {
         path: 'profile',

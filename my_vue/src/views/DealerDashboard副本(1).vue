@@ -302,7 +302,6 @@
       v-if="showReportModal"
       :visible="showReportModal"
       :cardData="reportCardData"
-      :dealerCode="selectedCode"
       @close="closeReportModal"
     />
   </div>
@@ -612,7 +611,7 @@ export default {
       this.initReviewCharts()
     },
     renderCharts() {
-
+      console.log('开始渲染图表，当前经销商:', this.selectedCode, this.currentDealer['经销商代码'])
       
       // 设置加载状态
       this.loading = true
@@ -629,7 +628,7 @@ export default {
           this.renderGsev()
           this.renderReviewCharts()
           
-
+          console.log('图表渲染完成')
           
           // 数据加载完成，设置加载状态为false
           this.loading = false
@@ -684,22 +683,17 @@ export default {
               '线索量': '#f59e0b',
               '潜客量': '#10b981'
             };
-            // 按照指定顺序显示：线索量、潜客量、客流量、销量
-            const order = ['线索量', '潜客量', '客流量', '销量'];
-            order.forEach(function(seriesName) {
-              const item = params.find(p => p.seriesName === seriesName);
-              if (item) {
-                const color = seriesColors[item.seriesName] || item.color;
-                result += '<span style="display:inline-block;margin-right:8px;border-radius:2px;width:12px;height:12px;background-color:' + color + '"></span>';
-                result += item.seriesName + ': ' + item.value + '<br/>';
-              }
+            params.forEach(function(item) {
+              const color = seriesColors[item.seriesName] || item.color;
+              result += '<span style="display:inline-block;margin-right:8px;border-radius:2px;width:12px;height:12px;background-color:' + color + '"></span>';
+              result += item.seriesName + ': ' + item.value + '<br/>';
             });
             return result;
           }
         },
         // 图例配置
         legend: {
-          data: ['线索量', '潜客量', '客流量', '销量'],
+          data: ['销量', '客流量', '线索量', '潜客量'],
           right: 12,
           top: 10,
           orient: 'vertical',
@@ -966,23 +960,23 @@ export default {
               { value: avgPotential, name: '潜客' },
               { value: avgSales, name: '成交（销量）' },
             ],
-            // 专业的配色方案 - 与销量趋势分析保持一致
+            // 专业的配色方案
             color: [
               new echarts.graphic.LinearGradient(0, 0, 1, 0, [
                 { offset: 0, color: '#8b5cf6' },
                 { offset: 1, color: '#6d28d9' },
               ]),
               new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                { offset: 0, color: '#f59e0b' },
-                { offset: 1, color: '#d97706' },
+                { offset: 0, color: '#3b82f6' },
+                { offset: 1, color: '#2563eb' },
               ]),
               new echarts.graphic.LinearGradient(0, 0, 1, 0, [
                 { offset: 0, color: '#10b981' },
                 { offset: 1, color: '#059669' },
               ]),
               new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                { offset: 0, color: '#3b82f6' },
-                { offset: 1, color: '#2563eb' },
+                { offset: 0, color: '#ef4444' },
+                { offset: 1, color: '#dc2626' },
               ]),
             ],
           },
@@ -1548,7 +1542,7 @@ export default {
       }
     },
     // 导出为Excel格式
-    exportToExcel(dataObj, scope = 'all') {
+    exportToExcel(data, scope = 'all') {
       try {
         console.log('Exporting to Excel...')
         
@@ -1558,67 +1552,27 @@ export default {
   xmlns:o="urn:schemas-microsoft-com:office:office"
   xmlns:x="urn:schemas-microsoft-com:office:excel"
   xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
-  xmlns:html="http://www.w3.org/TR/REC-html40">`
-        
-        // 添加主数据工作表
-        if (dataObj.mainData && dataObj.mainData.length > 0) {
-          excelContent += `
+  xmlns:html="http://www.w3.org/TR/REC-html40">
   <Worksheet ss:Name="销售数据">
     <Table>`
-          dataObj.mainData.forEach((row) => {
-            excelContent += `<Row>`
-            row.forEach((cell) => {
-              excelContent += `<Cell>`
-              excelContent += `<Data ss:Type="String">${cell}</Data>`
-              excelContent += `</Cell>`
-            })
-            excelContent += `</Row>`
-          })
-          excelContent += `    </Table>
-  </Worksheet>`
-        }
         
-        // 添加核心指标工作表
-        if (dataObj.metricsData && dataObj.metricsData.length > 0) {
-          excelContent += `
-  <Worksheet ss:Name="核心指标">
-    <Table>`
-          dataObj.metricsData.forEach((row) => {
-            excelContent += `<Row>`
-            row.forEach((cell) => {
-              excelContent += `<Cell>`
-              excelContent += `<Data ss:Type="String">${cell}</Data>`
-              excelContent += `</Cell>`
-            })
-            excelContent += `</Row>`
+        // 添加数据行
+        data.forEach((row, rowIndex) => {
+          excelContent += `<Row>`
+          row.forEach((cell, cellIndex) => {
+            excelContent += `<Cell>`
+            excelContent += `<Data ss:Type="String">${cell}</Data>`
+            excelContent += `</Cell>`
           })
-          excelContent += `    </Table>
-  </Worksheet>`
-        }
-        
-        // 添加销售漏斗工作表
-        if (dataObj.funnelData && dataObj.funnelData.length > 0) {
-          excelContent += `
-  <Worksheet ss:Name="销售漏斗">
-    <Table>`
-          dataObj.funnelData.forEach((row) => {
-            excelContent += `<Row>`
-            row.forEach((cell) => {
-              excelContent += `<Cell>`
-              excelContent += `<Data ss:Type="String">${cell}</Data>`
-              excelContent += `</Cell>`
-            })
-            excelContent += `</Row>`
-          })
-          excelContent += `    </Table>
-  </Worksheet>`
-        }
+          excelContent += `</Row>`
+        })
         
         // 闭合标签
-        excelContent += `
+        excelContent += `    </Table>
+  </Worksheet>
 </Workbook>`
         
-        console.log('Excel content generated:', excelContent.substring(0, 100) + '...')
+        console.log('Excel content generated:', excelContent.substring(0, 100) + '...') // 只显示前100个字符
         
         // 创建Blob对象
         const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel' })
@@ -1631,7 +1585,7 @@ export default {
         
         // 设置下载属性
         const dealerName = this.currentDealer['经销商名称'] || '全部'
-        const scopeText = scope === 'selected' ? this.getSelectedCardsNames() : '全部数据'
+        const scopeText = scope === 'selected' ? '选中卡片' : '全部数据'
         const fileName = `销售数据_${scopeText}_${dealerName}_${new Date().toISOString().slice(0, 10)}.xls`
         link.setAttribute('href', url)
         link.setAttribute('download', fileName)
@@ -1649,7 +1603,7 @@ export default {
       }
     },
     // 导出为PDF格式
-    exportToPDF(dataObj, scope = 'all') {
+    exportToPDF(data, scope = 'all') {
       try {
         console.log('Exporting to PDF...')
         
@@ -1669,17 +1623,10 @@ export default {
       text-align: center;
       color: #333;
     }
-    h2 {
-      color: #555;
-      margin-top: 30px;
-      border-bottom: 2px solid #1890ff;
-      padding-bottom: 5px;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
-      margin-bottom: 30px;
     }
     th, td {
       border: 1px solid #ddd;
@@ -1699,101 +1646,43 @@ export default {
       font-size: 12px;
       color: #666;
     }
-    .section {
-      page-break-inside: avoid;
-    }
   </style>
 </head>
 <body>
   <h1>销售数据报告</h1>
   <p>经销商：${this.currentDealer['经销商名称'] || '全部'}</p>
   <p>导出日期：${new Date().toLocaleString()}</p>
+  <table>
 `
         
-        // 添加主数据表
-        if (dataObj.mainData && dataObj.mainData.length > 0) {
-          htmlContent += `
-  <div class="section">
-    <h2>销售数据</h2>
-    <table>
-      <tr>`
-          dataObj.mainData[0].forEach(header => {
-            htmlContent += `<th>${header}</th>`
-          })
-          htmlContent += `</tr>
+        // 添加表头
+        htmlContent += `    <tr>`
+        data[0].forEach(header => {
+          htmlContent += `<th>${header}</th>`
+        })
+        htmlContent += `</tr>
 `
-          for (let i = 1; i < dataObj.mainData.length; i++) {
-            htmlContent += `      <tr>`
-            dataObj.mainData[i].forEach(cell => {
-              htmlContent += `<td>${cell}</td>`
-            })
-            htmlContent += `</tr>
-`
-          }
-          htmlContent += `    </table>
-  </div>
-`
-        }
         
-        // 添加核心指标表
-        if (dataObj.metricsData && dataObj.metricsData.length > 0) {
-          htmlContent += `
-  <div class="section">
-    <h2>核心指标</h2>
-    <table>
-      <tr>`
-          dataObj.metricsData[0].forEach(header => {
-            htmlContent += `<th>${header}</th>`
+        // 添加数据行
+        for (let i = 1; i < data.length; i++) {
+          htmlContent += `    <tr>`
+          data[i].forEach(cell => {
+            htmlContent += `<td>${cell}</td>`
           })
           htmlContent += `</tr>
-`
-          for (let i = 1; i < dataObj.metricsData.length; i++) {
-            htmlContent += `      <tr>`
-            dataObj.metricsData[i].forEach(cell => {
-              htmlContent += `<td>${cell}</td>`
-            })
-            htmlContent += `</tr>
-`
-          }
-          htmlContent += `    </table>
-  </div>
-`
-        }
-        
-        // 添加销售漏斗表
-        if (dataObj.funnelData && dataObj.funnelData.length > 0) {
-          htmlContent += `
-  <div class="section">
-    <h2>销售漏斗</h2>
-    <table>
-      <tr>`
-          dataObj.funnelData[0].forEach(header => {
-            htmlContent += `<th>${header}</th>`
-          })
-          htmlContent += `</tr>
-`
-          for (let i = 1; i < dataObj.funnelData.length; i++) {
-            htmlContent += `      <tr>`
-            dataObj.funnelData[i].forEach(cell => {
-              htmlContent += `<td>${cell}</td>`
-            })
-            htmlContent += `</tr>
-`
-          }
-          htmlContent += `    </table>
-  </div>
 `
         }
         
         // 闭合标签
-        htmlContent += `  <div class="footer">
+        htmlContent += `  </table>
+  <div class="footer">
     报告生成时间：${new Date().toLocaleString()}
   </div>
 </body>
 </html>
 `
         
-        console.log('HTML content generated for PDF:', htmlContent.substring(0, 100) + '...')
+        console.log('HTML content generated for PDF:', htmlContent.substring(0, 100) + '...') // 只显示前100个字符
         
         // 创建Blob对象
         const blob = new Blob([htmlContent], { type: 'text/html' })
@@ -1806,7 +1695,7 @@ export default {
         
         // 设置下载属性
         const dealerName = this.currentDealer['经销商名称'] || '全部'
-        const scopeText = scope === 'selected' ? this.getSelectedCardsNames() : '全部数据'
+        const scopeText = scope === 'selected' ? '选中卡片' : '全部数据'
         const fileName = `销售数据报告_${scopeText}_${dealerName}_${new Date().toISOString().slice(0, 10)}.html`
         link.setAttribute('href', url)
         link.setAttribute('download', fileName)
@@ -1829,234 +1718,8 @@ export default {
         throw error
       }
     },
-    // 准备导出数据（支持多表格）
+    // 准备导出数据
     prepareExportData(scope = 'all') {
-      try {
-        // 返回一个对象，包含多个数据表
-        const result = {
-          mainData: [],      // 主数据表（按月份）
-          metricsData: [],   // 核心指标数据
-          funnelData: []     // 销售漏斗数据
-        }
-        
-        if (scope === 'all') {
-          // 导出全部数据 - 按月份导出主数据
-          const columns = ['月份', '销量', '客流量', '线索量', '潜客量', '成交率', '战败率', '成交响应时间', '战败响应时间', '政策指标', 'GSEV', '评价数', '好评数', '差评数']
-          result.mainData.push(columns)
-          
-          this.filteredMonths.forEach((month, index) => {
-            const row = [
-              month,
-              this.getSeriesByTimeRange('销量')[index] || 0,
-              this.getSeriesByTimeRange('客流量')[index] || 0,
-              this.getSeriesByTimeRange('线索量')[index] || 0,
-              this.getSeriesByTimeRange('潜客量')[index] || 0,
-              this.getSeriesByTimeRange('成交率')[index] || 0,
-              this.getSeriesByTimeRange('战败率')[index] || 0,
-              this.getSeriesByTimeRange('成交响应时间')[index] || 0,
-              this.getSeriesByTimeRange('战败响应时间')[index] || 0,
-              this.getSeriesByTimeRange('政策')[index] || 0,
-              this.getSeriesByTimeRange('GSEV')[index] || 0,
-              this.getSeriesByTimeRange('评价数')[index] || 0,
-              this.getSeriesByTimeRange('好评数')[index] || 0,
-              this.getSeriesByTimeRange('差评数')[index] || 0
-            ]
-            result.mainData.push(row)
-          })
-          
-          // 全部导出时，也单独处理核心指标
-          result.metricsData.push(['指标', '显示值', '最佳月份', '最差月份'])
-          
-          const metrics = [
-            { key: '销量', unit: '辆' },
-            { key: '客流量', unit: '人次' },
-            { key: '线索量', unit: '条' },
-            { key: '潜客量', unit: '人' },
-          ]
-          
-          metrics.forEach((m) => {
-            const series = this.months.map((mo) => this.toNumber(this.currentDealer[metricKeys[m.key](mo)]))
-            const peakIdx = this.findMaxIndex(series)
-            const valleyIdx = this.findMinIndex(series)
-            
-            let display = ''
-            let bestMonth = ''
-            let worstMonth = ''
-            
-            if (this.metricDisplayMode === 'peak') {
-              const peakValue = series[peakIdx]
-              display = m.key.includes('率')
-                ? `${(peakValue * 100 || 0).toFixed(1)}${m.unit}`
-                : `${this.formatNumber(peakValue)}${m.unit}`
-              bestMonth = this.months[peakIdx] || '-'
-              worstMonth = '-'
-            } else if (this.metricDisplayMode === 'valley') {
-              const valleyValue = series[valleyIdx]
-              display = m.key.includes('率')
-                ? `${(valleyValue * 100 || 0).toFixed(1)}${m.unit}`
-                : `${this.formatNumber(valleyValue)}${m.unit}`
-              bestMonth = '-'
-              worstMonth = this.months[valleyIdx] || '-'
-            } else if (this.metricDisplayMode === 'both') {
-              const peakValue = series[peakIdx]
-              const valleyValue = series[valleyIdx]
-              const peakDisplay = m.key.includes('率')
-                ? `${(peakValue * 100 || 0).toFixed(1)}${m.unit}`
-                : `${this.formatNumber(peakValue)}${m.unit}`
-              const valleyDisplay = m.key.includes('率')
-                ? `${(valleyValue * 100 || 0).toFixed(1)}${m.unit}`
-                : `${this.formatNumber(valleyValue)}${m.unit}`
-              display = `${peakDisplay} / ${valleyDisplay}`
-              bestMonth = this.months[peakIdx] || '-'
-              worstMonth = this.months[valleyIdx] || '-'
-            }
-            
-            result.metricsData.push([m.key, display, bestMonth, worstMonth])
-          })
-          
-          // 全部导出时，也单独处理销售漏斗
-          result.funnelData.push(['类型', '销量', '客流量', '线索量', '潜客量', '线索转化率', '潜客转化率', '成交转化率'])
-          
-          const salesData = this.getSeriesByTimeRange('销量')
-          const trafficData = this.getSeriesByTimeRange('客流量')
-          const leadsData = this.getSeriesByTimeRange('线索量')
-          const potentialData = this.getSeriesByTimeRange('潜客量')
-          
-          const avgSales = this.average(salesData)
-          const avgTraffic = this.average(trafficData)
-          const avgLeads = this.average(leadsData)
-          const avgPotential = this.average(potentialData)
-          
-          const leadConversionRate = avgTraffic > 0 ? ((avgLeads / avgTraffic) * 100).toFixed(1) : 0
-          const potentialConversionRate = avgLeads > 0 ? ((avgPotential / avgLeads) * 100).toFixed(1) : 0
-          const salesConversionRate = avgPotential > 0 ? ((avgSales / avgPotential) * 100).toFixed(1) : 0
-          
-          result.funnelData.push(['均值', avgSales.toFixed(1), avgTraffic.toFixed(1), avgLeads.toFixed(1), avgPotential.toFixed(1), leadConversionRate + '%', potentialConversionRate + '%', salesConversionRate + '%'])
-        } else {
-          // 选中卡片导出
-          const hasMetrics = this.selectedCards.includes('metrics')
-          const hasFunnel = this.selectedCards.includes('funnel')
-          const otherCards = this.selectedCards.filter(id => id !== 'metrics' && id !== 'funnel')
-          
-          // 处理核心指标 - 直接使用页面显示的数据
-          if (hasMetrics) {
-            result.metricsData.push(['指标', '显示值', '最佳月份', '最差月份'])
-            
-            // 使用 headlineMetrics 计算属性，确保与页面显示一致
-            this.headlineMetrics.forEach((metric) => {
-              const bestMonth = metric.bestMonth || '-'
-              const worstMonth = metric.worstMonth || '-'
-              result.metricsData.push([metric.label, metric.display, bestMonth, worstMonth])
-            })
-          }
-          
-          // 处理销售漏斗
-          if (hasFunnel) {
-            result.funnelData.push(['类型', '销量', '客流量', '线索量', '潜客量', '线索转化率', '潜客转化率', '成交转化率'])
-            
-            const salesData = this.getSeriesByTimeRange('销量')
-            const trafficData = this.getSeriesByTimeRange('客流量')
-            const leadsData = this.getSeriesByTimeRange('线索量')
-            const potentialData = this.getSeriesByTimeRange('潜客量')
-            
-            const avgSales = this.average(salesData)
-            const avgTraffic = this.average(trafficData)
-            const avgLeads = this.average(leadsData)
-            const avgPotential = this.average(potentialData)
-            
-            const leadConversionRate = avgTraffic > 0 ? ((avgLeads / avgTraffic) * 100).toFixed(1) : 0
-            const potentialConversionRate = avgLeads > 0 ? ((avgPotential / avgLeads) * 100).toFixed(1) : 0
-            const salesConversionRate = avgPotential > 0 ? ((avgSales / avgPotential) * 100).toFixed(1) : 0
-            
-            result.funnelData.push(['均值', avgSales.toFixed(1), avgTraffic.toFixed(1), avgLeads.toFixed(1), avgPotential.toFixed(1), leadConversionRate + '%', potentialConversionRate + '%', salesConversionRate + '%'])
-          }
-          
-          // 处理其他卡片（按月份）
-          if (otherCards.length > 0) {
-            const columns = ['月份']
-            
-            if (otherCards.includes('trend') || otherCards.includes('snapshot')) {
-              columns.push('销量', '客流量', '线索量', '潜客量', '成交率')
-            }
-            if (otherCards.includes('rate')) {
-              columns.push('成交率', '战败率')
-            }
-            if (otherCards.includes('responseTime')) {
-              columns.push('成交响应时间', '战败响应时间')
-            }
-            if (otherCards.includes('policy')) {
-              columns.push('政策指标')
-            }
-            if (otherCards.includes('gsev')) {
-              columns.push('GSEV')
-            }
-            if (otherCards.includes('review')) {
-              columns.push('评价数', '好评数', '差评数')
-            }
-            
-            result.mainData.push(columns)
-            
-            this.filteredMonths.forEach((month, index) => {
-              const row = [month]
-              
-              columns.slice(1).forEach(column => {
-                switch (column) {
-                  case '销量':
-                    row.push(this.getSeriesByTimeRange('销量')[index] || 0)
-                    break
-                  case '客流量':
-                    row.push(this.getSeriesByTimeRange('客流量')[index] || 0)
-                    break
-                  case '线索量':
-                    row.push(this.getSeriesByTimeRange('线索量')[index] || 0)
-                    break
-                  case '潜客量':
-                    row.push(this.getSeriesByTimeRange('潜客量')[index] || 0)
-                    break
-                  case '成交率':
-                    row.push(this.getSeriesByTimeRange('成交率')[index] || 0)
-                    break
-                  case '战败率':
-                    row.push(this.getSeriesByTimeRange('战败率')[index] || 0)
-                    break
-                  case '成交响应时间':
-                    row.push(this.getSeriesByTimeRange('成交响应时间')[index] || 0)
-                    break
-                  case '战败响应时间':
-                    row.push(this.getSeriesByTimeRange('战败响应时间')[index] || 0)
-                    break
-                  case '政策指标':
-                    row.push(this.getSeriesByTimeRange('政策')[index] || 0)
-                    break
-                  case 'GSEV':
-                    row.push(this.getSeriesByTimeRange('GSEV')[index] || 0)
-                    break
-                  case '评价数':
-                    row.push(this.getSeriesByTimeRange('评价数')[index] || 0)
-                    break
-                  case '好评数':
-                    row.push(this.getSeriesByTimeRange('好评数')[index] || 0)
-                    break
-                  case '差评数':
-                    row.push(this.getSeriesByTimeRange('差评数')[index] || 0)
-                    break
-                }
-              })
-              
-              result.mainData.push(row)
-            })
-          }
-        }
-        
-        console.log('Prepared export data:', result)
-        return result
-      } catch (error) {
-        console.error('Error preparing export data:', error)
-        throw error
-      }
-    },
-    // 准备导出数据（旧版本，保持兼容）
-    prepareExportDataOld(scope = 'all') {
       try {
         // 从当前经销商数据中提取需要导出的数据
         const data = []
@@ -2072,9 +1735,6 @@ export default {
           if (this.selectedCards.length === 1 && this.selectedCards.includes('metrics')) {
             // 关键数值：根据显示模式导出峰值、谷值或两者
             columns = ['指标', '显示值', '最佳月份', '最差月份']
-          } else if (this.selectedCards.length === 1 && this.selectedCards.includes('funnel')) {
-            // 销售漏斗：导出均值数据
-            columns = ['类型', '销量', '客流量', '线索量', '潜客量', '线索转化率', '潜客转化率', '成交转化率']
           } else {
             // 其他情况：确保所有导出的数据都包含月份标识
             columns.push('月份')
@@ -2160,25 +1820,6 @@ export default {
             
             data.push([m.key, display, bestMonth, worstMonth])
           })
-        } else if (this.selectedCards.length === 1 && this.selectedCards.includes('funnel')) {
-          // 销售漏斗：导出四个量的均值
-          const salesData = this.getSeriesByTimeRange('销量')
-          const trafficData = this.getSeriesByTimeRange('客流量')
-          const leadsData = this.getSeriesByTimeRange('线索量')
-          const potentialData = this.getSeriesByTimeRange('潜客量')
-          
-          const avgSales = this.average(salesData)
-          const avgTraffic = this.average(trafficData)
-          const avgLeads = this.average(leadsData)
-          const avgPotential = this.average(potentialData)
-          
-          // 计算转化率
-          const leadConversionRate = avgTraffic > 0 ? ((avgLeads / avgTraffic) * 100).toFixed(1) : 0
-          const potentialConversionRate = avgLeads > 0 ? ((avgPotential / avgLeads) * 100).toFixed(1) : 0
-          const salesConversionRate = avgPotential > 0 ? ((avgSales / avgPotential) * 100).toFixed(1) : 0
-          
-          // 添加数据行
-          data.push(['均值', avgSales.toFixed(1), avgTraffic.toFixed(1), avgLeads.toFixed(1), avgPotential.toFixed(1), leadConversionRate + '%', potentialConversionRate + '%', salesConversionRate + '%'])
         } else {
           // 其他卡片：按月份导出数据
           this.filteredMonths.forEach((month, index) => {
@@ -2259,47 +1900,14 @@ export default {
         throw error
       }
     },
-    // 获取选中卡片的名称
-    getSelectedCardsNames() {
-      const cardNameMap = {
-        'snapshot': '月度快照',
-        'metrics': '核心指标',
-        'trend': '销量趋势分析',
-        'funnel': '销售漏斗',
-        'rate': '成交战败率',
-        'responseTime': '响应时间分析',
-        'policy': '政策影响',
-        'gsev': 'GSEV占比',
-        'review': '好坏评占比'
-      }
-      
-      return this.selectedCards.map(id => cardNameMap[id] || id).join('_')
-    },
     // 导出为CSV格式
-    exportToCSV(dataObj, scope = 'all') {
+    exportToCSV(data, scope = 'all') {
       try {
         console.log('Exporting to CSV...')
         
-        let csvContent = ''
-        
-        // 处理主数据表
-        if (dataObj.mainData && dataObj.mainData.length > 0) {
-          csvContent += dataObj.mainData.map(row => row.join(',')).join('\n')
-        }
-        
-        // 处理核心指标数据（单独一页）
-        if (dataObj.metricsData && dataObj.metricsData.length > 0) {
-          if (csvContent) csvContent += '\n\n=== 核心指标 ===\n'
-          csvContent += dataObj.metricsData.map(row => row.join(',')).join('\n')
-        }
-        
-        // 处理销售漏斗数据（单独一页）
-        if (dataObj.funnelData && dataObj.funnelData.length > 0) {
-          if (csvContent) csvContent += '\n\n=== 销售漏斗 ===\n'
-          csvContent += dataObj.funnelData.map(row => row.join(',')).join('\n')
-        }
-        
-        console.log('CSV content generated:', csvContent.substring(0, 100) + '...')
+        // 将二维数组转换为CSV字符串
+        const csvContent = data.map(row => row.join(',')).join('\n')
+        console.log('CSV content generated:', csvContent.substring(0, 100) + '...') // 只显示前100个字符
         
         // 创建Blob对象
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -2312,7 +1920,7 @@ export default {
         
         // 设置下载属性
         const dealerName = this.currentDealer['经销商名称'] || '全部'
-        const scopeText = scope === 'selected' ? this.getSelectedCardsNames() : '全部数据'
+        const scopeText = scope === 'selected' ? '选中卡片' : '全部数据'
         const fileName = `销售数据_${scopeText}_${dealerName}_${new Date().toISOString().slice(0, 10)}.csv`
         link.setAttribute('href', url)
         link.setAttribute('download', fileName)
@@ -2371,9 +1979,6 @@ export default {
     },
     // 根据选中的卡片生成报告
     generateReportFromSelection() {
-      console.log('=== generateReportFromSelection 被调用 ===');
-      console.log('选中的卡片:', this.selectedCards);
-      
       if (this.selectedCards.length === 0) {
         alert('请至少选择一个卡片！')
         return
@@ -2384,25 +1989,18 @@ export default {
         this.isReportMode = true
       }
       
-      console.log('开始提取卡片数据...');
-      console.log('当前组件实例 this:', this);
+      console.log('选中的卡片:', this.selectedCards)
       
       // 提取选中卡片的数据
       this.reportCardData = extractCardData(this, this.selectedCards)
-
-      console.log('提取的卡片数据:', this.reportCardData);
-      console.log('卡片数据的键:', Object.keys(this.reportCardData));
-      console.log('卡片数据是否为空:', Object.keys(this.reportCardData).length === 0);
+      console.log('提取的卡片数据:', this.reportCardData)
       
       // 显示报告模态框
-      console.log('准备显示报告模态框...');
       this.showReportModal = true
-      console.log('showReportModal 已设置为:', this.showReportModal);
       
       // 关闭下拉菜单并清空选中状态
       this.showReportDropdown = false
       this.selectedCards = []
-      console.log('=== generateReportFromSelection 执行完成 ===');
     },
     
     // 关闭报告模态框
@@ -2418,14 +2016,14 @@ export default {
         return
       }
       
-  
+      console.log('toggleCardSelection called with cardId:', cardId)
       const index = this.selectedCards.indexOf(cardId)
       if (index > -1) {
         this.selectedCards.splice(index, 1)
-  
+        console.log('Removed card:', cardId, 'Current selected:', this.selectedCards)
       } else {
         this.selectedCards.push(cardId)
-   
+        console.log('Added card:', cardId, 'Current selected:', this.selectedCards)
       }
     },
   },

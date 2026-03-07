@@ -7,6 +7,7 @@ import datetime
 import os
 import pandas as pd
 from dotenv import load_dotenv
+from flask_migrate import Migrate
 
 # 加载环境变量
 load_dotenv()
@@ -20,6 +21,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # 初始化CORS和数据库
 CORS(app)
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 # 用户模型
 class User(db.Model):
@@ -65,6 +67,16 @@ class PredictionHistory(db.Model):
     operation_force = db.Column(db.Float, default=0)
     comprehensive_score = db.Column(db.Float, default=0)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+# 分析报告模型
+class AnalysisReport(db.Model):
+    __tablename__ = 'analysis_report'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    username = db.Column(db.String(50), nullable=False)  # 生成报告的用户名
+    dealer_code = db.Column(db.String(20), nullable=False)
+    report_date = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    selected_cards = db.Column(db.Text, nullable=False)  # JSON格式存储选中的卡片
+    report_content = db.Column(db.Text, nullable=False)  # Markdown格式的报告内容
 
 # 创建数据库表
 with app.app_context():
@@ -671,6 +683,126 @@ def get_comments():
     except Exception as e:
         print(f'获取试驾评价失败: {str(e)}')
         return jsonify({'error': f'获取失败: {str(e)}'}), 500
+
+# 保存分析报告API
+@app.route('/api/analysis-reports', methods=['POST'])
+def save_analysis_report():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': '请求数据不能为空'}), 400
+        
+        print('接收到的保存分析报告数据:', data)
+        
+        # 创建分析报告记录
+        report = AnalysisReport(
+            username=data.get('username'),
+            dealer_code=data.get('dealer_code'),
+            selected_cards=data.get('selected_cards'),  # JSON字符串
+            report_content=data.get('report_content')
+        )
+        
+        db.session.add(report)
+        db.session.commit()
+        
+        print('分析报告保存成功:', report.id)
+        
+        return jsonify({
+            'success': True,
+            'message': '分析报告保存成功',
+            'data': {
+                'id': report.id
+            }
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f'保存分析报告失败: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'保存失败: {str(e)}'}), 500
+
+# 获取分析报告列表API
+@app.route('/api/analysis-reports', methods=['GET'])
+def get_analysis_reports():
+    try:
+        username = request.args.get('username')
+        
+        # 构建查询
+        query = AnalysisReport.query
+        if username:
+            query = query.filter_by(username=username)
+        
+        # 按报告生成日期倒序排列
+        reports = query.order_by(AnalysisReport.report_date.desc()).all()
+        
+        # 格式化结果
+        report_list = []
+        for report in reports:
+            report_list.append({
+                'id': report.id,
+                'username': report.username,
+                'dealer_code': report.dealer_code,
+                'report_date': report.report_date.strftime('%Y-%m-%d %H:%M:%S'),
+                'selected_cards': report.selected_cards,
+                'report_content': report.report_content
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': report_list
+        }), 200
+        
+    except Exception as e:
+        print(f'获取分析报告列表失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+# 获取分析报告详情API
+@app.route('/api/analysis-reports/<int:id>', methods=['GET'])
+def get_analysis_report_detail(id):
+    try:
+        report = AnalysisReport.query.get(id)
+        if not report:
+            return jsonify({'success': False, 'message': '分析报告不存在'}), 404
+        
+        result = {
+            'id': report.id,
+            'username': report.username,
+            'dealer_code': report.dealer_code,
+            'report_date': report.report_date.strftime('%Y-%m-%d %H:%M:%S'),
+            'selected_cards': report.selected_cards,
+            'report_content': report.report_content
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        }), 200
+        
+    except Exception as e:
+        print(f'获取分析报告详情失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+# 删除分析报告API
+@app.route('/api/analysis-reports/<int:id>', methods=['DELETE'])
+def delete_analysis_report(id):
+    try:
+        report = AnalysisReport.query.get(id)
+        if not report:
+            return jsonify({'success': False, 'message': '分析报告不存在'}), 404
+        
+        db.session.delete(report)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '分析报告删除成功'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f'删除分析报告失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'删除失败: {str(e)}'}), 500
 
 if __name__ == '__main__':
     print('Starting Flask server...')

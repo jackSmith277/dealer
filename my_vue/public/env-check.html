@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>环境变量检查工具</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #1890ff;
+      padding-bottom: 10px;
+    }
+    .check-item {
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 4px;
+      border-left: 4px solid #ccc;
+    }
+    .check-item.success {
+      background: #f6ffed;
+      border-left-color: #52c41a;
+    }
+    .check-item.error {
+      background: #fff2f0;
+      border-left-color: #ff4d4f;
+    }
+    .check-item.warning {
+      background: #fffbe6;
+      border-left-color: #faad14;
+    }
+    .check-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .check-content {
+      color: #666;
+      font-family: monospace;
+      word-break: break-all;
+    }
+    button {
+      background: #1890ff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+    button:hover {
+      background: #40a9ff;
+    }
+    .icon {
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 DeepSeek API 配置检查</h1>
+    <p>此工具用于检查环境变量是否正确配置</p>
+    
+    <div id="results"></div>
+    
+    <button onclick="runCheck()">重新检查</button>
+  </div>
+
+  <script>
+    function runCheck() {
+      const results = document.getElementById('results');
+      results.innerHTML = '';
+      
+      const checks = [];
+      
+      // 检查 1: API Key 是否存在
+      const apiKey = import.meta.env?.VITE_DEEPSEEK_API_KEY;
+      if (!apiKey) {
+        checks.push({
+          type: 'error',
+          title: '❌ API Key 未配置',
+          content: '环境变量 VITE_DEEPSEEK_API_KEY 未找到。请在 .env 文件中配置。'
+        });
+      } else if (apiKey === 'your_api_key_here' || apiKey === 'sk-your-api-key-here') {
+        checks.push({
+          type: 'error',
+          title: '❌ API Key 是示例值',
+          content: `当前值: ${apiKey}\n请替换为真实的 DeepSeek API Key。`
+        });
+      } else if (apiKey.startsWith('sk-')) {
+        checks.push({
+          type: 'success',
+          title: '✅ API Key 配置正确',
+          content: `前缀: ${apiKey.substring(0, 10)}...\n长度: ${apiKey.length} 字符`
+        });
+      } else {
+        checks.push({
+          type: 'warning',
+          title: '⚠️ API Key 格式可能不正确',
+          content: `当前值: ${apiKey.substring(0, 20)}...\nDeepSeek API Key 通常以 "sk-" 开头。`
+        });
+      }
+      
+      // 检查 2: API URL 是否存在
+      const apiUrl = import.meta.env?.VITE_DEEPSEEK_API_URL;
+      if (!apiUrl) {
+        checks.push({
+          type: 'error',
+          title: '❌ API URL 未配置',
+          content: '环境变量 VITE_DEEPSEEK_API_URL 未找到。请在 .env 文件中配置。'
+        });
+      } else if (apiUrl.includes('deepseek.com')) {
+        checks.push({
+          type: 'success',
+          title: '✅ API URL 配置正确',
+          content: `URL: ${apiUrl}`
+        });
+      } else {
+        checks.push({
+          type: 'warning',
+          title: '⚠️ API URL 可能不正确',
+          content: `当前值: ${apiUrl}\n标准 URL: https://api.deepseek.com/v1/chat/completions`
+        });
+      }
+      
+      // 检查 3: 所有环境变量
+      const allEnvVars = import.meta.env;
+      const viteVars = Object.keys(allEnvVars).filter(key => key.startsWith('VITE_'));
+      checks.push({
+        type: 'success',
+        title: '📋 所有 VITE_ 环境变量',
+        content: viteVars.length > 0 
+          ? viteVars.join('\n') 
+          : '未找到任何 VITE_ 开头的环境变量'
+      });
+      
+      // 渲染结果
+      checks.forEach(check => {
+        const div = document.createElement('div');
+        div.className = `check-item ${check.type}`;
+        div.innerHTML = `
+          <div class="check-title">${check.title}</div>
+          <div class="check-content">${check.content}</div>
+        `;
+        results.appendChild(div);
+      });
+      
+      // 添加建议
+      const hasErrors = checks.some(c => c.type === 'error');
+      if (hasErrors) {
+        const suggestion = document.createElement('div');
+        suggestion.className = 'check-item warning';
+        suggestion.innerHTML = `
+          <div class="check-title">💡 解决建议</div>
+          <div class="check-content">
+1. 确保 .env 文件在项目根目录（与 package.json 同级）
+2. 确保 .env 文件内容格式正确：
+   VITE_DEEPSEEK_API_KEY=sk-你的密钥
+   VITE_DEEPSEEK_API_URL=https://api.deepseek.com/v1/chat/completions
+3. 保存 .env 文件后，必须重启开发服务器
+4. 重启后刷新此页面重新检查
+          </div>
+        `;
+        results.appendChild(suggestion);
+      }
+    }
+    
+    // 页面加载时自动检查
+    runCheck();
+  </script>
+</body>
+</html>

@@ -4,8 +4,22 @@
  */
 
 // 这两个值放在环境变量里面了
-const DEEPSEEK_API_KEY = import.meta.env?.VITE_DEEPSEEK_API_KEY ;
-const DEEPSEEK_API_URL = import.meta.env?.VITE_DEEPSEEK_API_URL ;
+//const DEEPSEEK_API_KEY = import.meta.env?.VITE_DEEPSEEK_API_KEY ;
+//const DEEPSEEK_API_URL = import.meta.env?.VITE_DEEPSEEK_API_URL ;
+
+const DEEPSEEK_API_KEY = 'sk-829e1bc28fe145beae4780d96fd5d2df'
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
+
+
+
+// 检查环境变量是否配置
+if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === 'your_api_key_here' || DEEPSEEK_API_KEY === 'sk-your-api-key-here') {
+  console.warn('⚠️ DeepSeek API Key 未配置或使用了示例值，请在 .env 文件中配置 VITE_DEEPSEEK_API_KEY');
+}
+
+if (!DEEPSEEK_API_URL) {
+  console.warn('⚠️ DeepSeek API URL 未配置，请在 .env 文件中配置 VITE_DEEPSEEK_API_URL');
+}
 
 /**
  * 调用 DeepSeek API
@@ -309,8 +323,16 @@ export async function callDeepSeekStream(prompt, onChunk, options = {}) {
   } = options;
 
   try {
-    console.log('开始调用 DeepSeek API...');
-    console.log('API URL:', DEEPSEEK_API_URL);
+
+    
+    // 检查必要的配置
+    if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === 'your_api_key_here' || DEEPSEEK_API_KEY === 'sk-your-api-key-here') {
+      throw new Error('DeepSeek API Key 未配置，请在项目根目录的 .env 文件中配置 VITE_DEEPSEEK_API_KEY');
+    }
+    
+    if (!DEEPSEEK_API_URL) {
+      throw new Error('DeepSeek API URL 未配置，请在项目根目录的 .env 文件中配置 VITE_DEEPSEEK_API_URL');
+    }
     
     const response = await fetch(DEEPSEEK_API_URL, {
       method: 'POST',
@@ -336,7 +358,7 @@ export async function callDeepSeekStream(prompt, onChunk, options = {}) {
       })
     });
 
-    console.log('API 响应状态:', response.status, response.statusText);
+
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -354,7 +376,7 @@ export async function callDeepSeekStream(prompt, onChunk, options = {}) {
       const { done, value } = await reader.read();
       
       if (done) {
-        console.log('流数据读取完成，共收到', chunkCount, '个数据块');
+
         break;
       }
 
@@ -397,7 +419,8 @@ export async function callDeepSeekStream(prompt, onChunk, options = {}) {
 export async function generateSalesReportStream(cardData, onChunk) {
   console.log('generateSalesReportStream 被调用');
   console.log('cardData:', cardData);
-  console.log('API Key 前缀:', DEEPSEEK_API_KEY.substring(0, 10));
+  console.log('API Key 存在:', !!DEEPSEEK_API_KEY);
+  console.log('API Key 前缀:', DEEPSEEK_API_KEY ? DEEPSEEK_API_KEY.substring(0, 10) : 'undefined');
   
   const prompt = buildSalesReportPrompt(cardData);
   console.log('生成的 prompt 长度:', prompt.length);
