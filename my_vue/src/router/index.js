@@ -4,6 +4,8 @@ import Index from '../views/Index.vue'
 import DealerDashboard from '../views/DealerDashboard.vue'
 import FiveForcesRadar from '../views/FiveForcesRadar.vue'
 import SalesPrediction from '../views/SalesPrediction.vue'
+import AdvancedSalesPrediction from '../views/AdvancedSalesPrediction.vue'
+import StoreRanking from '../views/StoreRanking.vue'
 import HistoryRecords from '../views/HistoryRecords.vue'
 import AnalysisReports from '../views/AnalysisReports.vue'
 import Login from '../views/Login.vue'
@@ -55,6 +57,16 @@ const routes = [
         path: 'prediction',
         name: 'prediction',
         component: SalesPrediction
+      },
+      {
+        path: 'advanced-prediction',
+        name: 'advancedPrediction',
+        component: AdvancedSalesPrediction
+      },
+      {
+        path: 'store-ranking',
+        name: 'storeRanking',
+        component: StoreRanking
       },
       {
         path: 'history',

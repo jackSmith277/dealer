@@ -69,18 +69,6 @@
 
       <div class="row row-bottom">
         <div class="col-left">
-          <div class="card line-card">
-            <div class="card-header">
-              <h3>月度趋势图</h3>
-              <span class="sub-title">10个月各项指标均值</span>
-            </div>
-            <div class="card-body">
-              <div ref="lineChart" class="chart-container"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-center">
           <div class="card pie-card">
             <div class="card-header">
               <h3>门店评分统计</h3>
@@ -88,6 +76,18 @@
             </div>
             <div class="card-body">
               <div ref="pieChart" class="chart-container"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-center">
+          <div class="card line-card">
+            <div class="card-header">
+              <h3>月度趋势图</h3>
+              <span class="sub-title">10个月各项指标均值</span>
+            </div>
+            <div class="card-body">
+              <div ref="lineChart" class="chart-container"></div>
             </div>
           </div>
         </div>
@@ -237,6 +237,10 @@ export default {
       this.fiveForcesData = fiveForcesData
       this.dealerData = dealerData
       this.totalDealers = this.fiveForcesData.length
+      console.log('加载的数据:', {
+        dealerDataLength: this.dealerData.length,
+        firstDealer: this.dealerData[0]
+      })
       this.calculateProvinceCount()
       this.$nextTick(() => {
         this.initRadarChart()
@@ -351,6 +355,8 @@ export default {
       const customerData = this.getMonthlyAvg('客流量')
       const leadData = this.getMonthlyAvg('线索量')
       const potentialData = this.getMonthlyAvg('潜客量')
+      console.log('折线图数据:', { salesData, customerData, leadData, potentialData })
+      
       const option = {
         backgroundColor: 'transparent',
         tooltip: {
@@ -386,21 +392,55 @@ export default {
             color: '#666'
           }
         },
-        yAxis: {
-          type: 'value',
-          axisLine: {
-            lineStyle: {
-              color: '#e8e8e8'
+        yAxis: [
+          {
+            type: 'value',
+            name: '销量/客流量/潜客量',
+            position: 'left',
+            axisLine: {
+              lineStyle: {
+                color: '#3b82f6'
+              }
+            },
+            axisLabel: {
+              color: '#6b7280',
+              fontSize: 12
+            },
+            splitLine: {
+              lineStyle: {
+                color: '#f0f0f0'
+              }
+            },
+            axisTick: {
+              show: false
             }
           },
-          axisLabel: {
-            color: '#666'
-          },
-          splitLine: {
-            lineStyle: {
-              color: '#f0f0f0'
+          {
+            type: 'value',
+            name: '线索量',
+            position: 'right',
+            axisLine: {
+              lineStyle: {
+                color: '#f59e0b'
+              }
+            },
+            axisLabel: {
+              color: '#6b7280',
+              fontSize: 12
+            },
+            splitLine: {
+              show: false
+            },
+            axisTick: {
+              show: false
             }
           }
+        ],
+        animation: true,
+        animationDuration: 1000,
+        animationEasing: 'cubicOut',
+        animationDelay: function(idx) {
+          return idx * 50;
         },
         series: [
           {
@@ -408,36 +448,97 @@ export default {
             type: 'line',
             smooth: true,
             data: salesData,
-            lineStyle: { color: '#1890ff' },
-            itemStyle: { color: '#1890ff' },
-            areaStyle: { color: 'rgba(24, 144, 255, 0.1)' }
+            symbol: 'circle',
+            symbolSize: 6,
+            lineStyle: {
+              width: 3,
+              color: '#3b82f6'
+            },
+            itemStyle: {
+              color: '#3b82f6',
+              borderWidth: 2,
+              borderColor: '#fff'
+            },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+                { offset: 1, color: 'rgba(59, 130, 246, 0.05)'
+                }
+              ])
+            }
           },
           {
             name: '客流量',
             type: 'line',
             smooth: true,
             data: customerData,
-            lineStyle: { color: '#52c41a' },
-            itemStyle: { color: '#52c41a' },
-            areaStyle: { color: 'rgba(82, 196, 26, 0.1)' }
+            symbol: 'circle',
+            symbolSize: 6,
+            lineStyle: {
+              width: 3,
+              color: '#8b5cf6'
+            },
+            itemStyle: {
+              color: '#8b5cf6',
+              borderWidth: 2,
+              borderColor: '#fff'
+            },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(139, 92, 246, 0.3)' },
+                { offset: 1, color: 'rgba(139, 92, 246, 0.05)'
+                }
+              ])
+            }
           },
           {
             name: '线索量',
             type: 'line',
             smooth: true,
             data: leadData,
-            lineStyle: { color: '#fa8c16' },
-            itemStyle: { color: '#fa8c16' },
-            areaStyle: { color: 'rgba(250, 140, 22, 0.1)' }
+            yAxisIndex: 1,
+            symbol: 'circle',
+            symbolSize: 6,
+            lineStyle: {
+              width: 3,
+              color: '#f59e0b'
+            },
+            itemStyle: {
+              color: '#f59e0b',
+              borderWidth: 2,
+              borderColor: '#fff'
+            },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(245, 158, 11, 0.3)' },
+                { offset: 1, color: 'rgba(245, 158, 11, 0.05)'
+                }
+              ])
+            }
           },
           {
             name: '潜客量',
             type: 'line',
             smooth: true,
             data: potentialData,
-            lineStyle: { color: '#722ed1' },
-            itemStyle: { color: '#722ed1' },
-            areaStyle: { color: 'rgba(114, 46, 209, 0.1)' }
+            symbol: 'circle',
+            symbolSize: 6,
+            lineStyle: {
+              width: 3,
+              color: '#10b981'
+            },
+            itemStyle: {
+              color: '#10b981',
+              borderWidth: 2,
+              borderColor: '#fff'
+            },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
+                { offset: 1, color: 'rgba(16, 185, 129, 0.05)'
+                }
+              ])
+            }
           }
         ]
       }
@@ -445,12 +546,14 @@ export default {
     },
     getMonthlyAvg(field) {
       const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月']
-      return months.map(month => {
+      const result = months.map(month => {
         const key = `${month}${field}`
         const values = this.dealerData.map(d => d[key]).filter(v => v !== null && v !== undefined)
         if (values.length === 0) return 0
         return Math.round(values.reduce((a, b) => a + b, 0) / values.length)
       })
+      console.log(`计算 ${field} 数据:`, result)
+      return result
     },
     initPieChart() {
       this.pieChart = echarts.init(this.$refs.pieChart)
@@ -461,19 +564,22 @@ export default {
           formatter: '{b}: {c}家 ({d}%)'
         },
         legend: {
-          orient: 'vertical',
-          right: '5%',
-          top: 'center',
+          orient: 'horizontal',
+          bottom: '5%',
+          left: 'center',
           textStyle: {
-            color: '#666'
-          }
+            color: '#666',
+            fontSize: 12
+          },
+          itemWidth: 12,
+          itemHeight: 12
         },
         series: [
           {
             name: '门店评分分布',
             type: 'pie',
-            radius: ['30%', '60%'],
-            center: ['35%', '50%'],
+            radius: ['30%', '55%'],
+            center: ['50%', '45%'],
             roseType: 'area',
             itemStyle: {
               borderRadius: 5,
@@ -482,8 +588,15 @@ export default {
             },
             label: {
               show: true,
-              formatter: '{c}家',
-              color: '#666'
+              formatter: '{b}\n{c}家',
+              color: '#666',
+              fontSize: 11,
+              lineHeight: 14
+            },
+            labelLine: {
+              show: true,
+              length: 8,
+              length2: 15
             },
             data: this.pieData.map(d => ({
               name: d.name,
@@ -795,7 +908,7 @@ export default {
 .map-container {
   width: 100%;
   height: 100%;
-  min-height: 200px;
+  min-height: 300px;
 }
 
 .ranking-table-wrapper {
