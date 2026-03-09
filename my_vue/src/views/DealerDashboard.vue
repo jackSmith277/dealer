@@ -421,7 +421,7 @@ export default {
       const recentMonth = this.months[this.months.length - 1]
       const metrics = [
         { key: '销量', unit: '辆' },
-        { key: '客流量', unit: '人次' },
+        { key: '客流量', unit: '人' },
         { key: '线索量', unit: '条' },
         { key: '潜客量', unit: '人' },
       ]

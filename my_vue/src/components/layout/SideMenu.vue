@@ -78,6 +78,20 @@
             </li>
             <li 
               class="sub-menu-item"
+              :class="{ active: $route.path === '/dashboard/advanced-prediction' }"
+              @click="$router.push('/dashboard/advanced-prediction')"
+            >
+              <span class="sub-menu-title">高级销量预测</span>
+            </li>
+            <li 
+              class="sub-menu-item"
+              :class="{ active: $route.path === '/dashboard/store-ranking' }"
+              @click="$router.push('/dashboard/store-ranking')"
+            >
+              <span class="sub-menu-title">门店排行对比</span>
+            </li>
+            <li 
+              class="sub-menu-item"
               :class="{ active: $route.path === '/dashboard/history' }"
               @click="$router.push('/dashboard/history')"
             >
