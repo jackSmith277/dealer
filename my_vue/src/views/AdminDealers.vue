@@ -26,27 +26,24 @@
         </div>
         
         <div class="filter-options">
-          <select v-model="filters.region" @change="handleFilter">
-            <option value="">所有地区</option>
-            <option value="北京">北京</option>
-            <option value="上海">上海</option>
-            <option value="广州">广州</option>
-            <option value="深圳">深圳</option>
-          </select>
+          <RegionCascader 
+            v-model="filters.region"
+            @update:modelValue="handleFilter"
+          />
           
-          <select v-model="filters.level" @change="handleFilter">
-            <option value="">所有等级</option>
-            <option value="A级">A级</option>
-            <option value="B级">B级</option>
-            <option value="C级">C级</option>
-          </select>
+          <CustomSelect 
+            v-model="filters.level" 
+            :options="levelOptions"
+            placeholder="所有等级"
+            @update:modelValue="handleFilter"
+          />
           
-          <select v-model="filters.type" @change="handleFilter">
-            <option value="">所有类型</option>
-            <option value="4S店">4S店</option>
-            <option value="二级网点">二级网点</option>
-            <option value="授权经销商">授权经销商</option>
-          </select>
+          <CustomSelect 
+            v-model="filters.type" 
+            :options="typeOptions"
+            placeholder="所有类型"
+            @update:modelValue="handleFilter"
+          />
         </div>
       </div>
       
@@ -114,6 +111,12 @@
                   <button class="edit-btn" @click="editDealer(dealer)">
                     编辑
                   </button>
+                  <button 
+                    :class="dealer.status === 1 ? 'disable-btn' : 'enable-btn'"
+                    @click="toggleDealerStatus(dealer)"
+                  >
+                    {{ dealer.status === 1 ? '禁用' : '启用' }}
+                  </button>
                   <button class="delete-btn" @click="deleteDealer(dealer)">
                     删除
                   </button>
@@ -144,48 +147,91 @@
     </div>
     
     <!-- 查看经销商弹窗 -->
-    <div class="modal" v-if="showViewModal">
+    <div class="modal" v-if="showViewModal" @click.self="showViewModal = false">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>经销商详情</h3>
-          <button class="close-btn" @click="showViewModal = false">×</button>
+          <div class="header-title">
+            <div class="title-icon">🏢</div>
+            <div>
+              <h3>经销商详情</h3>
+              <p class="header-subtitle">{{ viewDealerData.dealer_name }}</p>
+            </div>
+          </div>
+          <button class="close-btn" @click="showViewModal = false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
         <div class="modal-body">
-          <div class="detail-item">
-            <label>经销商名称：</label>
-            <span>{{ viewDealerData.dealer_name }}</span>
+          <div class="detail-section">
+            <h4 class="section-title">基本信息</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <label>经销商名称</label>
+                <span class="detail-value">{{ viewDealerData.dealer_name }}</span>
+              </div>
+              <div class="detail-item">
+                <label>经销商类型</label>
+                <span class="detail-value detail-badge" :class="'type-' + viewDealerData.dealer_type">
+                  {{ viewDealerData.dealer_type }}
+                </span>
+              </div>
+              <div class="detail-item">
+                <label>主营品牌</label>
+                <span class="detail-value">{{ viewDealerData.brand }}</span>
+              </div>
+              <div class="detail-item">
+                <label>经销商等级</label>
+                <span class="detail-value detail-badge" :class="'level-' + viewDealerData.level">
+                  {{ viewDealerData.level }}
+                </span>
+              </div>
+            </div>
           </div>
-          <div class="detail-item">
-            <label>经销商类型：</label>
-            <span>{{ viewDealerData.dealer_type }}</span>
+
+          <div class="detail-section">
+            <h4 class="section-title">地区与地址</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <label>所属地区</label>
+                <span class="detail-value">{{ viewDealerData.region }}</span>
+              </div>
+              <div class="detail-item full-width">
+                <label>详细地址</label>
+                <span class="detail-value">{{ viewDealerData.address }}</span>
+              </div>
+            </div>
           </div>
-          <div class="detail-item">
-            <label>主营品牌：</label>
-            <span>{{ viewDealerData.brand }}</span>
+
+          <div class="detail-section">
+            <h4 class="section-title">联系信息</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <label>联系人</label>
+                <span class="detail-value">{{ viewDealerData.contact_name }}</span>
+              </div>
+              <div class="detail-item">
+                <label>联系电话</label>
+                <span class="detail-value contact-phone">
+                  <a :href="'tel:' + viewDealerData.contact_phone">{{ viewDealerData.contact_phone }}</a>
+                </span>
+              </div>
+            </div>
           </div>
-          <div class="detail-item">
-            <label>经销商等级：</label>
-            <span>{{ viewDealerData.level }}</span>
-          </div>
-          <div class="detail-item">
-            <label>所属地区：</label>
-            <span>{{ viewDealerData.region }}</span>
-          </div>
-          <div class="detail-item">
-            <label>联系人：</label>
-            <span>{{ viewDealerData.contact_name }}</span>
-          </div>
-          <div class="detail-item">
-            <label>联系电话：</label>
-            <span>{{ viewDealerData.contact_phone }}</span>
-          </div>
-          <div class="detail-item">
-            <label>详细地址：</label>
-            <span>{{ viewDealerData.address }}</span>
+
+          <div class="detail-section status-section">
+            <h4 class="section-title">状态</h4>
+            <div class="status-display">
+              <span class="status-badge" :class="viewDealerData.status === 1 ? 'active' : 'inactive'">
+                {{ viewDealerData.status === 1 ? '✓ 启用' : '✕ 禁用' }}
+              </span>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="close-btn" @click="showViewModal = false">关闭</button>
+          <button class="btn-close" @click="showViewModal = false">关闭</button>
         </div>
       </div>
     </div>
@@ -194,15 +240,21 @@
 
 <script>
 import axios from 'axios'
+import RegionCascader from '@/components/RegionCascader.vue'
+import CustomSelect from '@/components/CustomSelect.vue'
 
 export default {
   name: 'AdminDealers',
+  components: {
+    RegionCascader,
+    CustomSelect
+  },
   data() {
     return {
       dealers: [],
       searchQuery: '',
       filters: {
-        region: '',
+        region: { province: '', city: '' },
         level: '',
         type: ''
       },
@@ -211,7 +263,19 @@ export default {
       currentPage: 1,
       pageSize: 10,
       showViewModal: false,
-      viewDealerData: {}
+      viewDealerData: {},
+      levelOptions: [
+        { value: '', label: '所有等级' },
+        { value: 'A级', label: 'A级' },
+        { value: 'B级', label: 'B级' },
+        { value: 'C级', label: 'C级' }
+      ],
+      typeOptions: [
+        { value: '', label: '所有类型' },
+        { value: '4S店', label: '4S店' },
+        { value: '二级网点', label: '二级网点' },
+        { value: '授权经销商', label: '授权经销商' }
+      ]
     }
   },
   computed: {
@@ -228,9 +292,16 @@ export default {
         )
       }
       
-      // 地区过滤
-      if (this.filters.region) {
-        result = result.filter(dealer => dealer.region === this.filters.region)
+      // 地区过滤 - 将省份和城市合并与region字段匹配
+      if (this.filters.region.province && this.filters.region.province !== '全部地区') {
+        if (this.filters.region.city && this.filters.region.city !== '全部城市') {
+          // 选择了省份和城市，精确匹配 "省份城市"
+          const regionStr = this.filters.region.province + this.filters.region.city
+          result = result.filter(dealer => dealer.region === regionStr)
+        } else {
+          // 只选择了省份或选择了全部城市，匹配以省份开头的region
+          result = result.filter(dealer => dealer.region && dealer.region.startsWith(this.filters.region.province))
+        }
       }
       
       // 等级过滤
@@ -292,6 +363,8 @@ export default {
             brand: user.dealer.brand || '未设置',
             level: user.dealer.level || '未设置',
             region: user.dealer.region || '未设置',
+            province: user.dealer.province || '',
+            city: user.dealer.city || '',
             contact_name: user.dealer.contact_name || '未设置',
             contact_phone: user.dealer.contact_phone || '未设置',
             address: user.dealer.address || '未设置'
@@ -320,6 +393,32 @@ export default {
     
     editDealer(dealer) {
       this.$router.push(`/admin/dealers/edit/${dealer.id}`)
+    },
+    
+    async toggleDealerStatus(dealer) {
+      const newStatus = dealer.status === 1 ? 0 : 1
+      const statusText = newStatus === 1 ? '启用' : '禁用'
+      
+      if (!confirm(`确定要${statusText}这个经销商吗？`)) {
+        return
+      }
+      
+      try {
+        const token = this.$store.state.token
+        await axios.put(`http://localhost:5000/api/users/${dealer.id}`, {
+          status: newStatus
+        }, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+        
+        // 更新本地数据
+        dealer.status = newStatus
+        alert(`经销商${statusText}成功`)
+      } catch (err) {
+        alert(`${statusText}失败：` + (err.response?.data?.error || '未知错误'))
+      }
     },
     
     async deleteDealer(dealer) {
@@ -442,12 +541,16 @@ export default {
 
 .search-bar input {
   flex: 1;
-  padding: 10px;
+  padding: 10px 12px;
   background-color: #ffffff;
   color: #333;
   border: 1px solid #d9d9d9;
   border-radius: 4px 0 0 4px;
   font-size: 14px;
+  box-sizing: border-box;
+  height: 40px;
+  display: flex;
+  align-items: center;
 }
 
 .search-btn {
@@ -458,6 +561,11 @@ export default {
   border-radius: 0 4px 4px 0;
   cursor: pointer;
   transition: background-color 0.3s;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .search-btn:hover {
@@ -468,16 +576,17 @@ export default {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  align-items: flex-end;
 }
 
-.filter-options select {
-  padding: 10px;
-  background-color: #ffffff;
-  color: #333;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 14px;
-  min-width: 120px;
+.filter-options > div {
+  flex: 0 0 auto;
+  width: 140px;
+}
+
+.filter-options > :deep(.custom-select-wrapper) {
+  flex: 0 0 auto;
+  width: 140px;
 }
 
 .stats-container {
@@ -546,6 +655,7 @@ export default {
   text-align: left;
   border-bottom: 1px solid #e8e8e8;
   color: #333;
+  vertical-align: middle;
 }
 
 .dealers-table th {
@@ -577,19 +687,22 @@ export default {
 }
 
 .actions {
-  display: flex;
-  gap: 8px;
+  white-space: nowrap;
 }
 
 .view-btn,
 .edit-btn,
-.delete-btn {
+.delete-btn,
+.disable-btn,
+.enable-btn {
+  display: inline-block;
   padding: 4px 8px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
   transition: background-color 0.3s;
+  margin: 2px;
 }
 
 .view-btn {
@@ -617,6 +730,24 @@ export default {
 
 .delete-btn:hover {
   background-color: #D32F2F;
+}
+
+.disable-btn {
+  background-color: #FF9800;
+  color: white;
+}
+
+.disable-btn:hover {
+  background-color: #F57C00;
+}
+
+.enable-btn {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.enable-btn:hover {
+  background-color: #388E3C;
 }
 
 .empty-state {
@@ -668,84 +799,279 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-content {
   background-color: #ffffff;
-  border-radius: 8px;
+  border-radius: 12px;
   width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  max-width: 700px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #e8e8e8;
+  padding: 28px 28px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.title-icon {
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #1890ff 0%, #0050b3 100%);
+  border-radius: 10px;
+  color: white;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 18px;
-  color: #333;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.header-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #6b7280;
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: #333;
-  font-size: 24px;
+  color: #9ca3af;
   cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
+  padding: 8px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: background-color 0.3s;
+  border-radius: 6px;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .close-btn:hover {
-  background-color: #f5f5f5;
+  background-color: #f3f4f6;
+  color: #374151;
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 28px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.detail-section {
+  margin-bottom: 28px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-title {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
 }
 
 .detail-item {
   display: flex;
-  margin-bottom: 15px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-item.full-width {
+  grid-column: 1 / -1;
 }
 
 .detail-item label {
-  width: 120px;
-  font-weight: bold;
-  color: #333;
-  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
-.detail-item span {
-  flex: 1;
-  color: #666;
+.detail-value {
+  font-size: 15px;
+  color: #1f2937;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.detail-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.type-4S店 {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.type-二级网点 {
+  background-color: #ddd6fe;
+  color: #5b21b6;
+}
+
+.type-授权经销商 {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.level-A级 {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.level-B级 {
+  background-color: #fed7aa;
+  color: #92400e;
+}
+
+.level-C级 {
+  background-color: #fecaca;
+  color: #991b1b;
+}
+
+.contact-phone a {
+  color: #1890ff;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.contact-phone a:hover {
+  color: #0050b3;
+  text-decoration: underline;
+}
+
+.status-section {
+  background-color: #f9fafb;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 0;
+}
+
+.status-display {
+  display: flex;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-badge.active {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.inactive {
+  background-color: #fee2e2;
+  color: #991b1b;
 }
 
 .modal-footer {
-  padding: 20px;
-  border-top: 1px solid #e8e8e8;
+  padding: 20px 28px;
+  border-top: 1px solid #f0f0f0;
   display: flex;
   justify-content: flex-end;
+  background-color: #f9fafb;
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+.btn-close {
+  padding: 10px 24px;
+  background-color: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-close:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+  color: #1f2937;
 }
 
 @media (max-width: 768px) {
@@ -760,6 +1086,17 @@ export default {
   
   .filter-options {
     justify-content: space-between;
+    align-items: stretch;
+  }
+
+  .filter-options > div {
+    flex: 1;
+    min-width: unset;
+  }
+
+  .filter-options > :deep(.custom-select-wrapper) {
+    flex: 1;
+    min-width: unset;
   }
   
   .stats-container {
@@ -782,6 +1119,52 @@ export default {
   .actions {
     flex-direction: column;
     gap: 4px;
+  }
+
+  .modal-content {
+    width: 95%;
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .modal-header {
+    padding: 20px 20px 16px;
+  }
+
+  .header-title {
+    gap: 12px;
+  }
+
+  .title-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+  }
+
+  .modal-header h3 {
+    font-size: 18px;
+  }
+
+  .modal-body {
+    padding: 20px;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .detail-item.full-width {
+    grid-column: 1;
+  }
+
+  .modal-footer {
+    padding: 16px 20px;
+  }
+
+  .btn-close {
+    width: 100%;
   }
 }
 </style>

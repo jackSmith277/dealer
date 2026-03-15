@@ -1,171 +1,264 @@
 <template>
   <div class="dealer-form-container">
-    <div class="dealer-form-header">
-      <h1>{{ isEdit ? '编辑经销商' : '添加经销商' }}</h1>
-      <div class="header-actions">
-        <button class="back-btn" @click="$router.push('/admin/dealers')">
-          ← 返回列表
-        </button>
+    <!-- 页面头部 -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="header-left">
+          <h1 class="page-title">{{ isEdit ? '编辑经销商' : '添加经销商' }}</h1>
+          <p class="page-subtitle">{{ isEdit ? '修改经销商信息和账户设置' : '创建新的经销商账户' }}</p>
+        </div>
+        <div class="header-right">
+          <button class="btn btn-outline" @click="$router.push('/dashboard/admin/dealers')">
+            <span class="btn-icon">←</span>
+            返回列表
+          </button>
+        </div>
       </div>
     </div>
-    
+
+    <!-- 主要内容区域 -->
     <div class="dealer-form-content">
-      <div v-if="loading" class="loading">
-        {{ isEdit ? '加载中...' : '准备中...' }}
+      <!-- 加载状态 -->
+      <div v-if="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">{{ isEdit ? '加载经销商信息中...' : '准备中...' }}</p>
       </div>
-      
-      <div v-else-if="error" class="error-message">
-        {{ error }}
+
+      <!-- 错误状态 -->
+      <div v-else-if="error" class="error-state">
+        <div class="error-icon">
+          <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <div class="error-content">
+          <h3>加载失败</h3>
+          <p>{{ error }}</p>
+          <button class="btn btn-primary" @click="resetForm">
+            重试
+          </button>
+        </div>
       </div>
-      
-      <div v-else>
+
+      <!-- 表单内容 -->
+      <div v-else class="form-container">
         <form @submit.prevent="saveDealer" class="dealer-form">
-          <!-- 基本信息 -->
-          <div class="form-section">
-            <h2>基本信息</h2>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="dealer_name">经销商名称 *</label>
-                <input 
-                  type="text" 
-                  id="dealer_name" 
-                  v-model="formData.dealer_name" 
-                  required
-                >
-              </div>
-              
-              <div class="form-group">
-                <label for="dealer_type">经销商类型 *</label>
-                <select id="dealer_type" v-model="formData.dealer_type" required>
-                  <option value="">请选择</option>
-                  <option value="4S店">4S店</option>
-                  <option value="二级网点">二级网点</option>
-                  <option value="授权经销商">授权经销商</option>
-                </select>
-              </div>
-              
-              <div class="form-group">
-                <label for="brand">主营品牌 *</label>
-                <input 
-                  type="text" 
-                  id="brand" 
-                  v-model="formData.brand" 
-                  required
-                >
-              </div>
-              
-              <div class="form-group">
-                <label for="level">经销商等级 *</label>
-                <select id="level" v-model="formData.level" required>
-                  <option value="">请选择</option>
-                  <option value="A级">A级</option>
-                  <option value="B级">B级</option>
-                  <option value="C级">C级</option>
-                </select>
-              </div>
-              
-              <div class="form-group">
-                <label for="region">所属地区 *</label>
-                <input 
-                  type="text" 
-                  id="region" 
-                  v-model="formData.region" 
-                  required
-                >
-              </div>
+          <!-- 整体表单卡片 -->
+          <div class="form-card unified-card">
+            <div class="card-header unified-header">
+              <h2 class="card-title">
+                <span class="card-icon">🏢</span>
+                {{ isEdit ? '编辑经销商' : '添加经销商' }}
+              </h2>
+              <p class="card-description">{{ isEdit ? '修改经销商信息和账户设置' : '创建新的经销商账户' }}</p>
             </div>
-          </div>
-          
-          <!-- 联系信息 -->
-          <div class="form-section">
-            <h2>联系信息</h2>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="contact_name">联系人 *</label>
-                <input 
-                  type="text" 
-                  id="contact_name" 
-                  v-model="formData.contact_name" 
-                  required
-                >
-              </div>
-              
-              <div class="form-group">
-                <label for="contact_phone">联系电话 *</label>
-                <input 
-                  type="text" 
-                  id="contact_phone" 
-                  v-model="formData.contact_phone" 
-                  required
-                >
-              </div>
-              
-              <div class="form-group form-group-full">
-                <label for="address">详细地址 *</label>
-                <input 
-                  type="text" 
-                  id="address" 
-                  v-model="formData.address" 
-                  required
-                  style="width: 100%;"
-                >
-              </div>
-            </div>
-          </div>
-          
-          <!-- 账号信息 -->
-          <div class="form-section">
-            <h2>账号信息</h2>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="username">登录账号 *</label>
-                <input 
-                  type="text" 
-                  id="username" 
-                  v-model="formData.username" 
-                  :disabled="isEdit"
-                  required
-                >
-                <small v-if="isEdit" class="help-text">账号不可修改</small>
-              </div>
-              
-              <div class="form-group password-group">
-                <label for="password">登录密码 * {{ isEdit ? '(不填则不修改)' : '' }}</label>
-                <div class="password-input-container">
-                  <input 
-                    :type="passwordVisible ? 'text' : 'password'" 
-                    id="password" 
-                    v-model="formData.password"
-                    :required="!isEdit"
-                  >
-                  <button 
-                    type="button" 
-                    class="password-toggle-btn"
-                    @click="passwordVisible = !passwordVisible"
-                  >
-                    {{ passwordVisible ? '👁️' : '👁️‍🗨️' }}
-                  </button>
+            
+            <div class="card-body unified-body">
+              <!-- 基本信息部分 -->
+              <div class="form-section">
+                <h3 class="section-title">
+                  <span class="section-icon">📋</span>
+                  基本信息
+                </h3>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="dealer_name" class="form-label">
+                      <span class="label-text">经销商名称</span>
+                      <span class="required">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      id="dealer_name" 
+                      v-model="formData.dealer_name" 
+                      class="form-input"
+                      placeholder="请输入经销商名称"
+                      required
+                    >
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="dealer_type" class="form-label">
+                      <span class="label-text">经销商类型</span>
+                      <span class="required">*</span>
+                    </label>
+                    <CustomSelect 
+                      v-model="formData.dealer_type" 
+                      :options="dealerTypeOptions"
+                      placeholder="请选择类型"
+                    />
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="brand" class="form-label">
+                      <span class="label-text">主营品牌</span>
+                      <span class="required">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      id="brand" 
+                      v-model="formData.brand" 
+                      class="form-input"
+                      placeholder="请输入主营品牌"
+                      required
+                    >
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="level" class="form-label">
+                      <span class="label-text">经销商等级</span>
+                      <span class="required">*</span>
+                    </label>
+                    <CustomSelect 
+                      v-model="formData.level" 
+                      :options="levelOptions"
+                      placeholder="请选择等级"
+                    />
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="region" class="form-label">
+                      <span class="label-text">所属地区</span>
+                      <span class="required">*</span>
+                    </label>
+                    <div class="region-selector-wrapper">
+                      <RegionCascader 
+                        :modelValue="formData.region"
+                        @update:modelValue="formData.region = $event"
+                        class="region-selector"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-              
-              <div class="form-group">
-                <label for="status">账号状态</label>
-                <select id="status" v-model="formData.status">
-                  <option value="1">启用</option>
-                  <option value="0">禁用</option>
-                </select>
+
+              <!-- 联系信息部分 -->
+              <div class="form-section">
+                <h3 class="section-title">
+                  <span class="section-icon">📞</span>
+                  联系信息
+                </h3>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="contact_name" class="form-label">
+                      <span class="label-text">联系人</span>
+                      <span class="required">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      id="contact_name" 
+                      v-model="formData.contact_name" 
+                      class="form-input"
+                      placeholder="请输入联系人姓名"
+                      required
+                    >
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="contact_phone" class="form-label">
+                      <span class="label-text">联系电话</span>
+                      <span class="required">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      id="contact_phone" 
+                      v-model="formData.contact_phone" 
+                      class="form-input"
+                      placeholder="请输入联系电话"
+                      required
+                    >
+                  </div>
+                  
+                  <div class="form-group form-group-full">
+                    <label for="address" class="form-label">
+                      <span class="label-text">详细地址</span>
+                      <span class="required">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      id="address" 
+                      v-model="formData.address" 
+                      class="form-input"
+                      placeholder="请输入详细地址"
+                      required
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- 账号信息部分 -->
+              <div class="form-section">
+                <h3 class="section-title">
+                  <span class="section-icon">🔐</span>
+                  账号信息
+                </h3>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="username" class="form-label">
+                      <span class="label-text">登录账号</span>
+                      <span class="required">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      id="username" 
+                      v-model="formData.username" 
+                      class="form-input"
+                      placeholder="请输入登录账号"
+                      :disabled="isEdit"
+                      required
+                    >
+                    <small v-if="isEdit" class="help-text">账号不可修改</small>
+                  </div>
+                  
+                  <div class="form-group password-group">
+                    <label for="password" class="form-label">
+                      <span class="label-text">登录密码</span>
+                      <span v-if="!isEdit" class="required">*</span>
+                      <span v-else class="help-text">(不填则不修改)</span>
+                    </label>
+                    <div class="password-input-container">
+                      <input 
+                        :type="passwordVisible ? 'text' : 'password'" 
+                        id="password" 
+                        v-model="formData.password"
+                        class="form-input"
+                        placeholder="请输入登录密码"
+                        :required="!isEdit"
+                      >
+                      <button 
+                        type="button" 
+                        class="password-toggle-btn"
+                        @click="passwordVisible = !passwordVisible"
+                        :title="passwordVisible ? '隐藏密码' : '显示密码'"
+                      >
+                        <span class="toggle-icon">{{ passwordVisible ? '👁️' : '👁️‍🗨️' }}</span>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="status" class="form-label">
+                      <span class="label-text">账号状态</span>
+                    </label>
+                    <CustomSelect 
+                      v-model="formData.status" 
+                      :options="statusOptions"
+                      placeholder="请选择状态"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
           
           <!-- 操作按钮 -->
           <div class="form-actions">
-            <button type="submit" class="save-btn" :disabled="saving">
-              {{ saving ? '保存中...' : '保存' }}
-            </button>
-            <button type="button" class="cancel-btn" @click="$router.push('/admin/dealers')">
-              取消
-            </button>
+            <div class="actions-container">
+              <button type="submit" class="btn btn-primary" :disabled="saving">
+                <span v-if="saving" class="btn-loading"></span>
+                {{ saving ? '保存中...' : '保存' }}
+              </button>
+              <button type="button" class="btn btn-secondary" @click="$router.push('/dashboard/admin/dealers')">
+                取消
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -175,9 +268,15 @@
 
 <script>
 import axios from 'axios'
+import RegionCascader from '@/components/RegionCascader.vue'
+import CustomSelect from '@/components/CustomSelect.vue'
 
 export default {
   name: 'DealerForm',
+  components: {
+    RegionCascader,
+    CustomSelect
+  },
   data() {
     return {
       formData: {
@@ -187,12 +286,26 @@ export default {
         dealer_type: '',
         brand: '',
         level: '',
-        region: '',
+        region: { province: '', city: '' },
         contact_name: '',
         contact_phone: '',
         address: '',
-        status: 1
+        status: '1'
       },
+      dealerTypeOptions: [
+        { value: '4S店', label: '4S店' },
+        { value: '二级网点', label: '二级网点' },
+        { value: '授权经销商', label: '授权经销商' }
+      ],
+      levelOptions: [
+        { value: 'A级', label: 'A级' },
+        { value: 'B级', label: 'B级' },
+        { value: 'C级', label: 'C级' }
+      ],
+      statusOptions: [
+        { value: '1', label: '启用' },
+        { value: '0', label: '禁用' }
+      ],
       loading: true,
       saving: false,
       error: '',
@@ -236,16 +349,19 @@ export default {
         
         this.formData = {
           username: user.username,
-          password: '', // 编辑时密码为空，不修改
+          password: '',
           dealer_name: dealer.dealer_name,
           dealer_type: dealer.dealer_type,
           brand: dealer.brand,
           level: dealer.level,
-          region: dealer.region,
+          region: {
+            province: dealer.province || '',
+            city: dealer.city || ''
+          },
           contact_name: dealer.contact_name,
           contact_phone: dealer.contact_phone,
           address: dealer.address,
-          status: user.status
+          status: String(user.status)
         }
       } catch (err) {
         this.error = err.response?.data?.error || '加载经销商信息失败'
@@ -254,12 +370,33 @@ export default {
       }
     },
     
+    resetForm() {
+      this.error = ''
+      // 只重置账号信息
+      this.formData.username = ''
+      this.formData.password = ''
+      this.formData.status = '1'
+      this.passwordVisible = false
+    },
+    
     async saveDealer() {
       this.saving = true
       this.error = ''
       
       try {
         const token = this.$store.state.token
+        
+        const dealerData = {
+          dealer_name: this.formData.dealer_name,
+          dealer_type: this.formData.dealer_type,
+          brand: this.formData.brand,
+          level: this.formData.level,
+          province: this.formData.region.province,
+          city: this.formData.region.city,
+          contact_name: this.formData.contact_name,
+          contact_phone: this.formData.contact_phone,
+          address: this.formData.address
+        }
         
         if (this.isEdit) {
           // 编辑经销商
@@ -286,16 +423,7 @@ export default {
           }
           
           // 更新经销商信息
-          await axios.put(`http://localhost:5000/api/dealers/${this.dealerId}`, {
-            dealer_name: this.formData.dealer_name,
-            dealer_type: this.formData.dealer_type,
-            brand: this.formData.brand,
-            level: this.formData.level,
-            region: this.formData.region,
-            contact_name: this.formData.contact_name,
-            contact_phone: this.formData.contact_phone,
-            address: this.formData.address
-          }, {
+          await axios.put(`http://localhost:5000/api/dealers/${this.dealerId}`, dealerData, {
             headers: {
               Authorization: `Bearer ${token}`
             }
@@ -305,14 +433,7 @@ export default {
           await axios.post('http://localhost:5000/api/dealers', {
             username: this.formData.username,
             password: this.formData.password,
-            dealer_name: this.formData.dealer_name,
-            dealer_type: this.formData.dealer_type,
-            brand: this.formData.brand,
-            level: this.formData.level,
-            region: this.formData.region,
-            contact_name: this.formData.contact_name,
-            contact_phone: this.formData.contact_phone,
-            address: this.formData.address
+            ...dealerData
           }, {
             headers: {
               Authorization: `Bearer ${token}`
@@ -321,7 +442,7 @@ export default {
         }
         
         alert(this.isEdit ? '经销商更新成功' : '经销商添加成功')
-        this.$router.push('/admin/dealers')
+        this.$router.push('/dashboard/admin/dealers')
       } catch (err) {
         this.error = err.response?.data?.error || (this.isEdit ? '更新失败' : '添加失败')
       } finally {
@@ -334,88 +455,288 @@ export default {
 
 <style scoped>
 .dealer-form-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  color: #333;
-  background-color: #ffffff;
   min-height: 100vh;
+  background-color: #f5f7fa;
+  padding: 24px;
 }
 
-.dealer-form-header {
+.page-header {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #e8e8e8;
+  padding: 32px 40px;
 }
 
-.dealer-form-header h1 {
+.header-left {
+  flex: 1;
+}
+
+.page-title {
   font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: #6b7280;
   margin: 0;
-  color: #333;
+  line-height: 1.5;
 }
 
-.back-btn {
-  padding: 8px 16px;
-  background-color: #ffffff;
-  color: #333;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+.header-right {
+  flex-shrink: 0;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  gap: 8px;
+  min-height: 40px;
 }
 
-.back-btn:hover {
-  background-color: #f5f5f5;
-  border-color: #1890ff;
-  color: #1890ff;
+.btn-primary {
+  background-color: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.btn-primary:disabled {
+  background-color: #93c5fd;
+  border-color: #93c5fd;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+}
+
+.btn-outline:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.btn-loading {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .dealer-form-content {
+  width: 100%;
+  margin: 0 auto;
+  transition: all 0.3s ease;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
   background-color: #ffffff;
-  border-radius: 8px;
-  padding: 30px;
+  border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.loading {
-  text-align: center;
-  padding: 50px;
-  font-size: 18px;
-  color: #999;
-}
-
-.error-message {
-  background-color: #fff1f0;
-  border: 1px solid #ffccc7;
-  color: #cf1322;
-  padding: 15px;
-  border-radius: 4px;
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid #e5e7eb;
+  border-radius: 50%;
+  border-top-color: #2563eb;
+  animation: spin 1s linear infinite;
   margin-bottom: 20px;
 }
 
-.dealer-form {
+.loading-text {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.error-state {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 40px;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 48px;
+  color: #ef4444;
+  margin-bottom: 20px;
+}
+
+.error-content h3 {
+  font-size: 20px;
+  color: #1f2937;
+  margin: 0 0 12px 0;
+}
+
+.error-content p {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.form-container {
   width: 100%;
 }
 
-.form-section {
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #e8e8e8;
+.form-card.unified-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  overflow: visible;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
-.form-section h2 {
+.form-card.unified-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.card-header.unified-header {
+  padding: 32px 40px;
+  border-bottom: 1px solid #f3f4f6;
+  background-color: #f9fafb;
+}
+
+.card-header.unified-header .card-title {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.card-header.unified-header .card-description {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.card-body.unified-body {
+  padding: 40px;
+}
+
+.form-section {
+  margin-bottom: 40px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 24px 0;
+}
+
+.section-icon {
   font-size: 18px;
-  margin: 0 0 20px 0;
-  color: #333;
+  line-height: 1;
+}
+
+.region-selector-wrapper {
+  width: 100%;
+}
+
+.region-selector-wrapper .region-cascader {
+  width: 100%;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.card-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.card-description {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
 }
 
 .form-group {
@@ -427,82 +748,164 @@ export default {
   grid-column: 1 / -1;
 }
 
-.form-group label {
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin-bottom: 8px;
   font-size: 14px;
-  color: #666;
+  font-weight: 500;
+  color: #374151;
 }
 
-.form-group input,
-.form-group select {
-  padding: 10px;
-  background-color: #ffffff;
-  color: #333;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 14px;
-  transition: border-color 0.3s;
+.label-text {
+  line-height: 1.5;
 }
 
-.form-group input:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
-.form-group input:disabled {
-  background-color: #f5f5f5;
-  color: #999;
-  cursor: not-allowed;
+.required {
+  color: #ef4444;
+  font-size: 12px;
 }
 
 .help-text {
-  margin-top: 5px;
   font-size: 12px;
-  color: #999;
+  color: #9ca3af;
+  font-weight: normal;
+  margin-left: 4px;
 }
 
-.form-actions {
-  display: flex;
-  gap: 15px;
-  margin-top: 30px;
-  justify-content: flex-end;
-}
-
-.save-btn {
-  padding: 12px 24px;
-  background-color: #1890ff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
-}
-
-.save-btn:hover:not(:disabled) {
-  background-color: #40a9ff;
-}
-
-.save-btn:disabled {
-  background-color: #d9d9d9;
-  cursor: not-allowed;
-}
-
-.cancel-btn {
-  padding: 12px 24px;
+.form-input,
+.form-select {
+  padding: 12px 16px;
   background-color: #ffffff;
-  color: #666;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  cursor: pointer;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
   font-size: 14px;
-  transition: background-color 0.3s;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.cancel-btn:hover {
-  background-color: #f5f5f5;
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-input::placeholder {
+  color: #9ca3af;
+}
+
+.form-input:disabled,
+.form-select:disabled {
+  background-color: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+}
+
+.form-group :deep(.custom-select-wrapper) {
+  width: 100%;
+}
+
+.form-group :deep(.custom-select-wrapper .select-trigger) {
+  padding: 12px 16px;
+  background-color: #ffffff;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  height: 46px;
+}
+
+.form-group :deep(.custom-select-wrapper .select-trigger:hover) {
+  border-color: #2563eb;
+}
+
+.form-group :deep(.custom-select-wrapper .select-trigger:focus) {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group :deep(.custom-select-wrapper .select-dropdown) {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.form-group :deep(.custom-select-wrapper .select-option) {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.form-group :deep(.custom-select-wrapper .select-option:hover) {
+  background-color: #f3f4f6;
+}
+
+.form-group :deep(.custom-select-wrapper .select-option.active) {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.form-group :deep(.region-cascader) {
+  width: 100%;
+}
+
+.form-group :deep(.region-cascader .cascader-wrapper) {
+  display: block;
+}
+
+.form-group :deep(.region-cascader .cascader-column) {
+  width: 100%;
+}
+
+.form-group :deep(.region-cascader .select-trigger) {
+  padding: 12px 16px;
+  background-color: #ffffff;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  height: 46px;
+}
+
+.form-group :deep(.region-cascader .select-trigger:hover) {
+  border-color: #2563eb;
+}
+
+.form-group :deep(.region-cascader .select-trigger:focus) {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group :deep(.region-cascader .select-dropdown),
+.form-group :deep(.region-cascader .city-panel) {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.form-group :deep(.region-cascader .select-option),
+.form-group :deep(.region-cascader .city-option) {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.form-group :deep(.region-cascader .select-option:hover),
+.form-group :deep(.region-cascader .city-option:hover) {
+  background-color: #f3f4f6;
+}
+
+.form-group :deep(.region-cascader .select-option.active),
+.form-group :deep(.region-cascader .city-option.active) {
+  background-color: #eff6ff;
+  color: #2563eb;
 }
 
 .password-group {
@@ -511,22 +914,16 @@ export default {
 
 .password-input-container {
   position: relative;
-  display: flex;
-}
-
-.password-input-container input {
-  flex: 1;
-  padding-right: 40px;
 }
 
 .password-toggle-btn {
   position: absolute;
-  right: 10px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
   border: none;
-  color: #999;
+  color: #9ca3af;
   font-size: 16px;
   cursor: pointer;
   padding: 0;
@@ -538,20 +935,76 @@ export default {
 }
 
 .password-toggle-btn:hover {
-  color: #666;
+  color: #6b7280;
+}
+
+.toggle-icon {
+  font-size: 16px;
+}
+
+.form-actions {
+  margin-top: 32px;
+}
+
+.actions-container {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
 }
 
 @media (max-width: 768px) {
-  .form-grid {
-    grid-template-columns: 1fr;
+  .dealer-form-container {
+    padding: 16px;
   }
   
-  .form-actions {
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px 24px;
+  }
+  
+  .header-right {
+    width: 100%;
+  }
+  
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .card-header.unified-header {
+    padding: 20px 24px;
+  }
+  
+  .card-header.unified-header .card-title {
+    font-size: 18px;
+  }
+  
+  .card-body.unified-body {
+    padding: 24px;
+  }
+  
+  .form-section {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+  }
+  
+  .section-title {
+    font-size: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .actions-container {
     flex-direction: column;
   }
   
-  .save-btn,
-  .cancel-btn {
+  .actions-container .btn {
     width: 100%;
   }
 }

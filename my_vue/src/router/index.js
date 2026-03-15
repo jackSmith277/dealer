@@ -98,20 +98,20 @@ const routes = [
         name: 'adminDealers',
         component: AdminDealers,
         meta: { requiresAuth: true, requiresAdmin: true }
-      },
-      {
-        path: 'admin/dealers/add',
-        name: 'addDealer',
-        component: DealerForm,
-        meta: { requiresAuth: true, requiresAdmin: true }
-      },
-      {
-        path: 'admin/dealers/edit/:id',
-        name: 'editDealer',
-        component: DealerForm,
-        meta: { requiresAuth: true, requiresAdmin: true }
       }
     ]
+  },
+  {
+    path: '/admin/dealers/add',
+    name: 'addDealer',
+    component: DealerForm,
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/admin/dealers/edit/:id',
+    name: 'editDealer',
+    component: DealerForm,
+    meta: { requiresAuth: true, requiresAdmin: true }
   }
 ]
 
