@@ -1,0 +1,2 @@
+﻿experiment,wmape_weighted_base,wmape_weighted_exp,phase3_score_base,phase3_score_exp,peak_std_base,peak_std_exp,dec_mean_base,dec_mean_exp,delta_wmape_weighted,delta_phase3_score,delta_peak_std,delta_dec_mean
+random_best_full,25.505987650583847,24.268026709157805,35.023441046467454,33.41923802923242,0.3124410972410448,0.3118438689466348,26.96955177592384,25.923572436679855,-1.2379609414260422,-1.6042030172350366,-0.0005972282944100016,-1.045979339243985

@@ -1,0 +1,63 @@
+{
+  "best_wmape": {
+    "trial_number": 114.0,
+    "wmape_weighted": 24.101849742427802,
+    "peak_std_11_12": 0.7283118188444808,
+    "wmape_composite": 24.830161561272284,
+    "learning_rate": 0.010150665434429315,
+    "max_depth": 5.0,
+    "min_child_weight": 15.0,
+    "subsample": 0.8984179517061692,
+    "colsample_bytree": 0.9085081386743783,
+    "reg_alpha": 0.00034135688957013003,
+    "reg_lambda": 0.34431268556453326,
+    "gamma": 0.34760717857538914,
+    "dist_utopia": 1.0
+  },
+  "best_peak": {
+    "trial_number": 55.0,
+    "wmape_weighted": 25.931558930040875,
+    "peak_std_11_12": 0.004179909678614132,
+    "wmape_composite": 25.93573883971949,
+    "learning_rate": 0.010710624350565447,
+    "max_depth": 8.0,
+    "min_child_weight": 5.0,
+    "subsample": 0.7540390914407701,
+    "colsample_bytree": 0.9404546686067428,
+    "reg_alpha": 0.0006520859035130674,
+    "reg_lambda": 0.03626608213979329,
+    "gamma": 0.750728694493786,
+    "dist_utopia": 1.0
+  },
+  "best_composite": {
+    "trial_number": 112.0,
+    "wmape_weighted": 24.216418107333723,
+    "peak_std_11_12": 0.18198604925955023,
+    "wmape_composite": 24.398404156593273,
+    "learning_rate": 0.028610355700540175,
+    "max_depth": 5.0,
+    "min_child_weight": 10.0,
+    "subsample": 0.818246715726374,
+    "colsample_bytree": 0.6225213102727349,
+    "reg_alpha": 0.00036167777684591846,
+    "reg_lambda": 14.890829217018695,
+    "gamma": 2.716051925868191,
+    "dist_utopia": 0.0642124992648002
+  },
+  "knee": {
+    "trial_number": 50.0,
+    "wmape_weighted": 24.431792453779686,
+    "peak_std_11_12": 0.0904357646443719,
+    "wmape_composite": 24.522228218424058,
+    "learning_rate": 0.01019005058575656,
+    "max_depth": 6.0,
+    "min_child_weight": 11.0,
+    "subsample": 0.6888431241882921,
+    "colsample_bytree": 0.8048372233197124,
+    "reg_alpha": 0.0011595696872206103,
+    "reg_lambda": 1.3481391894993757,
+    "gamma": 0.9696087960622657,
+    "dist_utopia": 0.046705858473458
+  },
+  "tradeoff_lambda": 1.0
+}

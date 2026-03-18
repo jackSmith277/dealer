@@ -1,0 +1,3 @@
+﻿protocol,delta_wmape_weighted_vs_rolling,delta_peak_std_vs_rolling,delta_dec_mean_vs_rolling,delta_phase3_score_vs_rolling
+random_cv,-3.029593050986822,7.632761581581196,-0.8142932634359425,-1.4064052977941017
+kfold_plain,3.3632896672290578,6.7481508922602735,2.1433629271984245,5.800504414813581

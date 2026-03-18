@@ -1,0 +1,2 @@
+﻿experiment,n_pairs,delta_wmape_mean,delta_wmape_p10,delta_wmape_p50,delta_wmape_p90,improve_rate
+optuna_best_full,12,-1.2460146511915688,-3.3709082062252977,-0.9731737092710748,-0.09610901763611637,0.9166666666666666

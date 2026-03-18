@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雷达图展示</title>
+</head>
+<body>
+    <h1>生成的雷达图</h1>
+    {% for path in radar_paths %}
+        <iframe src="{{ path }}" width="600" height="500"></iframe>
+        <hr>
+    {% endfor %}
+    <a href="/">返回首页</a>
+</body>
+</html>

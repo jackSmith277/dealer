@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>未来分位数预测 API 测试</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; }
+        .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #result { background-color: #212529; color: #00ff00; padding: 15px; border-radius: 5px; max-height: 500px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 class="mb-4 text-center">🔮 未来销量分位数预测 - 测试面板</h2>
+
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card p-4">
+                <h5 class="card-title mb-3">参数配置</h5>
+                <form id="forecastForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">经销商代码 (Dealer Code)</label>
+                        <input type="text" class="form-control" id="dealer_code" value="9210024" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">基准年份 (Base Year)</label>
+                            <input type="number" class="form-control" id="base_year" value="2024">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">基准月份 (Base Month)</label>
+                            <input type="number" class="form-control" id="base_month" value="10">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">预测步长 (Horizons)</label>
+                        <input type="number" class="form-control" id="horizons" value="3" min="1" max="12">
+                        <div class="form-text">预测未来几个月（例如填 3 即预测 T+1, T+2, T+3）</div>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3">What-if 情景覆盖 (可选)</h5>
+                    <div class="mb-3">
+                        <label class="form-label">修改维度 (Dimension)</label>
+                        <select class="form-select" id="dimension">
+                            <option value="">-- 不修改 (仅跑 Baseline) --</option>
+                            <option value="leads" selected>线索量 (leads)</option>
+                            <option value="customer_flow">客流量 (customer_flow)</option>
+                            <option value="test_drives">试驾量 (test_drives)</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">变化百分比 (%)</label>
+                        <input type="number" class="form-control" id="change_percentage" value="20">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100" id="submitBtn">发起预测请求</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-7">
+            <div class="card p-4 h-100">
+                <h5 class="card-title mb-3">API 返回结果 (JSON)</h5>
+                <pre id="result">等待发起请求...</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('forecastForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitBtn');
+        const resultDisplay = document.getElementById('result');
+
+        btn.disabled = true;
+        btn.innerText = '正在计算中 (首次预测包含训练耗时)...';
+        resultDisplay.innerText = '请求已发送，后端正在处理... \n(请查看终端控制台的详细打印过程)';
+
+        // 构造 Payload
+        const dim = document.getElementById('dimension').value;
+        const chg = document.getElementById('change_percentage').value;
+
+        const scenarios = [{"name": "Baseline (基准)"}];
+        if (dim !== "") {
+            scenarios.push({
+                "name": `${dim} ${chg >= 0 ? '+' : ''}${chg}%`,
+                "dimension": dim,
+                "change_percentage": parseFloat(chg)
+            });
+        }
+
+        const payload = {
+            dealer_code: document.getElementById('dealer_code').value,
+            base_year: parseInt(document.getElementById('base_year').value),
+            base_month: parseInt(document.getElementById('base_month').value),
+            horizons: parseInt(document.getElementById('horizons').value),
+            scenarios: scenarios
+        };
+
+        try {
+            const response = await fetch('/forecast/quantiles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            // 格式化展示 JSON
+            resultDisplay.innerText = JSON.stringify(data, null, 4);
+        } catch (error) {
+            resultDisplay.innerText = '请求失败:\n' + error;
+        } finally {
+            btn.disabled = false;
+            btn.innerText = '发起预测请求';
+        }
+    });
+</script>
+</body>
+</html>

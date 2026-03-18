@@ -1,0 +1,50 @@
+{
+  "n_folds": 21,
+  "wmape_overall": {
+    "mean": 32.8419060738612,
+    "std": 7.8040945303908975
+  },
+  "wmape_weighted": 32.032951305133714,
+  "wmape_base_overall": {
+    "mean": NaN,
+    "std": NaN
+  },
+  "wmape_base_weighted": NaN,
+  "wmape_gain_overall": {
+    "mean": NaN,
+    "std": NaN
+  },
+  "wmape_gain_weighted": NaN,
+  "wmape_peak_11_12": {
+    "mean": 33.91320470642543,
+    "std": 1.2573850708095868
+  },
+  "wmape_gain_peak_11_12": {
+    "mean": NaN,
+    "std": NaN
+  },
+  "wmape_nov": {
+    "mean": 34.80231021655762,
+    "std": 0.0
+  },
+  "wmape_dec": {
+    "mean": 33.02409919629325,
+    "std": 0.0
+  },
+  "gain_positive_rate": 0.0,
+  "bad_rate_wmape_ge_40": 0.09523809523809523,
+  "corr_log_mean_abs": {
+    "mean": NaN,
+    "std": NaN
+  },
+  "phase3_score": 43.90573229153875,
+  "phase3_score_components": {
+    "wmape_weighted": 32.032951305133714,
+    "peak_std_11_12": 1.2573850708095868,
+    "dec_mean": 33.02409919629325
+  },
+  "phase3_score_coeff": {
+    "peak_std_coef": 0.25,
+    "dec_mean_coef": 0.35
+  }
+}

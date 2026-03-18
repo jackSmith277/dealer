@@ -1,0 +1,14 @@
+{
+  "roll_mode": "expanding",
+  "roll_window_months": 24,
+  "roll_min_train_periods": 22,
+  "roll_gap": 0,
+  "n_folds": 12,
+  "wmape_mean": 32.6292133525735,
+  "wmape_std": 5.565988831725639,
+  "wmape_dec_mean": 28.293019802596948,
+  "wmape_dec_std": 0.0,
+  "wmape_peak_mean": 27.68132865269125,
+  "wmape_peak_std": 0.6116911499056972,
+  "optimal_trees": 600
+}

@@ -57,9 +57,12 @@ class PredictionHistory(db.Model):
     dealer_code = db.Column(db.String(20), nullable=False)
     dimension = db.Column(db.String(50), nullable=False)
     change_percentage = db.Column(db.Integer, nullable=False)
-    month = db.Column(db.Integer, nullable=False)
+    base_year = db.Column(db.Integer, default=2024)
+    base_month = db.Column(db.Integer, nullable=False)
+    target_year = db.Column(db.Integer, default=2024)
+    target_month = db.Column(db.Integer, nullable=False)
+    predicted_sales = db.Column(db.Float, nullable=False)
     month_for_radar = db.Column(db.Integer, nullable=False)
-    prediction_result = db.Column(db.Float, nullable=False)
     propagation_force = db.Column(db.Float, default=0)
     experience_force = db.Column(db.Float, default=0)
     conversion_force = db.Column(db.Float, default=0)
@@ -472,10 +475,8 @@ def delete_user(user_id):
 @app.route('/api/prediction/history', methods=['GET'])
 def get_prediction_history():
     try:
-        # 查询所有历史记录
-        histories = PredictionHistory.query.all()
+        histories = PredictionHistory.query.order_by(PredictionHistory.created_at.desc()).all()
         
-        # 格式化结果
         history_list = []
         for history in histories:
             history_list.append({
@@ -483,9 +484,12 @@ def get_prediction_history():
                 'dealer_code': history.dealer_code,
                 'dimension': history.dimension,
                 'change_percentage': history.change_percentage,
-                'month': history.month,
+                'base_year': history.base_year,
+                'base_month': history.base_month,
+                'target_year': history.target_year,
+                'target_month': history.target_month,
+                'predicted_sales': history.predicted_sales,
                 'month_for_radar': history.month_for_radar,
-                'prediction_result': history.prediction_result,
                 'propagation_force': history.propagation_force,
                 'experience_force': history.experience_force,
                 'conversion_force': history.conversion_force,
@@ -508,20 +512,21 @@ def get_prediction_history():
 @app.route('/api/prediction/history/<int:id>', methods=['GET'])
 def get_prediction_history_detail(id):
     try:
-        # 查询历史记录
         history = PredictionHistory.query.get(id)
         if not history:
             return jsonify({'success': False, 'message': '历史记录不存在'}), 404
         
-        # 格式化结果
         result = {
             'id': history.id,
             'dealer_code': history.dealer_code,
             'dimension': history.dimension,
             'change_percentage': history.change_percentage,
-            'month': history.month,
+            'base_year': history.base_year,
+            'base_month': history.base_month,
+            'target_year': history.target_year,
+            'target_month': history.target_month,
+            'predicted_sales': history.predicted_sales,
             'month_for_radar': history.month_for_radar,
-            'prediction_result': history.prediction_result,
             'propagation_force': history.propagation_force,
             'experience_force': history.experience_force,
             'conversion_force': history.conversion_force,
@@ -550,14 +555,16 @@ def save_prediction_history():
         
         print('接收到的保存历史记录数据:', data)
         
-        # 创建历史记录
         history = PredictionHistory(
             dealer_code=data.get('dealer_code'),
             dimension=data.get('dimension'),
             change_percentage=data.get('change_percentage'),
-            month=data.get('month'),
+            base_year=data.get('base_year', 2024),
+            base_month=data.get('base_month'),
+            target_year=data.get('target_year', 2024),
+            target_month=data.get('target_month'),
+            predicted_sales=data.get('predicted_sales'),
             month_for_radar=data.get('month_for_radar'),
-            prediction_result=data.get('prediction_result'),
             propagation_force=data.get('propagation_force', 0),
             experience_force=data.get('experience_force', 0),
             conversion_force=data.get('conversion_force', 0),
