@@ -1,0 +1,16 @@
+{
+  "protocol": "random_cv",
+  "cv_kind": "random_cv",
+  "cv_order": "time",
+  "cv_n_splits": 5,
+  "shuffle": true,
+  "random_state": 42,
+  "n_sample_predictions": 6176,
+  "n_month_groups": 34,
+  "fold_wmape_mean": 27.19456837377306,
+  "fold_wmape_std": 1.3988723542583574,
+  "wmape_weighted": 27.202378678267742,
+  "peak_std": 8.15947272685185,
+  "dec_mean": 28.400963804459913,
+  "phase3_score": 39.18258419154167
+}

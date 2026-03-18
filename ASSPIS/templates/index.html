@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>销量预测与雷达图系统</title>
+    <style>
+        /*
+         * 全局样式重置与基础变量定义
+         * 确保页面在不同浏览器下表现一致
+         */
+        :root {
+            --primary-color: #0056b3;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+            --text-color: #333333;
+            --header-bg: #ffffff;
+            --footer-bg: #343a40;
+            --footer-text: #ffffff;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--light-bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /*
+         * 头部区域样式
+         * 包含标题和主要导航信息
+         */
+        header {
+            background-color: var(--header-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 20px 0;
+            box-shadow: var(--box-shadow);
+            margin-bottom: 30px;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            font-size: 2rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            margin-bottom: 20px;
+            border-left: 5px solid var(--primary-color);
+            padding-left: 10px;
+        }
+
+        /*
+         * 表单区域样式
+         * 针对选择器、输入框和按钮进行美化
+         */
+        .form-section {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: var(--box-shadow);
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--text-color);
+            min-width: 120px;
+        }
+
+        .form-control {
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+            min-width: 150px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.25);
+        }
+
+        select.form-control {
+            background-color: #ffffff;
+            cursor: pointer;
+        }
+
+        /*
+         * 按钮样式
+         * 包含提交按钮和功能切换按钮
+         */
+        .btn {
+            display: inline-block;
+            font-weight: 400;
+            text-align: center;
+            vertical-align: middle;
+            user-select: none;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: 1px solid var(--primary-color);
+            padding: 10px 20px;
+            font-size: 1rem;
+            line-height: 1.5;
+            border-radius: 4px;
+            transition: color var(--transition-speed), background-color var(--transition-speed), border-color var(--transition-speed);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            background-color: #004494;
+            border-color: #004494;
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--primary-color);
+            color: #ffffff;
+        }
+
+        /*
+         * 消息提示区域样式
+         * 用于显示后端返回的消息或预测结果
+         */
+        .message-box {
+            background-color: #e2e3e5;
+            border: 1px solid #d6d8db;
+            color: #383d41;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .message-box strong {
+            color: var(--primary-color);
+        }
+
+        /*
+         * 表格样式
+         * 用于展示五力数据得分
+         */
+        .table-responsive {
+            overflow-x: auto;
+            margin-bottom: 30px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: var(--box-shadow);
+        }
+
+        table {
+            width: 100%;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            vertical-align: top;
+            border-top: 1px solid var(--border-color);
+            text-align: left;
+        }
+
+        th {
+            vertical-align: bottom;
+            border-bottom: 2px solid var(--border-color);
+            background-color: var(--light-bg);
+            font-weight: 600;
+        }
+
+        tbody tr:nth-of-type(even) {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
+        tbody tr:hover {
+            background-color: rgba(0, 86, 179, 0.05);
+        }
+
+        /*
+         * 公式展示区域样式
+         * 默认隐藏，点击后显示
+         */
+        .formula-section {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: var(--box-shadow);
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .formula-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .formula-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 3px solid var(--success-color);
+            background-color: #f1f8f1;
+        }
+
+        .formula-title {
+            font-weight: bold;
+            color: var(--success-color);
+            margin-bottom: 5px;
+        }
+
+        /*
+         * 页脚区域样式
+         * 版权信息展示
+         */
+        footer {
+            margin-top: auto;
+            background-color: var(--footer-bg);
+            color: var(--footer-text);
+            text-align: center;
+            padding: 20px 0;
+            border-top: 1px solid #4b545c;
+        }
+
+        footer p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /*
+         * 动画效果定义
+         */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /*
+         * 响应式设计适配
+         * 针对移动端设备优化布局
+         */
+        @media (max-width: 768px) {
+            .form-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .form-control {
+                width: 100%;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            th, td {
+                padding: 8px 10px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /*
+         * 辅助类
+         * 用于快速布局调整
+         */
+        .mt-2 { margin-top: 10px; }
+        .mb-2 { margin-bottom: 10px; }
+        .text-center { text-align: center; }
+        .text-muted { color: var(--secondary-color); }
+        .hidden { display: none; }
+
+        /*
+         * 特定选择器组样式
+         * 用于年份和月份的下拉框组合
+         */
+        .date-selector-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .date-selector-group select {
+            flex: 1;
+        }
+
+        .date-label {
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 页面头部 -->
+    <header>
+        <div class="container">
+            <h1>销量预测与雷达图</h1>
+        </div>
+    </header>
+
+    <!-- 主要内容区域 -->
+    <main class="container">
+
+        <!-- 表单操作区域 -->
+        <section class="form-section">
+            <form action="" method="post" id="predictionForm">
+
+                <!-- 经销商选择 -->
+                <div class="form-group">
+                    <label class="form-label" for="dealer_code">选择经销商:</label>
+                    <select name="dealer_code" id="dealer_code" class="form-control">
+                        {% for code in dealer_codes %}
+                            <option value="{{ code }}" {% if dealer_code == code %}selected{% endif %}>{{ code }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 变化维度选择 -->
+                <div class="form-group">
+                    <label class="form-label">变化维度 (请选择需要调整的指标):</label>
+                    <select name="dimension" class="form-control">
+                        <option value="customer_flow">客流量 (customer_flow)</option>
+                        <option value="test_drives">试驾数 (test_drives)</option>
+                        <option value="leads">线索量 (leads)</option>
+                        <option value="potential_customers">潜客量 (potential_customers)</option>
+                        <option value="defeat_rate">战败率 (defeat_rate)</option>
+                        <option value="success_rate">成交率 (success_rate)</option>
+                        <option value="success_response_time">成交响应时间 (success_response_time)</option>
+                        <option value="defeat_response_time">战败响应时间 (defeat_response_time)</option>
+                        <option value="policy">国家政策补贴 (policy)</option>
+                        <option value="gsev">gsev</option>
+                        <option value="lead_to_potential_rate">线索转化率 (lead_to_potential_rate)</option>
+                        <option value="potential_to_store_rate">潜客进店率 (potential_to_store_rate)</option>
+                        <option value="store_to_sales_rate">进店成交率 (store_to_sales_rate)</option>
+                    </select>
+                </div>
+
+                <!-- 变化百分比输入 -->
+                <div class="form-group">
+                    <label class="form-label" for="change_percentage">变化百分比:</label>
+                    <input type="number" name="change_percentage" id="change_percentage" class="form-control" placeholder="例如：10" step="0.1">
+                    <span class="text-muted">%</span>
+                </div>
+
+                <!-- 预测月份选择 (修改为年份 + 月份双下拉) -->
+                <div class="form-group">
+                    <label class="form-label">预测月份选择:</label>
+                    <div class="date-selector-group">
+                        <select name="year" id="predict_year" class="form-control">
+                            <option value="2022">2022 年</option>
+                            <option value="2023">2023 年</option>
+                            <option value="2024">2024 年</option>
+                        </select>
+                        <select name="month" id="predict_month" class="form-control">
+                            <!-- 月份选项将通过 JS 动态生成或默认显示 -->
+                            <option value="1">1 月</option>
+                            <option value="2">2 月</option>
+                            <option value="3">3 月</option>
+                            <option value="4">4 月</option>
+                            <option value="5">5 月</option>
+                            <option value="6">6 月</option>
+                            <option value="7">7 月</option>
+                            <option value="8">8 月</option>
+                            <option value="9">9 月</option>
+                            <option value="10">10 月</option>
+                            <option value="11">11 月</option>
+                            <option value="12">12 月</option>
+                        </select>
+                    </div>
+                    <input type="hidden" name="month_value" id="hidden_month_value">
+                </div>
+
+                <!-- 雷达图月份选择 (修改为年份 + 月份双下拉) -->
+                <div class="form-group">
+                    <label class="form-label">雷达图月份选择:</label>
+                    <div class="date-selector-group">
+                        <select name="radar_year" id="radar_year" class="form-control">
+                            <option value="2022">2022 年</option>
+                            <option value="2023">2023 年</option>
+                            <option value="2024">2024 年</option>
+                        </select>
+                        <select name="radar_month" id="radar_month" class="form-control">
+                            <option value="1">1 月</option>
+                            <option value="2">2 月</option>
+                            <option value="3">3 月</option>
+                            <option value="4">4 月</option>
+                            <option value="5">5 月</option>
+                            <option value="6">6 月</option>
+                            <option value="7">7 月</option>
+                            <option value="8">8 月</option>
+                            <option value="9">9 月</option>
+                            <option value="10">10 月</option>
+                            <option value="11">11 月</option>
+                            <option value="12">12 月</option>
+                        </select>
+                    </div>
+                    <input type="hidden" name="radar_month_value" id="hidden_radar_month_value">
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="form-group mt-2">
+                    <button type="submit" class="btn">提交</button>
+                    <button type="button" class="btn btn-outline" id="toggleFormulaBtn">显示五力计算公式</button>
+                    <a href="#" class="btn btn-secondary">查看经销商折线图</a>
+                </div>
+
+            </form>
+        </section>
+
+        <!-- 消息提示区域 -->
+        {% if message %}
+        <section class="message-box">
+            <h2>销量预测信息:</h2>
+            <p><strong>变化维度:</strong> {{ dimension }}</p>
+            <p><strong>变化百分比:</strong> {{ change_percentage }}%</p>
+            <p><strong>预测月份:</strong> {{ month or "全年" }}</p>
+            <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ccc;">
+            <p>{{ message }}</p>
+        </section>
+        {% elif radar_img %}
+        <section class="message-box">
+            <h2>销量预测信息:</h2>
+            <p><strong>变化维度:</strong> {{ dimension }}</p>
+            <p><strong>变化百分比:</strong> {{ change_percentage }}%</p>
+            <p><strong>预测月份:</strong> {{ month or "全年" }}</p>
+
+            <div class="mt-2">
+                <strong>原始销量:</strong>
+                <ul>
+                    {% for sales in sales_changes %}
+                        <li>{{ sales.month }} 月：{{ sales.original_sales }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="mt-2">
+                <strong>变化后销量:</strong>
+                <span style="color: var(--success-color); font-weight: bold;">
+                    预计{{ month or "全年" }}月份销量为 {{ sales_prediction }}
+                </span>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- 经销商代码展示 -->
+        <div class="mb-2">
+            <span class="text-muted">经销商代码:</span> <strong>{{ dealer_code }}</strong>
+        </div>
+
+        <!-- 雷达图及五力数据表格 -->
+        <section class="table-responsive">
+            <div style="padding: 20px;">
+                <h2>生成的雷达图: {{ month_for_radar }}份 五力数据</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>能力维度</th>
+                            <th>权重</th>
+                            <th>最终得分</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 传播获客力 -->
+                        <tr>
+                            <td>传播获客力</td>
+                            <td>20%</td>
+                            <td>
+                                {% if dealer_code in dealer_scores %}
+                                    {% set dealer_data = dealer_scores[dealer_code] %}
+                                    {% if month_for_radar + '传播获客力' in dealer_data %}
+                                        {{ dealer_data[month_for_radar + '传播获客力'] }}
+                                    {% else %}
+                                        <span class="text-muted">数据不存在</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">用户未输入数据</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <!-- 体验力 -->
+                        <tr>
+                            <td>体验力</td>
+                            <td>20%</td>
+                            <td>
+                                {% if dealer_code in dealer_scores %}
+                                    {% set dealer_data = dealer_scores[dealer_code] %}
+                                    {% if month_for_radar + '体验力' in dealer_data %}
+                                        {{ dealer_data[month_for_radar + '体验力'] }}
+                                    {% else %}
+                                        <span class="text-muted">数据不存在</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">用户未输入数据</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <!-- 转化力 -->
+                        <tr>
+                            <td>转化力</td>
+                            <td>40%</td>
+                            <td>
+                                {% if dealer_code in dealer_scores %}
+                                    {% set dealer_data = dealer_scores[dealer_code] %}
+                                    {% if month_for_radar + '转化力' in dealer_data %}
+                                        {{ dealer_data[month_for_radar + '转化力'] }}
+                                    {% else %}
+                                        <span class="text-muted">数据不存在</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">用户未输入数据</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <!-- 服务力 -->
+                        <tr>
+                            <td>服务力</td>
+                            <td>10%</td>
+                            <td>
+                                {% if dealer_code in dealer_scores %}
+                                    {% set dealer_data = dealer_scores[dealer_code] %}
+                                    {% if month_for_radar + '服务力' in dealer_data %}
+                                        {{ dealer_data[month_for_radar + '服务力'] }}
+                                    {% else %}
+                                        <span class="text-muted">数据不存在</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">用户未输入数据</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <!-- 经营力 -->
+                        <tr>
+                            <td>经营力</td>
+                            <td>10%</td>
+                            <td>
+                                {% if dealer_code in dealer_scores %}
+                                    {% set dealer_data = dealer_scores[dealer_code] %}
+                                    {% if month_for_radar + '经营力' in dealer_data %}
+                                        {{ dealer_data[month_for_radar + '经营力'] }}
+                                    {% else %}
+                                        <span class="text-muted">数据不存在</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">用户未输入数据</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <!-- 综合得分 -->
+                        <tr>
+                            <td><strong>综合得分</strong></td>
+                            <td>-</td>
+                            <td>
+                                {% if dealer_code in dealer_scores %}
+                                    <strong>{{ dealer_scores[dealer_code].get('综合得分', '数据不存在') }}</strong>
+                                {% else %}
+                                    <span class="text-muted">用户未输入数据</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 五力计算公式展示区域 -->
+        <section class="formula-section" id="formulaSection">
+            <h2>五力计算公式:</h2>
+            <div class="formula-item">
+                <div class="formula-title">传播获客力</div>
+                <div>= (客流量 * 50% + 潜客量 * 20% + 线索量 * 30%)</div>
+            </div>
+            <div class="formula-item">
+                <div class="formula-title">体验力</div>
+                <div>= (成交率 * 40% + 战败率 * 40% + 服务评分 * 20%)</div>
+            </div>
+            <div class="formula-item">
+                <div class="formula-title">转化力</div>
+                <div>= (销量 * 50% + 成交率 * 10% + 成交响应时间 * 2.5% + 战败响应时间 * 2.5% + 试驾数 * 5% + 政策 * 5% + GSEV * 10% + 服务评分 * 5% + 终端检核平均分 * 10%)</div>
+            </div>
+            <div class="formula-item">
+                <div class="formula-title">服务力</div>
+                <div>= (服务评分 * 40% + 试驾数 * 30% + 终端检核平均分 * 30%)</div>
+            </div>
+            <div class="formula-item">
+                <div class="formula-title">经营力</div>
+                <div>= 固定为 3.5</div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 页面页脚 -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 销量预测与雷达图系统 by 武汉理工大学 | 所有权利保留</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript 交互逻辑 -->
+    <script>
+        /**
+         * 页面加载完成后初始化
+         * 主要处理日期选择器的联动逻辑和公式显示切换
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // 获取 DOM 元素引用
+            const predictYearSelect = document.getElementById('predict_year');
+            const predictMonthSelect = document.getElementById('predict_month');
+            const radarYearSelect = document.getElementById('radar_year');
+            const radarMonthSelect = document.getElementById('radar_month');
+            const toggleFormulaBtn = document.getElementById('toggleFormulaBtn');
+            const formulaSection = document.getElementById('formulaSection');
+            const predictionForm = document.getElementById('predictionForm');
+
+            // 最大月份限制配置 (2024 年只到 10 月)
+            const maxMonthConfig = {
+                '2022': 12,
+                '2023': 12,
+                '2024': 10
+            };
+
+            /**
+             * 更新月份选择器的可用选项
+             * 根据选中的年份禁用超出范围的月份
+             * @param {HTMLSelectElement} yearSelect - 年份选择器
+             * @param {HTMLSelectElement} monthSelect - 月份选择器
+             */
+            function updateMonthOptions(yearSelect, monthSelect) {
+                const selectedYear = yearSelect.value;
+                const maxMonth = maxMonthConfig[selectedYear] || 12;
+
+                // 遍历所有月份选项
+                for (let i = 0; i < monthSelect.options.length; i++) {
+                    const option = monthSelect.options[i];
+                    const monthValue = parseInt(option.value);
+
+                    if (monthValue > maxMonth) {
+                        option.disabled = true;
+                        option.selected = false;
+                        // 如果当前选中的被禁用，则自动选回最大可用月份
+                        if (option.selected) {
+                            monthSelect.value = maxMonth.toString();
+                        }
+                    } else {
+                        option.disabled = false;
+                    }
+                }
+            }
+
+            /**
+             * 初始化日期选择器状态
+             * 确保页面加载时月份选项与年份匹配
+             */
+            function initializeDateSelectors() {
+                if (predictYearSelect && predictMonthSelect) {
+                    updateMonthOptions(predictYearSelect, predictMonthSelect);
+                }
+                if (radarYearSelect && radarMonthSelect) {
+                    updateMonthOptions(radarYearSelect, radarMonthSelect);
+                }
+            }
+
+            // 绑定预测月份年份变化事件
+            if (predictYearSelect) {
+                predictYearSelect.addEventListener('change', function() {
+                    updateMonthOptions(predictYearSelect, predictMonthSelect);
+                });
+            }
+
+            // 绑定雷达图月份年份变化事件
+            if (radarYearSelect) {
+                radarYearSelect.addEventListener('change', function() {
+                    updateMonthOptions(radarYearSelect, radarMonthSelect);
+                });
+            }
+
+            // 绑定公式显示/隐藏按钮事件
+            if (toggleFormulaBtn && formulaSection) {
+                toggleFormulaBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const isActive = formulaSection.classList.contains('active');
+
+                    if (isActive) {
+                        formulaSection.classList.remove('active');
+                        toggleFormulaBtn.textContent = '显示五力计算公式';
+                    } else {
+                        formulaSection.classList.add('active');
+                        toggleFormulaBtn.textContent = '隐藏五力计算公式';
+                    }
+                });
+            }
+
+            // 表单提交前处理
+            // 确保将年份和月份组合成后端可能需要的格式，或者确保单独传递
+            if (predictionForm) {
+                predictionForm.addEventListener('submit', function(e) {
+                    // 这里可以根据后端需求调整参数
+                    // 例如：如果后端只接受 month 参数，可以在这里组合 year 和 month
+                    // 但根据需求，我们尽量保持 API 不变，传递 year 和 month 两个参数
+                    console.log('Form submitted with Year/Month selection');
+
+                    // 可选：将组合值放入 hidden input 以防后端需要特定格式
+                    const hiddenMonthValue = document.getElementById('hidden_month_value');
+                    const hiddenRadarMonthValue = document.getElementById('hidden_radar_month_value');
+
+                    if (hiddenMonthValue && predictYearSelect && predictMonthSelect) {
+                        hiddenMonthValue.value = predictYearSelect.value + '-' + predictMonthSelect.value;
+                    }
+
+                    if (hiddenRadarMonthValue && radarYearSelect && radarMonthSelect) {
+                        hiddenRadarMonthValue.value = radarYearSelect.value + '-' + radarMonthSelect.value;
+                    }
+                });
+            }
+
+            // 执行初始化
+            initializeDateSelectors();
+
+            // 控制台日志，用于调试
+            console.log('Sales Prediction System Initialized');
+            console.log('Date Range: 2022.1 - 2024.10');
+        });
+    </script>
+</body>
+</html>

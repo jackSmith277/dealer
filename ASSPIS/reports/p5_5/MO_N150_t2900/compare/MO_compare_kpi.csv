@@ -1,0 +1,2 @@
+﻿experiment,wmape_weighted_base,wmape_weighted_exp,phase3_score_base,phase3_score_exp,peak_std_base,peak_std_exp,dec_mean_base,dec_mean_exp,delta_wmape_weighted,delta_phase3_score,delta_peak_std,delta_dec_mean
+optuna_best_full,25.505987650583847,24.463900029790516,35.023441046467454,33.595433219862954,0.3124410972410448,0.9465112100345501,26.96955177592384,25.414015393039435,-1.0420876207933318,-1.4280078266044995,0.6340701127935053,-1.555536382884405

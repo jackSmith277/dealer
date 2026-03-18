@@ -1,0 +1,16 @@
+{
+  "protocol": "kfold_plain",
+  "cv_kind": "kfold_plain",
+  "cv_order": "time",
+  "cv_n_splits": 5,
+  "shuffle": false,
+  "random_state": null,
+  "n_sample_predictions": 6176,
+  "n_month_groups": 34,
+  "fold_wmape_mean": 33.21042957840673,
+  "fold_wmape_std": 6.892910167567215,
+  "wmape_weighted": 33.59526139648362,
+  "peak_std": 7.274862037530928,
+  "dec_mean": 31.35861999509428,
+  "phase3_score": 46.389493904149354
+}

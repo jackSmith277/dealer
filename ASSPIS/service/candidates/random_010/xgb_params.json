@@ -1,0 +1,16 @@
+{
+  "objective": "reg:absoluteerror",
+  "eval_metric": "mae",
+  "random_state": 42,
+  "n_jobs": -1,
+  "tree_method": "hist",
+  "learning_rate": 0.1139446928142964,
+  "n_estimators": 300,
+  "max_depth": 6,
+  "min_child_weight": 7,
+  "subsample": 0.604588051108205,
+  "colsample_bytree": 0.7409365456380832,
+  "reg_lambda": 0.09330458663217257,
+  "reg_alpha": 0.11665991545696941,
+  "gamma": 2.885205430988723
+}

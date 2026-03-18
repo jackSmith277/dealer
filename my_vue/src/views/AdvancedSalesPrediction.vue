@@ -158,10 +158,10 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="month in 12" :key="month" v-if="predictionTableData[month]">
-                  <td>{{ month }}月</td>
-                  <td>{{ predictionTableData[month].baseline.q50 }}</td>
-                  <td v-for="(scenario, index) in predictionTableData[month].scenarios" :key="index">{{ scenario.q50 }}</td>
+                <tr v-for="(data, key) in predictionTableData" :key="key">
+                  <td>{{ key }}</td>
+                  <td>{{ data.baseline.q50 }}</td>
+                  <td v-for="(scenario, index) in data.scenarios" :key="index">{{ scenario.q50 }}</td>
                 </tr>
               </tbody>
             </table>
@@ -201,6 +201,7 @@
 import * as echarts from 'echarts'
 import DealerSelector from '@/components/DealerSelector.vue'
 import dealerData from '@/assets/dealerData.json'
+import { getQuantileForecast } from '@/api/prediction'
 
 export default {
   name: 'AdvancedSalesPrediction',
@@ -259,18 +260,60 @@ export default {
   },
   methods: {
     loadMockData() {
-      // 加载模拟数据
+      const horizons = parseInt(this.baseline.horizons);
+      const baseSales = 150;
+      
+      const generateBaselineData = (months) => {
+        const data = [];
+        for (let i = 1; i <= months; i++) {
+          const baseQ50 = Math.round(baseSales + (Math.random() * 20 - 10));
+          
+          let q05, q10, q25, q75, q90, q95;
+          
+          if (months <= 3) {
+            const interval = baseQ50 * 0.1;
+            q05 = Math.round(baseQ50 - interval * 1.5);
+            q10 = Math.round(baseQ50 - interval);
+            q25 = Math.round(baseQ50 - interval * 0.5);
+            q75 = Math.round(baseQ50 + interval * 0.5);
+            q90 = Math.round(baseQ50 + interval);
+            q95 = Math.round(baseQ50 + interval * 1.5);
+          } else if (months <= 6) {
+            const interval = baseQ50 * 0.15;
+            q05 = Math.round(baseQ50 - interval * 1.5);
+            q10 = Math.round(baseQ50 - interval);
+            q25 = Math.round(baseQ50 - interval * 0.5);
+            q75 = Math.round(baseQ50 + interval * 0.5);
+            q90 = Math.round(baseQ50 + interval);
+            q95 = Math.round(baseQ50 + interval * 1.5);
+          } else {
+            const interval = baseQ50 * 0.25;
+            q05 = Math.round(baseQ50 - interval * 1.5);
+            q10 = Math.round(baseQ50 - interval);
+            q25 = Math.round(baseQ50 - interval * 0.5);
+            q75 = Math.round(baseQ50 + interval * 0.5);
+            q90 = Math.round(baseQ50 + interval);
+            q95 = Math.round(baseQ50 + interval * 1.5);
+          }
+          
+          data.push({
+            month: i,
+            q50: baseQ50,
+            q10: q10,
+            q90: q90,
+            q05: q05,
+            q95: q95,
+            q25: q25,
+            q75: q75
+          });
+        }
+        return data;
+      };
+      
       this.predictionResults = [
         {
           scenario: 'baseline',
-          monthly: [
-            { month: 1, q50: 150, q10: 130, q90: 170, q05: 125, q95: 175, q25: 140, q75: 160 },
-            { month: 2, q50: 160, q10: 138, q90: 182, q05: 133, q95: 187, q25: 149, q75: 171 },
-            { month: 3, q50: 155, q10: 135, q90: 175, q05: 130, q95: 180, q25: 145, q75: 165 },
-            { month: 4, q50: 170, q10: 145, q90: 195, q05: 140, q95: 200, q25: 158, q75: 182 },
-            { month: 5, q50: 165, q10: 140, q90: 190, q05: 135, q95: 195, q25: 153, q75: 177 },
-            { month: 6, q50: 175, q10: 150, q90: 200, q05: 145, q95: 205, q25: 163, q75: 187 }
-          ]
+          monthly: generateBaselineData(horizons)
         }
       ];
       this.processPredictionResults();
@@ -299,127 +342,39 @@ export default {
         this.errorMessage = '';
         this.loading = true;
 
-        const predictionData = {
-          dealer_code: this.baseline.dealer_code,
-          base_month: this.baseline.base_month,
-          horizons: this.baseline.horizons,
-          interval_strategy: this.baseline.interval_strategy,
-          scenarios: this.scenarios
-        };
-
-        console.log('预测请求数据:', predictionData);
-
-        // 根据预测范围生成不同密度的模拟数据
         const horizons = parseInt(this.baseline.horizons);
-        const baseSales = 150;
-        
-        // 生成基准情景数据
-        const generateBaselineData = (months) => {
-          const data = [];
-          for (let i = 1; i <= months; i++) {
-            // 基础销量，加入一些波动
-            const baseQ50 = Math.round(baseSales + (Math.random() * 20 - 10));
-            
-            // 根据预测范围调整置信区间宽度和分位数密度
-            let q05, q10, q25, q75, q90, q95;
-            
-            if (months <= 3) {
-              // 短期：更密集的分位数，更窄的置信区间
-              const interval = baseQ50 * 0.1; // 10%的区间
-              q05 = Math.round(baseQ50 - interval * 1.5);
-              q10 = Math.round(baseQ50 - interval);
-              q25 = Math.round(baseQ50 - interval * 0.5);
-              q75 = Math.round(baseQ50 + interval * 0.5);
-              q90 = Math.round(baseQ50 + interval);
-              q95 = Math.round(baseQ50 + interval * 1.5);
-            } else if (months <= 6) {
-              // 中期：适中的分位数密度
-              const interval = baseQ50 * 0.15; // 15%的区间
-              q05 = Math.round(baseQ50 - interval * 1.5);
-              q10 = Math.round(baseQ50 - interval);
-              q25 = Math.round(baseQ50 - interval * 0.5);
-              q75 = Math.round(baseQ50 + interval * 0.5);
-              q90 = Math.round(baseQ50 + interval);
-              q95 = Math.round(baseQ50 + interval * 1.5);
-            } else {
-              // 远期：更稀疏的分位数，更宽的置信区间
-              const interval = baseQ50 * 0.25; // 25%的区间
-              q05 = Math.round(baseQ50 - interval * 1.5);
-              q10 = Math.round(baseQ50 - interval);
-              q25 = Math.round(baseQ50 - interval * 0.5);
-              q75 = Math.round(baseQ50 + interval * 0.5);
-              q90 = Math.round(baseQ50 + interval);
-              q95 = Math.round(baseQ50 + interval * 1.5);
-            }
-            
-            data.push({
-              month: i,
-              q50: baseQ50,
-              q10: q10,
-              q90: q90,
-              q05: q05,
-              q95: q95,
-              q25: q25,
-              q75: q75
-            });
-          }
-          return data;
-        };
-        
-        // 生成情景数据
-        const generateScenarioData = (months, factor) => {
-          const data = [];
-          for (let i = 1; i <= months; i++) {
-            // 基础销量，加入一些波动
-            const baseQ50 = Math.round((baseSales + (Math.random() * 20 - 10)) * factor);
-            
-            // 根据预测范围调整置信区间
-            let q10, q90;
-            if (months <= 3) {
-              const interval = baseQ50 * 0.1;
-              q10 = Math.round(baseQ50 - interval);
-              q90 = Math.round(baseQ50 + interval);
-            } else if (months <= 6) {
-              const interval = baseQ50 * 0.15;
-              q10 = Math.round(baseQ50 - interval);
-              q90 = Math.round(baseQ50 + interval);
-            } else {
-              const interval = baseQ50 * 0.25;
-              q10 = Math.round(baseQ50 - interval);
-              q90 = Math.round(baseQ50 + interval);
-            }
-            
-            data.push({
-              month: i,
-              q50: baseQ50,
-              q10: q10,
-              q90: q90
-            });
-          }
-          return data;
-        };
-        
-        // 生成模拟响应数据
-        const mockResponse = {
-          prediction_results: [
-            {
-              scenario: 'baseline',
-              monthly: generateBaselineData(horizons)
-            },
-            ...this.scenarios.map((scenario, index) => {
-              const factor = 1 + scenario.change_percentage / 100;
-              return {
-                scenario: `${scenario.dimension}${scenario.change_percentage > 0 ? '+' : ''}${scenario.change_percentage}%`,
-                monthly: generateScenarioData(horizons, factor)
-              };
-            })
-          ]
+        const horizonsArray = [];
+        for (let i = 1; i <= horizons; i++) {
+          horizonsArray.push(i);
+        }
+
+        const scenarios = [];
+        scenarios.push({ name: 'baseline' });
+        this.scenarios.forEach(s => {
+          scenarios.push({
+            name: `${s.dimension}${s.change_percentage > 0 ? '+' : ''}${s.change_percentage}%`,
+            dimension: s.dimension,
+            change_percentage: s.change_percentage
+          });
+        });
+
+        const params = {
+          dealer_code: this.baseline.dealer_code,
+          base_year: 2024,
+          base_month: this.baseline.base_month,
+          horizons: horizonsArray,
+          quantiles: [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95],
+          calib_alpha: this.baseline.interval_strategy === 80 ? 0.2 : 0.1,
+          scenarios: scenarios
         };
 
-        console.log('模拟预测响应:', mockResponse);
+        console.log('分位数预测请求数据:', params);
 
-        if (mockResponse.prediction_results) {
-          this.predictionResults = mockResponse.prediction_results;
+        const response = await getQuantileForecast(params);
+        console.log('分位数预测响应:', response);
+
+        if (response && response.scenarios) {
+          this.predictionResults = this.transformApiResponse(response);
           this.processPredictionResults();
           this.updateMainChart();
           this.updateComparisonChart();
@@ -438,6 +393,67 @@ export default {
         this.loading = false;
       }
     },
+    transformApiResponse(response) {
+      const results = [];
+      
+      if (!response.scenarios) return results;
+      
+      for (const [scenarioName, scenarioData] of Object.entries(response.scenarios)) {
+        const monthly = [];
+        const horizons = scenarioData.horizons_requested || [];
+        const months = scenarioData.months || [];
+        const years = scenarioData.years || [];
+        const point = scenarioData.point || [];
+        const quantiles = scenarioData.quantiles || {};
+        const meta = scenarioData.meta || {};
+        
+        const intervalName = meta.interval_name || 'calibrated_interval_80';
+        const intervalData = scenarioData[intervalName];
+        
+        for (let i = 0; i < horizons.length; i++) {
+          const monthData = {
+            month: months[i] || (i + 1),
+            year: years[i] || 2024,
+            horizon: horizons[i],
+            q50: point[i] || 0
+          };
+          
+          if (quantiles['0.05']) monthData.q05 = quantiles['0.05'][i];
+          if (quantiles['0.1']) monthData.q10 = quantiles['0.1'][i];
+          if (quantiles['0.25']) monthData.q25 = quantiles['0.25'][i];
+          if (quantiles['0.75']) monthData.q75 = quantiles['0.75'][i];
+          if (quantiles['0.9']) monthData.q90 = quantiles['0.9'][i];
+          if (quantiles['0.95']) monthData.q95 = quantiles['0.95'][i];
+          
+          if (intervalData) {
+            monthData.interval80_lower = intervalData.lower[i];
+            monthData.interval80_upper = intervalData.upper[i];
+          }
+          
+          if (scenarioData.calibrated_interval_80) {
+            monthData.interval80_lower = scenarioData.calibrated_interval_80.lower[i];
+            monthData.interval80_upper = scenarioData.calibrated_interval_80.upper[i];
+          }
+          
+          if (scenarioData.calibrated_interval_90) {
+            monthData.interval90_lower = scenarioData.calibrated_interval_90.lower[i];
+            monthData.interval90_upper = scenarioData.calibrated_interval_90.upper[i];
+          }
+          
+          monthly.push(monthData);
+        }
+        
+        results.push({
+          scenario: scenarioName,
+          monthly: monthly,
+          hasInterval80: !!scenarioData.calibrated_interval_80 || intervalName === 'calibrated_interval_80',
+          hasInterval90: !!scenarioData.calibrated_interval_90 || intervalName === 'calibrated_interval_90',
+          intervalName: intervalName
+        });
+      }
+      
+      return results;
+    },
     processPredictionResults() {
       this.predictionTableData = {};
       this.scenarioAnalysis = [];
@@ -455,8 +471,9 @@ export default {
         let totalSales = 0;
         baselineResult.monthly.forEach(item => {
           totalSales += item.q50;
-          if (!this.predictionTableData[item.month]) {
-            this.predictionTableData[item.month] = {
+          const key = `${item.year}-${item.month}`;
+          if (!this.predictionTableData[key]) {
+            this.predictionTableData[key] = {
               baseline: item,
               scenarios: []
             };
@@ -466,10 +483,14 @@ export default {
 
         const firstMonth = baselineResult.monthly[0];
         if (firstMonth) {
-          if (this.baseline.interval_strategy === 80) {
-            this.confidenceIntervalWidth = (firstMonth.q90 - firstMonth.q10).toFixed(2);
+          if (this.baseline.interval_strategy === 80 || firstMonth.interval80_lower) {
+            const lower = firstMonth.interval80_lower || firstMonth.q10;
+            const upper = firstMonth.interval80_upper || firstMonth.q90;
+            this.confidenceIntervalWidth = (upper - lower).toFixed(2);
           } else {
-            this.confidenceIntervalWidth = (firstMonth.q95 - firstMonth.q05).toFixed(2);
+            const lower = firstMonth.interval90_lower || firstMonth.q05;
+            const upper = firstMonth.interval90_upper || firstMonth.q95;
+            this.confidenceIntervalWidth = (upper - lower).toFixed(2);
           }
         }
       }
@@ -482,10 +503,11 @@ export default {
           let totalDifference = 0;
 
           scenarioResult.monthly.forEach(item => {
-            if (this.predictionTableData[item.month]) {
-              this.predictionTableData[item.month].scenarios.push(item);
+            const key = `${item.year}-${item.month}`;
+            if (this.predictionTableData[key]) {
+              this.predictionTableData[key].scenarios.push(item);
               
-              const baselineValue = this.predictionTableData[item.month].baseline.q50;
+              const baselineValue = this.predictionTableData[key].baseline.q50;
               const difference = ((item.q50 - baselineValue) / baselineValue * 100).toFixed(2);
               totalDifference += parseFloat(difference);
               
@@ -511,7 +533,15 @@ export default {
         }
       }
 
-      this.growthRate = (Math.random() * 20 - 5).toFixed(2);
+      if (baselineResult && baselineResult.monthly.length > 1) {
+        const firstValue = baselineResult.monthly[0].q50;
+        const lastValue = baselineResult.monthly[baselineResult.monthly.length - 1].q50;
+        if (firstValue > 0) {
+          this.growthRate = ((lastValue - firstValue) / firstValue * 100).toFixed(2);
+        } else {
+          this.growthRate = 0;
+        }
+      }
     },
     updateMainChart() {
       if (!this.$refs.mainChart) return;
@@ -520,10 +550,10 @@ export default {
 
       const months = [];
       const baselineQ50 = [];
-      const baselineQ10 = [];
-      const baselineQ90 = [];
-      const baselineQ05 = [];
-      const baselineQ95 = [];
+      const baselineInterval80Lower = [];
+      const baselineInterval80Upper = [];
+      const baselineInterval90Lower = [];
+      const baselineInterval90Upper = [];
       const baselineQ25 = [];
       const baselineQ75 = [];
       const scenarioLines = [];
@@ -531,12 +561,12 @@ export default {
       if (this.predictionResults.length > 0) {
         const baselineResult = this.predictionResults[0];
         baselineResult.monthly.forEach(item => {
-          months.push(item.month + '月');
+          months.push(`${item.year}/${item.month}`);
           baselineQ50.push(item.q50);
-          baselineQ10.push(item.q10);
-          baselineQ90.push(item.q90);
-          baselineQ05.push(item.q05);
-          baselineQ95.push(item.q95);
+          baselineInterval80Lower.push(item.interval80_lower || item.q10);
+          baselineInterval80Upper.push(item.interval80_upper || item.q90);
+          baselineInterval90Lower.push(item.interval90_lower || item.q05);
+          baselineInterval90Upper.push(item.interval90_upper || item.q95);
           baselineQ25.push(item.q25);
           baselineQ75.push(item.q75);
         });
@@ -561,7 +591,8 @@ export default {
         }
       }
 
-      const horizons = parseInt(this.baseline.horizons);
+      const horizons = this.predictionResults.length > 0 ? this.predictionResults[0].monthly.length : parseInt(this.baseline.horizons);
+      const intervalStrategy = parseInt(this.baseline.interval_strategy);
       const series = [
         {
           name: '基准情景',
@@ -580,9 +611,7 @@ export default {
         }
       ];
 
-      // 根据预测范围添加不同密度的置信区间
       if (horizons <= 3) {
-        // 短期：更密集的分位数
         series.push(
           {
             name: '90%置信区间',
@@ -601,11 +630,11 @@ export default {
                   points: points
                 },
                 style: {
-                  fill: 'rgba(24, 144, 255, 0.1)'
+                  fill: 'rgba(82, 196, 26, 0.15)'
                 }
               };
             },
-            data: months.map((month, index) => [index, baselineQ95[index], baselineQ05[index]])
+            data: months.map((month, index) => [index, baselineInterval90Upper[index], baselineInterval90Lower[index]])
           },
           {
             name: '80%置信区间',
@@ -624,11 +653,11 @@ export default {
                   points: points
                 },
                 style: {
-                  fill: 'rgba(24, 144, 255, 0.2)'
+                  fill: 'rgba(24, 144, 255, 0.25)'
                 }
               };
             },
-            data: months.map((month, index) => [index, baselineQ90[index], baselineQ10[index]])
+            data: months.map((month, index) => [index, baselineInterval80Upper[index], baselineInterval80Lower[index]])
           },
           {
             name: '50%置信区间',
@@ -647,7 +676,7 @@ export default {
                   points: points
                 },
                 style: {
-                  fill: 'rgba(24, 144, 255, 0.3)'
+                  fill: 'rgba(250, 173, 20, 0.35)'
                 }
               };
             },
@@ -655,7 +684,6 @@ export default {
           }
         );
       } else if (horizons <= 6) {
-        // 中期：适中的分位数密度
         series.push(
           {
             name: '80%置信区间',
@@ -678,11 +706,10 @@ export default {
                 }
               };
             },
-            data: months.map((month, index) => [index, baselineQ90[index], baselineQ10[index]])
+            data: months.map((month, index) => [index, baselineInterval80Upper[index], baselineInterval80Lower[index]])
           }
         );
       } else {
-        // 远期：更稀疏的分位数
         series.push(
           {
             name: '80%置信区间',
@@ -705,7 +732,7 @@ export default {
                 }
               };
             },
-            data: months.map((month, index) => [index, baselineQ90[index], baselineQ10[index]])
+            data: months.map((month, index) => [index, baselineInterval80Upper[index], baselineInterval80Lower[index]])
           }
         );
       }

@@ -47,8 +47,8 @@
               </div>
 
               <div class="form-group">
-                <label for="month">月份 (1-10):</label>
-                <select id="month" name="month" v-model="formData.month">
+                <label for="base_month">基准月份 (1-10):</label>
+                <select id="base_month" name="base_month" v-model="formData.base_month">
                   <option v-for="m in 10" :key="m" :value="m">{{ m }} 月</option>
                 </select>
               </div>
@@ -100,7 +100,8 @@
             
             <!-- 预测销量文字显示 -->
             <div v-if="predictionResult" class="prediction-text">
-              <p><strong>预测销量:</strong> 预计{{ formData.month }}月份销量为 <span class="highlighted-value">{{ predictionResult }}</span></p>
+              <p><strong>预测销量:</strong> 预计{{ predictionResult.target_year }}年{{ predictionResult.target_month }}月份销量为 <span class="highlighted-value">{{ predictionResult.predicted_sales ? Math.round(predictionResult.predicted_sales) : '-' }}</span></p>
+              <p v-if="predictionResult.delta"><strong>销量变化:</strong> {{ predictionResult.delta ? Math.round(predictionResult.delta) : 0 }} ({{ predictionResult.delta_pct ? (predictionResult.delta_pct * 100).toFixed(2) : 0 }}%)</p>
             </div>
             
             <!-- 错误信息显示 - 只在确实有错误信息时才显示 -->
@@ -113,6 +114,10 @@
               <h3 class="details-title">销量预测结果详情</h3>
               <div class="prediction-data-grid">
                 <div class="data-item">
+                  <span class="data-label">经销商:</span>
+                  <span class="data-value">{{ formData.dealer_code }}</span>
+                </div>
+                <div class="data-item">
                   <span class="data-label">变化维度:</span>
                   <span class="data-value">{{ formData.dimension }}</span>
                 </div>
@@ -121,12 +126,16 @@
                   <span class="data-value">{{ formData.change_percentage }}%</span>
                 </div>
                 <div class="data-item">
+                  <span class="data-label">基准月份:</span>
+                  <span class="data-value">{{ formData.base_year }}年{{ formData.base_month }}月</span>
+                </div>
+                <div class="data-item">
                   <span class="data-label">预测月份:</span>
-                  <span class="data-value">{{ formData.month }}月</span>
+                  <span class="data-value">{{ predictionResult.target_year }}年{{ predictionResult.target_month }}月</span>
                 </div>
                 <div class="data-item">
                   <span class="data-label">预测销量:</span>
-                  <span class="data-value">{{ predictionResult }}</span>
+                  <span class="data-value">{{ predictionResult.predicted_sales ? Math.round(predictionResult.predicted_sales) : '-' }}</span>
                 </div>
               </div>
             </div>
@@ -219,25 +228,26 @@ export default {
   data() {
     return {
       formData: {
-        dealer_code: 'B440045', // 使用后端存在的经销商代码
+        dealer_code: '9210006',
         dimension: 'customer_flow',
-        change_percentage: 40,
-        month: 1,
-        month_for_radar: 1
+        change_percentage: 10,
+        base_year: 2024,
+        base_month: 10,
+        month_for_radar: 10
       },
-      dealerCodes: [], // 从dealerData.json中提取的经销商代码
-      dealerList: dealerData, // 完整的经销商数据，用于DealerSelector组件
-      percentageOptions: Array.from({length: 59}, (_, i) => (i + 1) * 5), // Generate 5% to 300% in 5% increments
+      dealerCodes: [],
+      dealerList: dealerData,
+      percentageOptions: Array.from({length: 59}, (_, i) => (i + 1) * 5),
       showFormula: false,
       predictionResult: null,
-      salesChanges: [], // 初始化为空数组，等待后端数据
-      fiveForcesData: {}, // 初始化为空对象，等待后端数据 {'传播获客力':0,'体验力':0,'转化力':0,'服务力':0,'经营力':0,'综合得分':0}
+      salesChanges: [],
+      fiveForcesData: {},
       salesChart: null,
-      loading: false, // 添加加载状态
-      useMockData: false, // 完全使用真实后端数据
-      backendAvailable: true, // 后端是否可用的状态标志
-      errorMessage: '', // 后端错误信息
-      resizeListener: null // 事件监听器引用
+      loading: false,
+      useMockData: false,
+      backendAvailable: true,
+      errorMessage: '',
+      resizeListener: null
     }
   },
   mounted() {
@@ -307,25 +317,19 @@ export default {
     // 提交预测表单
     async submitForm() {
       try {
-        this.errorMessage = '' // 清空错误信息
+        this.errorMessage = ''
         this.loading = true
         
-        // 清空之前的预测结果数据，确保每次预测都是独立的
         this.predictionResult = null
         this.fiveForcesData = {}
         
-        // 只有在salesChanges为空时才获取原始销量数据，避免覆盖已有数据
-        if (this.salesChanges.length === 0) {
-          await this.fetchOriginalSalesData()
-        }
+        await this.fetchOriginalSalesData()
         
-        // 再获取预测结果
         const response = await getPredictionResult(this.formData)
         console.log('返回的对象')
         console.log(response)
         
 
-        // 检查后端是否返回了错误消息
         if (response.message) {
           const error = new Error(response.message)
           error.response = { data: { message: response.message } }
@@ -333,8 +337,15 @@ export default {
         }
 
         // 处理后端返回的预测数据
-        if (response.sales_prediction !== undefined) {
-          this.predictionResult = response.sales_prediction[0]
+        if (response.point_result) {
+          this.predictionResult = {
+            target_year: response.target_year,
+            target_month: response.target_month,
+            predicted_sales: response.point_result.scenario,
+            baseline: response.point_result.baseline,
+            delta: response.point_result.delta,
+            delta_pct: response.point_result.delta_pct
+          }
         }
 
         // 处理销量变化数据
@@ -497,7 +508,6 @@ export default {
       try {
         console.log('保存历史记录前的fiveForcesData:', this.fiveForcesData)
         
-        // 确保所有五力指标都有值
         const propagationForce = this.fiveForcesData['传播获客力'] !== undefined ? this.fiveForcesData['传播获客力'] : 0
         const experienceForce = this.fiveForcesData['体验力'] !== undefined ? this.fiveForcesData['体验力'] : 0
         const conversionForce = this.fiveForcesData['转化力'] !== undefined ? this.fiveForcesData['转化力'] : 0
@@ -509,9 +519,12 @@ export default {
           dealer_code: this.formData.dealer_code,
           dimension: this.formData.dimension,
           change_percentage: this.formData.change_percentage,
-          month: this.formData.month,
+          base_year: this.formData.base_year,
+          base_month: this.formData.base_month,
+          target_year: this.predictionResult ? this.predictionResult.target_year : this.formData.base_year,
+          target_month: this.predictionResult ? this.predictionResult.target_month : this.formData.base_month + 1,
+          predicted_sales: this.predictionResult ? Math.round(this.predictionResult.predicted_sales) : null,
           month_for_radar: this.formData.month_for_radar,
-          prediction_result: this.predictionResult,
           propagation_force: propagationForce,
           experience_force: experienceForce,
           conversion_force: conversionForce,
@@ -521,7 +534,6 @@ export default {
         }
         
         console.log('准备保存的历史记录数据:', historyData)
-        // 调用API保存历史记录
         const response = await savePredictionHistory(historyData)
         console.log('预测结果已保存到历史记录:', response)
         return response
@@ -641,17 +653,16 @@ export default {
     updateSalesChart() {
       if (!this.salesChart) return;
       
-      // Prepare data for chart
       const months = this.salesChanges.map(item => item.month + '月');
       const originalSales = this.salesChanges.map(item => item.original_sales);
 
-      // Create prediction data array
-      const predictionData = originalSales.map((value, index) => {
-        if (index === this.formData.month - 1) {
-          return this.predictionResult;
+      let predictionData = new Array(originalSales.length).fill(null);
+      if (this.predictionResult && this.predictionResult.target_month) {
+        const targetIndex = this.predictionResult.target_month - 1;
+        if (targetIndex >= 0 && targetIndex < originalSales.length) {
+          predictionData[targetIndex] = Math.round(this.predictionResult.predicted_sales);
         }
-        return null; // null means no data point
-      });
+      }
       
       const option = {
         backgroundColor: 'transparent',
@@ -700,18 +711,20 @@ export default {
           },
           {
             name: '预测销量',
-            type: 'line',
+            type: 'scatter',
             data: predictionData,
-            smooth: true,
             symbol: 'circle',
-            symbolSize: 8,
-            itemStyle: { color: '#ff6b6b' },
-            lineStyle: { width: 2, type: 'dashed' },
+            symbolSize: 12,
+            itemStyle: { 
+              color: '#ff4d4f',
+              borderColor: '#fff',
+              borderWidth: 2
+            },
             emphasis: {
               itemStyle: {
                 shadowBlur: 10,
                 shadowOffsetX: 0,
-                shadowColor: 'rgba(255,107,107,0.5)'
+                shadowColor: 'rgba(255,77,79,0.5)'
               }
             }
           }

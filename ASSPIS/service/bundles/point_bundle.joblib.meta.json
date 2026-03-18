@@ -1,0 +1,339 @@
+{
+  "model_version": "bundle_20260314_133423",
+  "trained_at": "2026-03-14 13:34:26",
+  "feature_version": "point_features_v2",
+  "feature_dim": 85,
+  "feature_names": [
+    "potential_customers",
+    "test_drives",
+    "leads",
+    "customer_flow",
+    "defeat_rate",
+    "success_rate",
+    "success_response_time",
+    "defeat_response_time",
+    "policy",
+    "gsev",
+    "lead_to_potential_rate",
+    "potential_to_store_rate",
+    "store_to_sales_rate",
+    "sales_lag1",
+    "sales_lag2",
+    "sales_lag3",
+    "sales_roll3_mean",
+    "sales_roll6_mean",
+    "sales_roll3_std",
+    "sales_roll6_std",
+    "sales_diff_1",
+    "sales_pct_change_1",
+    "dealer_hist_mean",
+    "month_sin",
+    "month_cos",
+    "sales_lag6",
+    "sales_lag12",
+    "sales_roll12_mean",
+    "sales_roll12_std",
+    "yoy_mom_ratio",
+    "yoy_mom_diff",
+    "yoy_level_ratio",
+    "time_trend",
+    "is_peak",
+    "is_dec",
+    "is_janfeb",
+    "janfeb_gate_active",
+    "jf_ly_total_log",
+    "jf_ly_feb_share",
+    "jf_ly_feb_to_jan_logratio",
+    "jf_cur_jan_log",
+    "jf_cur_jan_vs_ly_jan_logdiff",
+    "jf_proj_feb_log",
+    "miss_cur_jan",
+    "miss_ly_jan",
+    "miss_ly_feb",
+    "miss_lag12",
+    "miss_lag13",
+    "roll12_coverage",
+    "miss_roll12",
+    "base_cur_present",
+    "base_signal_cnt",
+    "base_miss_potential_customers",
+    "base_miss_test_drives",
+    "base_miss_leads",
+    "base_miss_customer_flow",
+    "base_miss_defeat_rate",
+    "base_miss_success_rate",
+    "base_miss_success_response_time",
+    "base_miss_defeat_response_time",
+    "base_miss_policy",
+    "base_miss_gsev",
+    "base_stale_potential_customers",
+    "base_stale_test_drives",
+    "base_stale_leads",
+    "base_stale_customer_flow",
+    "base_stale_defeat_rate",
+    "base_stale_success_rate",
+    "base_stale_success_response_time",
+    "base_stale_defeat_response_time",
+    "base_stale_policy",
+    "base_stale_gsev",
+    "cny_rel_d",
+    "cny_in_win",
+    "cny_pre",
+    "cny_in",
+    "cny_post",
+    "cny_is_jan",
+    "ratio_flag_lead_pc",
+    "ratio_flag_flow_pc",
+    "ratio_flag_store_sales",
+    "ratio_flag_pct_change",
+    "ratio_flag_yoy_mom",
+    "ratio_flag_yoy_level",
+    "ratio_flag_jf_share"
+  ],
+  "xgb_params": {
+    "objective": "reg:absoluteerror",
+    "eval_metric": "mae",
+    "random_state": 42,
+    "n_jobs": -1,
+    "tree_method": "hist",
+    "learning_rate": 0.025042452714363762,
+    "n_estimators": 850,
+    "max_depth": 4,
+    "min_child_weight": 7,
+    "subsample": 0.7632630077595446,
+    "colsample_bytree": 0.741368835327228,
+    "reg_lambda": 0.04528676634287067,
+    "reg_alpha": 0.7421937229714413,
+    "gamma": 2.731854451932266
+  },
+  "rolling_summary": {
+    "roll_mode": "expanding",
+    "roll_window_months": 24,
+    "roll_min_train_periods": 22,
+    "roll_gap": 0,
+    "n_folds": 12,
+    "wmape_mean": 32.64838999020946,
+    "wmape_std": 4.8395331399281405,
+    "wmape_dec_mean": 28.77296603624987,
+    "wmape_dec_std": 0.0,
+    "wmape_peak_mean": 28.910488592740094,
+    "wmape_peak_std": 0.13752255649022516,
+    "optimal_trees": 850
+  },
+  "train_years_months": [
+    {
+      "year": 2022,
+      "month": 1,
+      "time_key": 24264
+    },
+    {
+      "year": 2022,
+      "month": 2,
+      "time_key": 24265
+    },
+    {
+      "year": 2022,
+      "month": 3,
+      "time_key": 24266
+    },
+    {
+      "year": 2022,
+      "month": 4,
+      "time_key": 24267
+    },
+    {
+      "year": 2022,
+      "month": 5,
+      "time_key": 24268
+    },
+    {
+      "year": 2022,
+      "month": 6,
+      "time_key": 24269
+    },
+    {
+      "year": 2022,
+      "month": 7,
+      "time_key": 24270
+    },
+    {
+      "year": 2022,
+      "month": 8,
+      "time_key": 24271
+    },
+    {
+      "year": 2022,
+      "month": 9,
+      "time_key": 24272
+    },
+    {
+      "year": 2022,
+      "month": 10,
+      "time_key": 24273
+    },
+    {
+      "year": 2022,
+      "month": 11,
+      "time_key": 24274
+    },
+    {
+      "year": 2022,
+      "month": 12,
+      "time_key": 24275
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "time_key": 24276
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "time_key": 24277
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "time_key": 24278
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "time_key": 24279
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "time_key": 24280
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "time_key": 24281
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "time_key": 24282
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "time_key": 24283
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "time_key": 24284
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "time_key": 24285
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "time_key": 24286
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "time_key": 24287
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "time_key": 24288
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "time_key": 24289
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "time_key": 24290
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "time_key": 24291
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "time_key": 24292
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "time_key": 24293
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "time_key": 24294
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "time_key": 24295
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "time_key": 24296
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "time_key": 24297
+    }
+  ],
+  "config": {
+    "MODEL_STAGE": "phase3_0_frozen_baseline",
+    "TRAIN_MODE": "conservative",
+    "ROLL_MODE": "expanding",
+    "ROLL_WINDOW_MONTHS": 24,
+    "ROLL_MIN_TRAIN_PERIODS": 22,
+    "ROLL_START_TEST_MONTH": 22,
+    "ROLL_GAP": 0,
+    "PHASE2_JANFEB_GATE": true,
+    "PHASE2_JANFEB_GATE_LAG12": false,
+    "PHASE2_JANFEB_ANCHOR": true,
+    "PHASE2_DISABLE_YOY": false,
+    "PHASE2_SEASONAL_FEATURES": true,
+    "PHASE2_ROBUST_RATIOS": true,
+    "PHASE2_ADD_MISSING_FLAGS": true,
+    "PHASE_STORE_CALIB": true,
+    "PHASE23_ENABLE": true,
+    "PHASE23_HIST_WINDOW": 12,
+    "PHASE23_LOOKBACK_LAST": 3,
+    "PHASE23_MIN_BASE_SIGNAL": 1,
+    "PHASE23_STALENESS_CAP": 12,
+    "PHASE23_ADD_BASE_MISSING_FLAGS": true,
+    "PHASE23_ADD_BASE_STALENESS": true,
+    "PHASE24_SOFT_MISSING": "",
+    "PHASE24_CNY_FEATURES": true,
+    "PHASE24_CNY_WINDOW": 1,
+    "PHASE24_CNY_MONTH_MAP": "",
+    "PHASE28_SAFE_DIVIDE": true,
+    "PHASE28_LOG_RATIO": true,
+    "PHASE28_MISSING_FLAG": true,
+    "PHASE28_EPS": 1e-06,
+    "PHASE32_LOSS_L1": true,
+    "PHASE32_USE_WEIGHT": true,
+    "PHASE34_DISABLE_EARLY_STOP": true,
+    "PHASE34_BASE_TREES": 650,
+    "PHASE34_TREES_GRID": "450,650,900,1150",
+    "OPTUNA_N_TRIALS": 300,
+    "TRADE_OFF_WEIGHT": 1.0,
+    "CLIP_RATE_MAX": 5.0,
+    "CLIP_STORE2SALES_MAX": 2.0,
+    "CLIP_LOG_RATIO": 2.0,
+    "CLIP_JF_LOG": 12.0,
+    "CLIP_PCT_CHANGE": 3.0
+  }
+}

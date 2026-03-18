@@ -1,0 +1,2 @@
+﻿experiment,n_pairs,delta_wmape_mean,delta_wmape_p10,delta_wmape_p50,delta_wmape_p90,improve_rate
+random_best_full,12,-1.3094210125663206,-2.6836708327283327,-0.7951491695575408,0.36908813130212204,0.8333333333333334

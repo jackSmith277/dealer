@@ -1,0 +1,5 @@
+{
+  "best_score": 23.89099574350078,
+  "tune_metric": "wmape_only",
+  "tradeoff_lambda": 1.0
+}
