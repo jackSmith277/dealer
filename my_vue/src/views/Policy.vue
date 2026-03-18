@@ -2,21 +2,69 @@
   <div class="policy-container">
     <div class="header-section">
       <h1 class="page-title">地方促消费政策展示</h1>
-      <div class="header-controls">
-        <button class="btn btn-gray" @click="resetMap">
-          <i class="fas fa-redo mr-1"></i>重置地图
-        </button>
-        <button class="btn btn-gray" @click="exportPolicies">
-          <i class="fas fa-download mr-1"></i>导出政策
-        </button>
+
+    </div>
+
+      <!-- 数据统计仪表盘 -->
+    <div class="dashboard-section">
+      <div class="stat-cards">
+        <div class="stat-card">
+          <div class="stat-icon total">
+            <i class="fas fa-file-alt"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ totalPolicies }}</span>
+            <span class="stat-label">全国政策总数</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon new">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ activePolicies }}</span>
+            <span class="stat-label">有效政策数量</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon expiring">
+            <i class="fas fa-globe"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ coveredProvinces }}</span>
+            <span class="stat-label">覆盖省份数量</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon cities">
+            <i class="fas fa-map-marker-alt"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ coveredCities }}</span>
+            <span class="stat-label">覆盖城市数量</span>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="content-section">
       <div class="map-section">
         <div class="map-header">
-          <h2 class="section-title">全国政策分布图</h2>
-          <p class="section-subtitle">点击省份或输入省份名称查看详细政策信息</p>
+          <div class="map-header-top">
+            <div class="map-header-left">
+              <h2 class="section-title">全国政策分布图</h2>
+              <p class="section-subtitle">点击省份或输入省份名称查看详细政策信息</p>
+            </div>
+            <div class="header-controls">
+              <button class="btn btn-gray" @click="resetMap">
+                <i class="fas fa-redo mr-1"></i>重置地图
+              </button>
+              <button class="btn btn-gray" @click="exportPolicies">
+                <i class="fas fa-download mr-1"></i>导出政策
+              </button>
+            </div>
+          </div>
+          
           <div class="province-search">
             <input
               type="text"
@@ -207,7 +255,70 @@
           <button class="btn btn-secondary" @click="closeModal">关闭</button>
         </div>
       </div>
+    </div>   
+
+    <!-- 图表区域 -->
+    <div class="charts-section">
+      <div class="chart-card trend-card">
+        <div class="chart-header">
+          <h3 class="chart-title">政策发布趋势</h3>
+          <p class="chart-subtitle">各月份政策发布数量分布</p>
+        </div>
+        <div ref="trendChart" class="chart-container"></div>
+      </div>
+      <div class="chart-card pie-card">
+        <div class="chart-header">
+          <h3 class="chart-title">政策类型分布</h3>
+          <p class="chart-subtitle">各类型政策占比情况</p>
+        </div>
+        <div ref="pieChart" class="chart-container"></div>
+      </div>
+      <div class="chart-card ranking-card">
+        <div class="chart-header">
+          <h3 class="chart-title">政策热度排行榜</h3>
+          <p class="chart-subtitle">TOP 15 政策活跃省份</p>
+        </div>
+        <div class="ranking-list">
+          <div 
+            v-for="(item, index) in top10Provinces" 
+            :key="item.name" 
+            class="ranking-item"
+            :class="{ 'top-three': index < 3 }"
+          >
+            <span class="ranking-number" :class="'rank-' + (index + 1)">{{ index + 1 }}</span>
+            <span class="ranking-name">{{ item.name }}</span>
+            <div class="ranking-bar-container">
+              <div class="ranking-bar" :style="{ width: (item.value / top10Provinces[0].value * 100) + '%' }"></div>
+            </div>
+            <span class="ranking-value">{{ item.value }}项</span>
+          </div>
+        </div>
+      </div>
+      <div class="category-stats-card">
+        <div class="chart-header">
+          <h3 class="chart-title">政策分类统计</h3>
+          <p class="chart-subtitle">各类型政策数量分布</p>
+        </div>
+        <div class="category-cards-grid">
+          <div 
+            v-for="(stat, category) in categoryStats" 
+            :key="category" 
+            class="category-card"
+          >
+            <div class="category-icon">
+              <i :class="getCategoryIcon(category)"></i>
+            </div>
+            <div class="category-info">
+              <span class="category-name">{{ category }}</span>
+              <span class="category-count">{{ stat.count }}项政策</span>
+            </div>
+            <div class="category-percentage">{{ stat.percentage }}%</div>
+          </div>
+        </div>
+      </div>
     </div>
+
+    
   </div>
 </template>
 
@@ -221,6 +332,8 @@ export default {
   data() {
     return {
       chart: null,
+      trendChart: null,
+      pieChart: null,
       selectedProvince: null,
       policyData: [],
       filteredPolicies: [],
@@ -278,10 +391,20 @@ export default {
   async mounted() {
     await this.loadPolicyData()
     this.initChart()
+    this.$nextTick(() => {
+      this.initTrendChart()
+      this.initPieChart()
+    })
   },
   beforeDestroy() {
     if (this.chart) {
       this.chart.dispose()
+    }
+    if (this.trendChart) {
+      this.trendChart.dispose()
+    }
+    if (this.pieChart) {
+      this.pieChart.dispose()
     }
   },
   computed: {
@@ -290,6 +413,86 @@ export default {
         return `${this.selectedProvince}${this.selectedCity}`
       }
       return this.selectedProvince
+    },
+    totalPolicies() {
+      return this.policyData.length
+    },
+    activePolicies() {
+      const now = new Date()
+      return this.policyData.filter(policy => {
+        const endTime = policy['结束时间']
+        if (!endTime) return true
+        const endDate = new Date(endTime)
+        return endDate >= now
+      }).length
+    },
+    coveredProvinces() {
+      const provinces = new Set()
+      this.policyData.forEach(policy => {
+        const province = policy['省/直辖市/自治区']
+        if (province) {
+          provinces.add(province)
+        }
+      })
+      return provinces.size
+    },
+    coveredCities() {
+      const cities = new Set()
+      this.policyData.forEach(policy => {
+        const city = policy['地级市/自治州']
+        const province = policy['省/直辖市/自治区']
+        if (city) {
+          cities.add(`${province}-${city}`)
+        } else if (province) {
+          cities.add(province)
+        }
+      })
+      return cities.size
+    },
+    top10Provinces() {
+      const counts = this.getProvinceCounts()
+      return Object.entries(counts)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 15)
+    },
+    categoryStats() {
+      const stats = {}
+      const total = this.policyData.length || 1
+      this.policyData.forEach(policy => {
+        const category = policy['政策分类'] || '其他'
+        if (!stats[category]) {
+          stats[category] = { count: 0, percentage: 0 }
+        }
+        stats[category].count++
+      })
+      Object.keys(stats).forEach(category => {
+        stats[category].percentage = ((stats[category].count / total) * 100).toFixed(1)
+      })
+      return stats
+    },
+    monthlyTrendData() {
+      const monthlyData = {}
+      this.policyData.forEach(policy => {
+        const execTime = policy['执行时间']
+        if (execTime) {
+          const date = new Date(execTime)
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+          monthlyData[monthKey] = (monthlyData[monthKey] || 0) + 1
+        }
+      })
+      const sortedMonths = Object.keys(monthlyData).sort()
+      return {
+        months: sortedMonths,
+        values: sortedMonths.map(m => monthlyData[m])
+      }
+    },
+    categoryPieData() {
+      const data = []
+      Object.entries(this.categoryStats).forEach(([name, stat]) => {
+        data.push({ name, value: stat.count })
+      })
+      return data
     }
   },
   methods: {
@@ -298,6 +501,117 @@ export default {
       this.loadMapData()
       
       window.addEventListener('resize', this.handleResize)
+    },
+    
+    initTrendChart() {
+      if (!this.$refs.trendChart) return
+      this.trendChart = echarts.init(this.$refs.trendChart)
+      const option = {
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          top: '10%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          data: this.monthlyTrendData.months,
+          axisLabel: {
+            rotate: 45,
+            fontSize: 10
+          }
+        },
+        yAxis: {
+          type: 'value',
+          minInterval: 1
+        },
+        series: [{
+          name: '政策数量',
+          type: 'line',
+          smooth: true,
+          data: this.monthlyTrendData.values,
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(54, 162, 235, 0.5)' },
+                { offset: 1, color: 'rgba(54, 162, 235, 0.1)' }
+              ]
+            }
+          },
+          lineStyle: {
+            color: '#36a2eb',
+            width: 2
+          },
+          itemStyle: {
+            color: '#36a2eb'
+          }
+        }]
+      }
+      this.trendChart.setOption(option)
+    },
+    
+    initPieChart() {
+      if (!this.$refs.pieChart) return
+      this.pieChart = echarts.init(this.$refs.pieChart)
+      const option = {
+        tooltip: {
+          trigger: 'item',
+          formatter: '{b}: {c}项 ({d}%)'
+        },
+        legend: {
+          orient: 'vertical',
+          right: '1%',
+          top: 'center',
+          textStyle: {
+            fontSize: 11
+          }
+        },
+        series: [{
+          name: '政策类型',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['30%', '50%'],
+          avoidLabelOverlap: false,
+          label: {
+            show: false
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 14,
+              fontWeight: 'bold'
+            }
+          },
+          labelLine: {
+            show: false
+          },
+          data: this.categoryPieData,
+          color: ['#36a2eb', '#ff6384', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40', '#c9cbcf']
+        }]
+      }
+      this.pieChart.setOption(option)
+    },
+    
+    getCategoryIcon(category) {
+      const iconMap = {
+        '消费券': 'fas fa-ticket-alt',
+        '补贴': 'fas fa-hand-holding-usd',
+        '以旧换新': 'fas fa-exchange-alt',
+        '下乡补贴': 'fas fa-tractor',
+        '充电设施': 'fas fa-charging-station',
+        '购置税减免': 'fas fa-receipt',
+        '其他': 'fas fa-file-alt'
+      }
+      return iconMap[category] || 'fas fa-file-alt'
     },
     
     async loadMapData() {
@@ -547,6 +861,12 @@ export default {
       if (this.chart) {
         this.chart.resize()
       }
+      if (this.trendChart) {
+        this.trendChart.resize()
+      }
+      if (this.pieChart) {
+        this.pieChart.resize()
+      }
     },
     
     handleSearchInput() {
@@ -708,6 +1028,288 @@ export default {
   min-height: 100vh;
 }
 
+/* 数据统计仪表盘样式 */
+.dashboard-section {
+  margin-bottom: 20px;
+}
+
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.stat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.stat-icon.total {
+  background: #e8f4fd;
+  color: #1890ff;
+}
+
+.stat-icon.new {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.stat-icon.expiring {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+
+.stat-icon.cities {
+  background: #e6fffb;
+  color: #13c2c2;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a2e;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* 图表区域样式 */
+.charts-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.chart-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.trend-card {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.pie-card {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.ranking-card {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+}
+
+.category-stats-card {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.chart-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.chart-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.chart-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #999;
+}
+
+.chart-container {
+  height: 250px;
+
+}
+
+/* 排行榜样式 */
+.ranking-list {
+  flex: 1;
+  padding: 12px 20px;
+  overflow-y: auto;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.ranking-item:last-child {
+  border-bottom: none;
+}
+
+.ranking-item.top-three {
+  background: linear-gradient(90deg, #fff9e6 0%, transparent 100%);
+  margin: 0 -20px;
+  padding: 10px 20px;
+}
+
+.ranking-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #999;
+  background: #f0f0f0;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.ranking-number.rank-1 {
+  background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+  color: white;
+}
+
+.ranking-number.rank-2 {
+  background: linear-gradient(135deg, #c0c0c0 0%, #a8a8a8 100%);
+  color: white;
+}
+
+.ranking-number.rank-3 {
+  background: linear-gradient(135deg, #cd7f32 0%, #b87333 100%);
+  color: white;
+}
+
+.ranking-name {
+  flex: 0 0 80px;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.ranking-bar-container {
+  flex: 1;
+  height: 8px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  margin: 0 12px;
+  overflow: hidden;
+}
+
+.ranking-bar {
+  height: 100%;
+  background: #1890ff;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.ranking-value {
+  flex: 0 0 50px;
+  font-size: 14px;
+  color: #666;
+  text-align: right;
+}
+
+.category-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+.category-card {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.category-card:hover {
+  background: #f0f4ff;
+  transform: translateX(4px);
+}
+
+.category-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #f0f5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2f54eb;
+  font-size: 18px;
+  margin-right: 12px;
+}
+
+.category-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.category-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.category-count {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.category-percentage {
+  font-size: 16px;
+  font-weight: 600;
+  color: #667eea;
+}
+
 .header-section {
   display: flex;
   justify-content: space-between;
@@ -748,6 +1350,17 @@ export default {
 
 .map-header {
   margin-bottom: 20px;
+}
+
+.map-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.map-header-left {
+  flex: 1;
 }
 
 .province-search {
@@ -1228,5 +1841,90 @@ export default {
   border-top: 1px solid #e0e0e0;
   display: flex;
   justify-content: flex-end;
+}
+
+/* 响应式样式 */
+@media (max-width: 1400px) {
+  .charts-section {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  
+  .trend-card {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  
+  .pie-card {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  
+  .category-stats-card {
+    grid-column: 1 / 3;
+    grid-row: 2;
+  }
+  
+  .ranking-card {
+    grid-column: 1 / 3;
+    grid-row: 3;
+  }
+}
+
+@media (max-width: 1200px) {
+  .stat-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .charts-section {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+  
+  .trend-card,
+  .pie-card,
+  .category-stats-card,
+  .ranking-card {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  
+  .content-section {
+    flex-direction: column;
+  }
+  
+  .map-section {
+    min-width: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .stat-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .header-section {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .header-controls {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .map-header-top {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .map-header-top .header-controls {
+    width: auto;
+  }
+  
+  .category-cards-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
