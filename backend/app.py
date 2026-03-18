@@ -223,6 +223,17 @@ def get_users():
         if user.role == 'dealer':
             dealer = Dealer.query.filter_by(user_id=user.id).first()
             if dealer:
+                # 将 region 字段拆分成 province 和 city
+                province = ''
+                city = ''
+                if dealer.region:
+                    parts = dealer.region.split('/')
+                    if len(parts) >= 2:
+                        province = parts[0]
+                        city = parts[1]
+                    else:
+                        province = dealer.region
+                
                 user_data['dealer'] = {
                     'id': dealer.id,
                     'dealer_name': dealer.dealer_name,
@@ -230,6 +241,8 @@ def get_users():
                     'brand': dealer.brand,
                     'level': dealer.level,
                     'region': dealer.region,
+                    'province': province,
+                    'city': city,
                     'contact_name': dealer.contact_name,
                     'contact_phone': dealer.contact_phone,
                     'address': dealer.address
@@ -268,6 +281,17 @@ def get_user(user_id):
         if user.role == 'dealer':
             dealer = Dealer.query.filter_by(user_id=user.id).first()
             if dealer:
+                # 将 region 字段拆分成 province 和 city
+                province = ''
+                city = ''
+                if dealer.region:
+                    parts = dealer.region.split('/')
+                    if len(parts) >= 2:
+                        province = parts[0]
+                        city = parts[1]
+                    else:
+                        province = dealer.region
+                
                 user_data['dealer'] = {
                     'id': dealer.id,
                     'dealer_name': dealer.dealer_name,
@@ -275,6 +299,8 @@ def get_user(user_id):
                     'brand': dealer.brand,
                     'level': dealer.level,
                     'region': dealer.region,
+                    'province': province,
+                    'city': city,
                     'contact_name': dealer.contact_name,
                     'contact_phone': dealer.contact_phone,
                     'address': dealer.address
@@ -310,13 +336,25 @@ def get_dealer_info(user_id):
             'dealer_type': '',
             'brand': '',
             'level': '',
-            'region': '',
+            'province': '',
+            'city': '',
             'contact_name': '',
             'contact_phone': '',
             'address': '',
             'created_at': None,
             'updated_at': None
         })
+    
+    # 将 region 字段拆分成 province 和 city
+    province = ''
+    city = ''
+    if dealer.region:
+        parts = dealer.region.split('/')
+        if len(parts) >= 2:
+            province = parts[0]
+            city = parts[1]
+        else:
+            province = dealer.region
     
     return jsonify({
         'id': dealer.id,
@@ -325,7 +363,8 @@ def get_dealer_info(user_id):
         'dealer_type': dealer.dealer_type,
         'brand': dealer.brand,
         'level': dealer.level,
-        'region': dealer.region,
+        'province': province,
+        'city': city,
         'contact_name': dealer.contact_name,
         'contact_phone': dealer.contact_phone,
         'address': dealer.address,
@@ -353,13 +392,22 @@ def update_dealer_info(user_id):
     
     if not dealer:
         # 如果经销商信息不存在，创建新的经销商信息
+        # 处理 province 和 city，拼接成 region
+        region = ''
+        if 'province' in data and 'city' in data:
+            province = data.get('province', '')
+            city = data.get('city', '')
+            region = f"{province}{city}" if province and city else (province or city or '')
+        else:
+            region = data.get('region', '')
+        
         dealer = Dealer(
             user_id=user_id,
             dealer_name=data.get('dealer_name', ''),
             dealer_type=data.get('dealer_type', ''),
             brand=data.get('brand', ''),
             level=data.get('level', ''),
-            region=data.get('region', ''),
+            region=region,
             contact_name=data.get('contact_name', ''),
             contact_phone=data.get('contact_phone', ''),
             address=data.get('address', '')
@@ -377,8 +425,15 @@ def update_dealer_info(user_id):
         dealer.brand = data['brand']
     if 'level' in data:
         dealer.level = data['level']
-    if 'region' in data:
+    
+    # 处理 province 和 city，拼接成 region
+    if 'province' in data or 'city' in data:
+        province = data.get('province', '')
+        city = data.get('city', '')
+        dealer.region = f"{province}{city}" if province and city else (province or city or '')
+    elif 'region' in data:
         dealer.region = data['region']
+    
     if 'contact_name' in data:
         dealer.contact_name = data['contact_name']
     if 'contact_phone' in data:
@@ -610,7 +665,7 @@ def add_dealer():
             return jsonify({'error': '请求数据不能为空'}), 400
         
         # 检查必填字段
-        required_fields = ['username', 'password', 'dealer_name', 'dealer_type', 'brand', 'level', 'region', 'contact_name', 'contact_phone', 'address']
+        required_fields = ['username', 'password', 'dealer_name', 'dealer_type', 'brand', 'level', 'contact_name', 'contact_phone', 'address']
         for field in required_fields:
             if field not in data:
                 return jsonify({'error': f'{field}不能为空'}), 400
@@ -618,6 +673,15 @@ def add_dealer():
         # 检查用户名是否已存在
         if User.query.filter_by(username=data['username']).first():
             return jsonify({'error': '用户名已存在'}), 400
+        
+        # 处理 province 和 city，拼接成 region
+        region = ''
+        if 'province' in data and 'city' in data:
+            province = data.get('province', '')
+            city = data.get('city', '')
+            region = f"{province}{city}" if province and city else (province or city or '')
+        else:
+            region = data.get('region', '')
         
         # 创建用户
         user = User(
@@ -636,7 +700,7 @@ def add_dealer():
             dealer_type=data['dealer_type'],
             brand=data['brand'],
             level=data['level'],
-            region=data['region'],
+            region=region,
             contact_name=data['contact_name'],
             contact_phone=data['contact_phone'],
             address=data['address']
