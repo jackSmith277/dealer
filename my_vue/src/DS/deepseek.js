@@ -139,9 +139,9 @@ function buildSalesReportPrompt(cardData) {
 
   if (cardData.responseTime) {
     prompt += `## 响应时间分析
-- 成交响应时间: ${cardData.responseTime.success} 小时
-- 战败响应时间: ${cardData.responseTime.defeat} 小时
-- 平均响应时间: ${cardData.responseTime.average} 小时
+- 成交响应时间: ${cardData.responseTime.success} 分钟
+- 战败响应时间: ${cardData.responseTime.defeat} 分钟
+- 平均响应时间: ${cardData.responseTime.average} 分钟
 
 `;
   }
