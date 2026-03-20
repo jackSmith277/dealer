@@ -255,7 +255,7 @@
             </div>
           </div>
         </div>
-        <div class="policy-list">
+        <div class="policy-list" :class="{ 'expanded': showTimeControl }">
           <div v-if="loading" class="loading-container">
             <div class="loading-spinner"></div>
             <p class="loading-text">政策加载中...</p>
@@ -412,169 +412,102 @@
     </div>   
 
 
-    <!-- 政策关联网络图 -->
-    <div class="network-graph-card">
-      <div class="network-header">
-        <div class="network-title">
-          <i class="fas fa-project-diagram"></i>
-          <span>政策关联网络图</span>
-        </div>
-        <div class="network-controls">
-          <select v-model="networkLayout" class="network-select" @change="updateNetworkGraph">
-            <option value="force">力导向布局</option>
-            <option value="circular">环形布局</option>
-            <option value="radial">径向布局</option>
-          </select>
-          <button class="btn btn-sm" @click="resetNetworkGraph">
-            <i class="fas fa-redo"></i>
-            重置
-          </button>
-        </div>
-      </div>
-      
-      <div class="network-content">
-        <div class="network-container" ref="networkGraph"></div>
-        
-        <div class="network-legend">
-          <div class="legend-title">节点类型</div>
-          <div class="legend-items">
-            <div class="legend-item">
-              <span class="legend-node province"></span>
-              <span class="legend-label">省份节点</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-node category"></span>
-              <span class="legend-label">政策分类</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-node keyword"></span>
-              <span class="legend-label">关键词</span>
-            </div>
+    <!-- 政策关联网络图与智能搜索 -->
+    <div class="network-search-row">
+      <!-- 政策关联网络图 -->
+      <div class="network-graph-card">
+        <div class="network-header">
+          <div class="network-title">
+            <i class="fas fa-project-diagram"></i>
+            <span>政策关联网络图</span>
+          </div>
+          <div class="network-controls">
+            <select v-model="networkLayout" class="network-select" @change="updateNetworkGraph">
+              <option value="force">力导向布局</option>
+              <option value="circular">环形布局</option>
+              <option value="radial">径向布局</option>
+            </select>
+            <button class="btn btn-sm" @click="resetNetworkGraph">
+              <i class="fas fa-redo"></i>
+              重置
+            </button>
           </div>
         </div>
         
-        <div class="network-stats">
-          <div class="stat-item">
-            <span class="stat-value">{{ networkStats.nodes }}</span>
-            <span class="stat-label">节点数</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <span class="stat-value">{{ networkStats.links }}</span>
-            <span class="stat-label">关联数</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <span class="stat-value">{{ networkStats.density }}</span>
-            <span class="stat-label">网络密度</span>
-          </div>
-        </div>
-      </div>
-      
-      <div class="network-tooltip" v-if="selectedNode">
-        <div class="tooltip-header">
-          <i :class="getNodeIcon(selectedNode.type)"></i>
-          <span>{{ selectedNode.name }}</span>
-        </div>
-        <div class="tooltip-content">
-          <div class="tooltip-item">
-            <span class="tooltip-label">关联政策：</span>
-            <span class="tooltip-value">{{ selectedNode.policyCount }}项</span>
-          </div>
-          <div class="tooltip-item">
-            <span class="tooltip-label">关联节点：</span>
-            <span class="tooltip-value">{{ selectedNode.connections }}个</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 3D地理信息可视化 -->
-    <div class="geo3d-card">
-      <div class="geo3d-header">
-        <div class="geo3d-title">
-          <i class="fas fa-globe-asia"></i>
-          <span>3D地理信息可视化</span>
-        </div>
-        <div class="geo3d-controls">
-          <button class="btn btn-sm" :class="{ active: geo3dAutoRotate }" @click="toggleGeo3dRotate">
-            <i class="fas fa-sync-alt"></i>
-            自动旋转
-          </button>
-          <button class="btn btn-sm" @click="resetGeo3dView">
-            <i class="fas fa-home"></i>
-            重置视角
-          </button>
-          <select v-model="geo3dVisualType" class="geo3d-select" @change="updateGeo3dVisual">
-            <option value="density">政策密度</option>
-            <option value="terrain">地形展示</option>
-            <option value="heatmap">热力图</option>
-          </select>
-        </div>
-      </div>
-      
-      <div class="geo3d-content">
-        <div class="geo3d-container" ref="geo3dContainer"></div>
-        
-        <div class="geo3d-overlay">
-          <div class="overlay-section">
-            <h4 class="overlay-title">视角控制</h4>
-            <div class="view-controls">
-              <button class="view-btn" @click="setGeo3dView('top')">
-                <i class="fas fa-arrow-down"></i>
-                俯视
-              </button>
-              <button class="view-btn" @click="setGeo3dView('front')">
-                <i class="fas fa-arrow-right"></i>
-                正视
-              </button>
-              <button class="view-btn" @click="setGeo3dView('side')">
-                <i class="fas fa-arrow-up"></i>
-                侧视
-              </button>
+        <div class="network-content">
+          <div class="network-top-bar">
+            <div class="network-legend">
+              <div class="legend-title">节点类型</div>
+              <div class="legend-items">
+                <div class="legend-item">
+                  <span class="legend-node province"></span>
+                  <span class="legend-label">省份节点</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-node category"></span>
+                  <span class="legend-label">政策分类</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-node keyword"></span>
+                  <span class="legend-label">关键词</span>
+                </div>
+              </div>
             </div>
-          </div>
-          
-          <div class="overlay-section">
-            <h4 class="overlay-title">数据图例</h4>
-            <div class="geo3d-legend">
-              <div class="legend-bar">
-                <div class="bar-gradient"></div>
-                <div class="bar-labels">
-                  <span>低</span>
-                  <span>中</span>
-                  <span>高</span>
+            
+            <div class="network-stats">
+              <div class="stat-card">
+                <div class="stat-icon nodes">
+                  <i class="fas fa-circle"></i>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-value">{{ networkStats.nodes }}</span>
+                  <span class="stat-label">节点数</span>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon links">
+                  <i class="fas fa-link"></i>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-value">{{ networkStats.links }}</span>
+                  <span class="stat-label">关联数</span>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon density">
+                  <i class="fas fa-project-diagram"></i>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-value">{{ networkStats.density }}</span>
+                  <span class="stat-label">网络密度</span>
                 </div>
               </div>
             </div>
           </div>
           
-          <div class="overlay-section">
-            <h4 class="overlay-title">统计信息</h4>
-            <div class="geo3d-stats">
-              <div class="geo3d-stat">
-                <span class="stat-value">{{ geo3dStats.maxHeight }}</span>
-                <span class="stat-label">最高密度</span>
-              </div>
-              <div class="geo3d-stat">
-                <span class="stat-value">{{ geo3dStats.avgHeight }}</span>
-                <span class="stat-label">平均密度</span>
-              </div>
+          <div class="network-container" ref="networkGraph"></div>
+        </div>
+        
+        <div class="network-tooltip" v-if="selectedNode">
+          <div class="tooltip-header">
+            <i :class="getNodeIcon(selectedNode.type)"></i>
+            <span>{{ selectedNode.name }}</span>
+          </div>
+          <div class="tooltip-content">
+            <div class="tooltip-item">
+              <span class="tooltip-label">关联政策：</span>
+              <span class="tooltip-value">{{ selectedNode.policyCount }}项</span>
+            </div>
+            <div class="tooltip-item">
+              <span class="tooltip-label">关联节点：</span>
+              <span class="tooltip-value">{{ selectedNode.connections }}个</span>
             </div>
           </div>
         </div>
       </div>
-      
-      <div class="geo3d-info" v-if="geo3dHoverInfo">
-        <div class="info-province">{{ geo3dHoverInfo.name }}</div>
-        <div class="info-detail">
-          <span>政策数量: {{ geo3dHoverInfo.count }}项</span>
-        </div>
-      </div>
-    </div>
 
-    <!-- 智能搜索政策卡片 -->
-    <div class="smart-search-card">
+      <!-- 智能搜索政策卡片 -->
+      <div class="smart-search-card">
       <div class="search-card-header">
         <div class="search-card-title">
           <i class="fas fa-search"></i>
@@ -709,27 +642,37 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
 
     <!-- 图表区域 -->
     <div class="charts-section">
       <div class="chart-card trend-card">
         <div class="chart-header">
-          <h3 class="chart-title">政策发布趋势</h3>
+          <div class="chart-title">
+            <i class="fas fa-chart-line"></i>
+            <span >政策发布趋势</span>
+          </div>
           <p class="chart-subtitle">各月份政策发布数量分布</p>
         </div>
         <div ref="trendChart" class="chart-container"></div>
       </div>
       <div class="chart-card pie-card">
         <div class="chart-header">
-          <h3 class="chart-title">政策类型分布</h3>
+          <div class="chart-title">
+            <i class="fas fa-chart-pie"></i>
+            <span>政策类型分布</span>
+          </div>
           <p class="chart-subtitle">各类型政策占比情况</p>
         </div>
         <div ref="pieChart" class="chart-container"></div>
       </div>
       <div class="chart-card ranking-card">
         <div class="chart-header">
-          <h3 class="chart-title">政策热度排行榜</h3>
+          <div class="chart-title">
+            <i class="fas fa-fire"></i>
+            <span>政策热度排行榜</span>
+          </div>
           <p class="chart-subtitle">TOP 15 政策活跃省份</p>
         </div>
         <div class="ranking-list">
@@ -750,7 +693,10 @@
       </div>
       <div class="category-stats-card">
         <div class="chart-header">
-          <h3 class="chart-title">政策分类统计</h3>
+          <div class="chart-title">
+            <i class="fas fa-layer-group"></i>
+            <span>政策分类统计</span>
+          </div>
           <p class="chart-subtitle">各类型政策数量分布</p>
         </div>
         <div class="category-cards-grid">
@@ -927,27 +873,6 @@
           <div class="analysis-section full-width">
             <h3 class="section-title">高频关键词分布</h3>
             <div class="keywords-chart" ref="wordCloudChart"></div>
-          </div>
-          
-          <div class="analysis-section">
-            <h3 class="section-title">关键词排行</h3>
-            <div class="keywords-list">
-              <div 
-                v-for="(keyword, index) in topKeywords" 
-                :key="index"
-                class="keyword-item"
-              >
-                <span class="keyword-rank" :class="'rank-' + (index + 1)">{{ index + 1 }}</span>
-                <div class="keyword-info">
-                  <span class="keyword-text">{{ keyword.word }}</span>
-                  <span class="keyword-category">{{ keyword.category }}</span>
-                </div>
-                <div class="keyword-bar-container">
-                  <div class="keyword-bar" :style="{ width: (keyword.count / topKeywords[0].count * 100) + '%' }"></div>
-                </div>
-                <span class="keyword-count">{{ keyword.count.toFixed(1) }}</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -1192,6 +1117,7 @@ export default {
       topKeywords: [],
       policyTopics: [],
       policyHighlights: [],
+      resizeObserver: null,
       keywordStats: {},
       // 智能搜索相关数据
       smartSearchQuery: '',
@@ -1212,15 +1138,6 @@ export default {
       networkData: {
         nodes: [],
         links: []
-      },
-      // 3D地理信息可视化相关数据
-      geo3dChart: null,
-      geo3dAutoRotate: false,
-      geo3dVisualType: 'density',
-      geo3dHoverInfo: null,
-      geo3dStats: {
-        maxHeight: 0,
-        avgHeight: 0
       }
     }
   },
@@ -1232,8 +1149,27 @@ export default {
       this.initPieChart()
       this.updateTextAnalysis()
       this.initNetworkGraph()
-      this.initGeo3D()
     })
+    
+    this.resizeObserver = new ResizeObserver(() => {
+      this.handleResize()
+    })
+    
+    const chartContainers = [
+      this.$refs.chart,
+      this.$refs.trendChart,
+      this.$refs.pieChart,
+      this.$refs.wordCloudChart,
+      this.$refs.networkGraph,
+      this.$refs.comparisonBarChart,
+      this.$refs.comparisonPieChart
+    ].filter(el => el)
+    
+    chartContainers.forEach(el => {
+      this.resizeObserver.observe(el)
+    })
+    
+    window.addEventListener('resize', this.handleResize)
   },
   watch: {
     selectedComparisonItems(newVal) {
@@ -1266,9 +1202,13 @@ export default {
     if (this.networkChart) {
       this.networkChart.dispose()
     }
-    if (this.geo3dChart) {
-      this.geo3dChart.dispose()
+    
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect()
+      this.resizeObserver = null
     }
+    
+    window.removeEventListener('resize', this.handleResize)
     
     if (this.animationTimer) {
       clearInterval(this.animationTimer)
@@ -1576,7 +1516,7 @@ export default {
         },
         legend: {
           orient: 'vertical',
-          right: '1%',
+          right: '-10%',
           top: 'center',
           textStyle: {
             fontSize: 11
@@ -1966,6 +1906,18 @@ export default {
       if (this.pieChart) {
         this.pieChart.resize()
       }
+      if (this.comparisonBarChart) {
+        this.comparisonBarChart.resize()
+      }
+      if (this.comparisonPieChart) {
+        this.comparisonPieChart.resize()
+      }
+      if (this.wordCloudChart) {
+        this.wordCloudChart.resize()
+      }
+      if (this.networkChart) {
+        this.networkChart.resize()
+      }
     },
     
     handleSearchInput() {
@@ -2332,12 +2284,14 @@ export default {
           trigger: 'axis',
           axisPointer: {
             type: 'shadow'
-          }
+          },
+          formatter: '{b}: {c}项'
         },
         grid: {
           left: '3%',
           right: '4%',
           bottom: '3%',
+          top: '8%',
           containLabel: true
         },
         xAxis: {
@@ -2346,27 +2300,61 @@ export default {
           axisLabel: {
             interval: 0,
             rotate: 30,
-            fontSize: 11
+            fontSize: 11,
+            color: '#666'
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#e8e8e8'
+            }
+          },
+          axisTick: {
+            show: false
           }
         },
         yAxis: {
           type: 'value',
-          name: '政策数量'
+          name: '政策数量',
+          nameTextStyle: {
+            color: '#999',
+            fontSize: 11
+          },
+          axisLabel: {
+            color: '#666',
+            fontSize: 11
+          },
+          axisLine: {
+            show: false
+          },
+          axisTick: {
+            show: false
+          },
+          splitLine: {
+            lineStyle: {
+              color: '#f0f0f0'
+            }
+          }
         },
         series: [{
           name: '政策数量',
           type: 'bar',
-          data: data.map(d => d.value),
-          itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#3498db' },
-              { offset: 1, color: '#2980b9' }
-            ])
-          },
+          barWidth: '50%',
+          data: data.map(d => ({
+            value: d.value,
+            itemStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#1890ff' },
+                { offset: 1, color: '#69c0ff' }
+              ]),
+              borderRadius: [4, 4, 0, 0]
+            }
+          })),
           label: {
             show: true,
             position: 'top',
-            fontSize: 11
+            fontSize: 10,
+            color: '#666',
+            formatter: '{c}'
           }
         }]
       }
@@ -2395,17 +2383,18 @@ export default {
         },
         legend: {
           orient: 'vertical',
-          right: '5%',
+          right: '0%',
           top: 'center',
           textStyle: {
-            fontSize: 11
+            fontSize: 11,
+            color: '#666'
           }
         },
         series: [{
           name: '政策占比',
           type: 'pie',
-          radius: ['40%', '70%'],
-          center: ['40%', '50%'],
+          radius: ['45%', '70%'],
+          center: ['35%', '50%'],
           avoidLabelOverlap: false,
           label: {
             show: false
@@ -2413,14 +2402,15 @@ export default {
           emphasis: {
             label: {
               show: true,
-              fontSize: '13',
+              fontSize: 12,
               fontWeight: 'bold'
             }
           },
           labelLine: {
             show: false
           },
-          data: data
+          data: data,
+          color: ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1']
         }]
       }
       
@@ -2586,6 +2576,9 @@ export default {
       
       this.$nextTick(() => {
         this.initWordCloud()
+        if (this.networkChart) {
+          this.initNetworkGraph()
+        }
       })
     },
     
@@ -2858,12 +2851,14 @@ export default {
           trigger: 'axis',
           axisPointer: {
             type: 'shadow'
-          }
+          },
+          formatter: '{b}: {c}次'
         },
         grid: {
           left: '3%',
           right: '4%',
           bottom: '3%',
+          top: '8%',
           containLabel: true
         },
         xAxis: {
@@ -2872,29 +2867,61 @@ export default {
           axisLabel: {
             interval: 0,
             rotate: 30,
-            fontSize: 11
+            fontSize: 11,
+            color: '#666'
+          },
+          axisLine: {
+            lineStyle: {
+              color: '#e8e8e8'
+            }
+          },
+          axisTick: {
+            show: false
           }
         },
         yAxis: {
           type: 'value',
-          name: '出现次数'
+          name: '出现次数',
+          nameTextStyle: {
+            color: '#999',
+            fontSize: 11
+          },
+          axisLabel: {
+            color: '#666',
+            fontSize: 11
+          },
+          axisLine: {
+            show: false
+          },
+          axisTick: {
+            show: false
+          },
+          splitLine: {
+            lineStyle: {
+              color: '#f0f0f0'
+            }
+          }
         },
         series: [{
           name: '关键词频次',
           type: 'bar',
+          barWidth: '50%',
           data: data.map((item, index) => ({
-            value: item.count,
+            value: Math.round(item.count),
             itemStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: index < 3 ? '#f39c12' : '#3498db' },
-                { offset: 1, color: index < 3 ? '#e67e22' : '#2980b9' }
-              ])
+                { offset: 0, color: '#1890ff' },
+                { offset: 1, color: '#69c0ff' }
+              ]),
+              borderRadius: [4, 4, 0, 0]
             }
           })),
           label: {
             show: true,
             position: 'top',
-            fontSize: 11
+            fontSize: 10,
+            color: '#666',
+            formatter: '{c}'
           }
         }]
       }
@@ -2961,7 +2988,7 @@ export default {
       
       const total = this.policyData.length || 1
       topics.forEach(topic => {
-        topic.percentage = ((topic.count / total) * 100).toFixed(1)
+        topic.percentage = Math.round((topic.count / total) * 100)
       })
       
       this.policyTopics = topics.sort((a, b) => b.count - a.count)
@@ -3116,12 +3143,14 @@ export default {
       
       this.smartSearchResults = results
       this.searchCurrentPage = 1
+      this.highlightNetworkNodes(this.smartSearchQuery)
     },
     
     clearSmartSearch() {
       this.smartSearchQuery = ''
       this.smartSearchResults = []
       this.searchCurrentPage = 1
+      this.highlightNetworkNodes('')
     },
     
     applySuggestion(suggestion) {
@@ -3157,71 +3186,9 @@ export default {
         return
       }
       
-      const seriesConfig = {
-        type: 'graph',
-        layout: this.networkLayout,
-        symbolSize: 30,
-        roam: true,
-        draggable: true,
-        label: {
-          show: true,
-          position: 'right',
-          fontSize: 11,
-          color: '#333',
-          formatter: '{b}',
-          distance: 5
-        },
-        edgeSymbol: ['none', 'arrow'],
-        edgeSymbolSize: [2, 6],
-        data: graphData.nodes,
-        links: graphData.links,
-        lineStyle: {
-          color: '#d9d9d9',
-          curveness: 0.1,
-          opacity: 0.4,
-          width: 1
-        },
-        emphasis: {
-          focus: 'adjacency',
-          itemStyle: {
-            shadowBlur: 8,
-            shadowColor: 'rgba(0, 0, 0, 0.2)'
-          },
-          lineStyle: {
-            width: 2,
-            color: '#3498db'
-          }
-        },
-        categories: [
-          { name: 'province', itemStyle: { color: '#3498db' } },
-          { name: 'category', itemStyle: { color: '#e74c3c' } },
-          { name: 'keyword', itemStyle: { color: '#2ecc71' } },
-          { name: 'center', itemStyle: { color: '#f39c12' } }
-        ]
-      }
-      
-      if (this.networkLayout === 'force') {
-        seriesConfig.force = {
-          repulsion: 200,
-          edgeLength: [80, 150],
-          gravity: 0.05,
-          friction: 0.6
-        }
-      } else if (this.networkLayout === 'circular') {
-        seriesConfig.circular = {
-          rotateLabel: true
-        }
-      } else if (this.networkLayout === 'radial') {
-        seriesConfig.radial = {
-          rotateLabel: true
-        }
-        seriesConfig.force = {
-          repulsion: 100,
-          edgeLength: 50,
-          gravity: 0.1
-        }
-      }
-      
+
+      const echartLayout = this.networkLayout === 'radial' ? 'force' : this.networkLayout
+
       const option = {
         tooltip: {
           trigger: 'item',
@@ -3242,18 +3209,89 @@ export default {
             return null
           }
         },
-        series: [seriesConfig]
+        series: [{
+          type: 'graph',
+          layout:echartLayout,
+          symbolSize: 30,
+          roam: true,
+          draggable: true,
+          label: {
+            show: true,
+            position: 'right',
+            fontSize: 11,
+            color: '#333',
+            formatter: '{b}',
+            distance: 5
+          },
+          edgeSymbol: ['none', 'arrow'],
+          edgeSymbolSize: [2, 6],
+          data: graphData.nodes,
+          links: graphData.links,
+          lineStyle: {
+            color: '#d9d9d9',
+            curveness: 0.1,
+            opacity: 0.4,
+            width: 1
+          },
+          emphasis: {
+            focus: 'adjacency',
+            itemStyle: {
+              shadowBlur: 8,
+              shadowColor: 'rgba(0, 0, 0, 0.2)'
+            },
+            lineStyle: {
+              width: 2,
+              color: '#3498db'
+            }
+          },
+          categories: [
+            { name: 'province', itemStyle: { color: '#3498db' } },
+            { name: 'category', itemStyle: { color: '#e74c3c' } },
+            { name: 'keyword', itemStyle: { color: '#2ecc71' } },
+            { name: 'center', itemStyle: { color: '#f39c12' } }
+          ],
+          force: {
+            repulsion: 300,
+            edgeLength: [80, 150],
+            gravity: 0.08,
+            friction: 0.6
+          },
+          circular: {
+            rotateLabel: true
+          },
+          radial: {
+            rotateLabel: true,
+            root: '政策网络'
+          }
+        }]
       }
       
       this.networkChart.setOption(option)
       
       this.networkChart.on('click', (params) => {
         if (params.dataType === 'node') {
-          this.selectedNode = {
-            name: params.name,
-            type: params.data.nodeType,
-            policyCount: params.data.policyCount || 0,
-            connections: params.data.connections || 0
+          if (this.selectedNode && this.selectedNode.name === params.name) {
+            this.selectedNode = null
+            this.smartSearchQuery = ''
+            this.smartSearchResults = []
+            this.highlightNetworkNodes('')
+          } else {
+            this.selectedNode = {
+              name: params.name,
+              type: params.data.nodeType,
+              policyCount: params.data.policyCount || 0,
+              connections: params.data.connections || 0
+            }
+            if (params.data.nodeType === 'keyword' || params.data.nodeType === 'category' || params.data.nodeType === 'province') {
+              this.smartSearchQuery = params.name
+              this.handleSmartSearch()
+              this.$nextTick(() => {
+                const searchCard = document.querySelector('.smart-search-card')
+                if (searchCard) {
+                  searchCard.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+              })
+            }
           }
         }
       })
@@ -3279,14 +3317,8 @@ export default {
           policyCount: this.policyData.length,
           category: 3,
           value: this.policyData.length,
-          symbolSize: 50,
           itemStyle: {
             color: categoryColors.center
-          },
-          label: {
-            show: true,
-            fontSize: 14,
-            fontWeight: 'bold'
           }
         })
         nodeMap.set('center', 0)
@@ -3344,12 +3376,12 @@ export default {
       })
       
       if (this.networkLayout === 'radial') {
-        const centerIndex = 0
-        nodes.forEach((node, index) => {
-          if (index !== centerIndex) {
+        nodes.forEach(node => {
+          if (node.id !== 'center') {
             links.push({
-              source: centerIndex,
-              target: index,
+              id: `center-${node.id}`,
+              source: 'center',
+              target: node.id,
               value: 1
             })
           }
@@ -3377,7 +3409,8 @@ export default {
           }
         })
       }
-      
+
+
       const totalPossibleLinks = nodes.length * (nodes.length - 1) / 2
       const density = totalPossibleLinks > 0 ? (links.length / totalPossibleLinks * 100).toFixed(2) : 0
       
@@ -3414,6 +3447,59 @@ export default {
       return icons[type] || 'fas fa-circle'
     },
     
+    highlightNetworkNodes(query) {
+      if (!this.networkChart) return
+      
+      if (!query || !query.trim()) {
+        const currentOption = this.networkChart.getOption()
+        const nodes = currentOption.series[0].data
+        
+        const updatedNodes = nodes.map(node => ({
+          ...node,
+          itemStyle: {
+            ...node.itemStyle,
+            opacity: 1
+          },
+          label: {
+            ...node.label,
+            opacity: 1
+          }
+        }))
+        
+        this.networkChart.setOption({
+          series: [{
+            data: updatedNodes
+          }]
+        })
+        return
+      }
+      
+      const currentOption = this.networkChart.getOption()
+      const nodes = currentOption.series[0].data
+      const queryLower = query.toLowerCase().trim()
+      
+      const updatedNodes = nodes.map(node => {
+        const isMatch = node.name.toLowerCase().includes(queryLower)
+        return {
+          ...node,
+          itemStyle: {
+            ...node.itemStyle,
+            opacity: isMatch ? 1 : 0.2
+          },
+          label: {
+            ...node.label,
+            opacity: isMatch ? 1 : 0.3
+          }
+        }
+      })
+      
+      this.networkChart.setOption({
+        series: [{
+          data: updatedNodes
+        }]
+      })
+    },
+    
     updateNetworkGraph() {
       this.initNetworkGraph()
     },
@@ -3422,261 +3508,6 @@ export default {
       this.networkLayout = 'force'
       this.selectedNode = null
       this.initNetworkGraph()
-    },
-    
-    initGeo3D() {
-      if (!this.$refs.geo3dContainer) return
-      
-      if (this.geo3dChart) {
-        this.geo3dChart.dispose()
-      }
-      
-      this.geo3dChart = echarts.init(this.$refs.geo3dContainer)
-      
-      const geo3dData = this.buildGeo3DData()
-      
-      if (!geo3dData || geo3dData.length === 0) {
-        console.warn('No 3D geo data available')
-        return
-      }
-      
-      const maxValue = geo3dData.length > 0 ? Math.max(...geo3dData.map(d => d.value[2])) : 100
-      
-      const option = {
-        tooltip: {
-          trigger: 'item',
-          formatter: (params) => {
-            const value = Array.isArray(params.value) ? params.value[2] : params.value
-            return `<strong>${params.name}</strong><br/>政策数量: ${value}项`
-          }
-        },
-        visualMap: {
-          min: 0,
-          max: maxValue,
-          text: ['高', '低'],
-          calculable: true,
-          inRange: {
-            color: ['#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695']
-          },
-          left: 20,
-          bottom: 20
-        },
-        geo3D: {
-          map: 'china',
-          roam: true,
-          regionHeight: 2,
-          itemStyle: {
-            areaColor: '#f5f7fa',
-            opacity: 1,
-            borderWidth: 1,
-            borderColor: '#ccc'
-          },
-          emphasis: {
-            itemStyle: {
-              areaColor: '#3498db'
-            },
-            label: {
-              show: true,
-              textStyle: {
-                fontSize: 14,
-                color: '#333'
-              }
-            }
-          },
-          light: {
-            main: {
-              intensity: 1.2,
-              shadow: true,
-              shadowQuality: 'high',
-              alpha: 30,
-              beta: 40
-            },
-            ambient: {
-              intensity: 0.3
-            }
-          },
-          viewControl: {
-            distance: 100,
-            alpha: 40,
-            beta: 0,
-            autoRotate: this.geo3dAutoRotate,
-            autoRotateSpeed: 5
-          },
-          shading: 'realistic',
-          realisticMaterial: {
-            roughness: 0.5,
-            metalness: 0
-          }
-        },
-        series: [{
-          type: 'bar3D',
-          coordinateSystem: 'geo3D',
-          data: geo3dData,
-          shading: 'realistic',
-          barSize: 1.5,
-          bevelSize: 0.3,
-          minHeight: 0.2,
-          silent: false,
-          itemStyle: {
-            color: (params) => {
-              const value = params.value[2]
-              const max = Math.max(...geo3dData.map(d => d.value[2]))
-              const ratio = value / max
-              if (ratio > 0.7) return '#e74c3c'
-              if (ratio > 0.4) return '#f39c12'
-              return '#3498db'
-            }
-          },
-          emphasis: {
-            itemStyle: {
-              color: '#e74c3c'
-            }
-          },
-          label: {
-            show: false,
-            formatter: (params) => `${params.name}: ${params.value[2]}`,
-            position: 'top',
-            textStyle: {
-              fontSize: 12,
-              color: '#333'
-            }
-          }
-        }]
-      }
-      
-      this.geo3dChart.setOption(option)
-      
-      this.geo3dChart.on('mouseover', (params) => {
-        if (params.componentType === 'series') {
-          this.geo3dHoverInfo = {
-            name: params.name,
-            count: params.value[2]
-          }
-        }
-      })
-      
-      this.geo3dChart.on('mouseout', () => {
-        this.geo3dHoverInfo = null
-      })
-      
-      this.updateGeo3DStats(geo3dData)
-    },
-    
-    buildGeo3DData() {
-      const provinceCounts = this.getProvinceCounts()
-      const provinceCoords = {
-        '北京': [116.46, 39.92],
-        '天津': [117.2, 39.13],
-        '河北': [114.48, 38.03],
-        '山西': [112.53, 37.87],
-        '内蒙古': [111.65, 40.82],
-        '辽宁': [123.38, 41.8],
-        '吉林': [126.57, 43.87],
-        '黑龙江': [126.63, 45.75],
-        '上海': [121.48, 31.22],
-        '江苏': [118.78, 32.04],
-        '浙江': [120.19, 30.26],
-        '安徽': [117.27, 31.86],
-        '福建': [119.3, 26.08],
-        '江西': [115.89, 28.68],
-        '山东': [117.0, 36.65],
-        '河南': [113.65, 34.76],
-        '湖北': [114.31, 30.52],
-        '湖南': [112.98, 28.21],
-        '广东': [113.23, 23.16],
-        '广西': [108.33, 22.84],
-        '海南': [110.35, 20.02],
-        '重庆': [106.54, 29.59],
-        '四川': [104.06, 30.67],
-        '贵州': [106.71, 26.57],
-        '云南': [102.73, 25.04],
-        '西藏': [91.11, 29.97],
-        '陕西': [108.95, 34.27],
-        '甘肃': [103.73, 36.03],
-        '青海': [101.74, 36.56],
-        '宁夏': [106.27, 38.47],
-        '新疆': [87.68, 43.77]
-      }
-      
-      const data = []
-      Object.entries(provinceCounts).forEach(([province, count]) => {
-        const coords = provinceCoords[province]
-        if (coords) {
-          data.push({
-            name: province,
-            value: [coords[0], coords[1], count]
-          })
-        }
-      })
-      
-      return data
-    },
-    
-    updateGeo3DStats(data) {
-      if (data.length === 0) return
-      
-      const values = data.map(d => d.value[2])
-      const max = Math.max(...values)
-      const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)
-      
-      this.geo3dStats = {
-        maxHeight: max,
-        avgHeight: avg
-      }
-    },
-    
-    toggleGeo3dRotate() {
-      this.geo3dAutoRotate = !this.geo3dAutoRotate
-      if (this.geo3dChart) {
-        this.geo3dChart.setOption({
-          geo3D: {
-            viewControl: {
-              autoRotate: this.geo3dAutoRotate
-            }
-          }
-        })
-      }
-    },
-    
-    resetGeo3dView() {
-      if (this.geo3dChart) {
-        this.geo3dChart.setOption({
-          geo3D: {
-            viewControl: {
-              distance: 100,
-              alpha: 40,
-              beta: 0
-            }
-          }
-        })
-      }
-    },
-    
-    setGeo3dView(view) {
-      if (!this.geo3dChart) return
-      
-      const views = {
-        top: { alpha: 90, beta: 0, distance: 80 },
-        front: { alpha: 20, beta: 0, distance: 120 },
-        side: { alpha: 20, beta: 90, distance: 120 }
-      }
-      
-      const config = views[view]
-      if (config) {
-        this.geo3dChart.setOption({
-          geo3D: {
-            viewControl: {
-              alpha: config.alpha,
-              beta: config.beta,
-              distance: config.distance
-            }
-          }
-        })
-      }
-    },
-    
-    updateGeo3dVisual() {
-      this.initGeo3D()
     }
   }
 }
@@ -3778,6 +3609,7 @@ export default {
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  border: 1px solid #e8e8e8;
 }
 
 .trend-card {
@@ -3804,22 +3636,40 @@ export default {
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  border: 1px solid #e8e8e8;
 }
 
 .chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 16px 20px;
   border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
 }
 
 .chart-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
   margin: 0;
+}
+
+.chart-title span {
   font-size: 16px;
   font-weight: 600;
   color: #333;
 }
 
+.chart-title i {
+  color: #3498db;
+  font-size: 18px;
+}
+
 .chart-subtitle {
-  margin: 4px 0 0 0;
   font-size: 12px;
   color: #999;
 }
@@ -4185,6 +4035,10 @@ export default {
 .policy-list {
   max-height: 600px;
   overflow-y: auto;
+}
+
+.policy-list.expanded {
+  max-height: 880px;
 }
 
 .loading-container,
@@ -5482,9 +5336,7 @@ export default {
 
 /* 关键词分析样式 */
 .keywords-analysis {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  display: block;
 }
 
 .analysis-section {
@@ -5506,82 +5358,7 @@ export default {
 }
 
 .keywords-chart {
-  height: 300px;
-}
-
-.keywords-list {
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.keyword-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.keyword-item:last-child {
-  border-bottom: none;
-}
-
-.keyword-rank {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #999;
-  background: #f0f0f0;
-  flex-shrink: 0;
-}
-
-.keyword-rank.rank-1 {
-  background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
-  color: white;
-}
-
-.keyword-rank.rank-2 {
-  background: linear-gradient(135deg, #c0c0c0 0%, #a8a8a8 100%);
-  color: white;
-}
-
-.keyword-rank.rank-3 {
-  background: linear-gradient(135deg, #cd7f32 0%, #b8860b 100%);
-  color: white;
-}
-
-.keyword-text {
-  font-size: 13px;
-  font-weight: 500;
-  color: #333;
-  min-width: 60px;
-}
-
-.keyword-bar-container {
-  flex: 1;
-  height: 6px;
-  background: #e0e0e0;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.keyword-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #3498db 0%, #2980b9 100%);
-  border-radius: 3px;
-  transition: width 0.3s;
-}
-
-.keyword-count {
-  font-size: 12px;
-  color: #666;
-  min-width: 40px;
-  text-align: right;
+  height: 350px;
 }
 
 /* 主题分析样式 */
@@ -5797,6 +5574,15 @@ export default {
   .topics-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  
+  .network-search-row {
+    flex-direction: column;
+  }
+  
+  .network-search-row .smart-search-card {
+    width: 100%;
+    max-height: none;
+  }
 }
 
 @media (max-width: 768px) {
@@ -5827,7 +5613,6 @@ export default {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  margin-bottom: 20px;
   overflow: hidden;
   border: 1px solid #e8e8e8;
 }
@@ -6239,7 +6024,7 @@ export default {
 
 @media (max-width: 768px) {
   .smart-search-card {
-    margin-bottom: 16px;
+    margin-bottom: 0;
   }
   
   .search-card-header {
@@ -6270,6 +6055,36 @@ export default {
     padding: 5px 10px;
     font-size: 11px;
   }
+}
+
+/* 政策关联网络图与智能搜索同行布局 */
+.network-search-row {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+  margin-bottom: 30px;
+  align-items: stretch;
+}
+
+.network-search-row .network-graph-card {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.network-search-row .smart-search-card {
+  width: 400px;
+  flex-shrink: 0;
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 864px;
+  max-height: 864px;
+}
+
+.network-search-row .smart-search-card .search-card-body {
+  flex: 1;
+  overflow-y: auto;
 }
 
 /* 政策关联网络图样式 */
@@ -6329,13 +6144,20 @@ export default {
 
 .network-content {
   padding: 16px;
-  display: grid;
-  grid-template-columns: 1fr 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.network-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 16px;
 }
 
 .network-container {
-  height: 500px;
+  height: 700px;
   background: #fafafa;
   border-radius: 6px;
   border: 1px solid #e8e8e8;
@@ -6343,21 +6165,20 @@ export default {
 
 .network-legend {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 16px;
 }
 
 .legend-title {
   font-size: 12px;
   font-weight: 500;
   color: #333;
-  margin-bottom: 6px;
 }
 
 .legend-items {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  gap: 16px;
 }
 
 .legend-item {
@@ -6390,32 +6211,57 @@ export default {
 }
 
 .network-stats {
-  background: #fafafa;
-  border-radius: 6px;
-  padding: 12px 16px;
-  border: 1px solid #e8e8e8;
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  gap: 12px;
 }
 
-.network-stats .stat-item {
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  padding: 10px 14px;
+  min-width: 120px;
+}
+
+.stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.stat-icon.nodes {
+  background: rgba(52, 152, 219, 0.1);
+  color: #3498db;
+}
+
+.stat-icon.links {
+  background: rgba(46, 204, 113, 0.1);
+  color: #2ecc71;
+}
+
+.stat-icon.density {
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+}
+
+.stat-info {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.network-stats .stat-divider {
-  width: 1px;
-  height: 32px;
-  background: #e8e8e8;
+  gap: 2px;
 }
 
 .network-stats .stat-value {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  color: #3498db;
+  color: #333;
 }
 
 .network-stats .stat-label {
@@ -6472,241 +6318,35 @@ export default {
   font-weight: 500;
 }
 
-/* 3D地理信息可视化样式 */
-.geo3d-card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  margin-top: 20px;
-  overflow: hidden;
-  border: 1px solid #e8e8e8;
-}
-
-.geo3d-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 18px;
-  border-bottom: 1px solid #f0f0f0;
-  background: #fafafa;
-}
-
-.geo3d-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 500;
-  color: #333;
-}
-
-.geo3d-title i {
-  color: #3498db;
-  font-size: 16px;
-}
-
-.geo3d-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.geo3d-select {
-  padding: 5px 10px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #333;
-  background: white;
-  cursor: pointer;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.geo3d-select:focus {
-  border-color: #3498db;
-}
-
-.geo3d-content {
-  position: relative;
-  padding: 16px;
-}
-
-.geo3d-container {
-  height: 480px;
-  background: #fafafa;
-  border-radius: 6px;
-  border: 1px solid #e8e8e8;
-}
-
-.geo3d-overlay {
-  position: absolute;
-  top: 26px;
-  left: 26px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  pointer-events: none;
-}
-
-.overlay-section {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 6px;
-  padding: 10px 14px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e8e8e8;
-  pointer-events: auto;
-}
-
-.overlay-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 8px;
-}
-
-.view-controls {
-  display: flex;
-  gap: 6px;
-}
-
-.view-btn {
-  padding: 5px 10px;
-  background: white;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 11px;
-  color: #666;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.2s;
-}
-
-.view-btn:hover {
-  border-color: #3498db;
-  color: #3498db;
-}
-
-.geo3d-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.legend-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.bar-gradient {
-  height: 12px;
-  background: linear-gradient(to right, #e0f3f8, #abd9e9, #74add1, #4575b4, #313695);
-  border-radius: 6px;
-}
-
-.bar-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: #999;
-}
-
-.geo3d-stats {
-  display: flex;
-  gap: 16px;
-}
-
-.geo3d-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.geo3d-stat .stat-value {
-  font-size: 18px;
-  font-weight: 600;
-  color: #16a085;
-}
-
-.geo3d-stat .stat-label {
-  font-size: 11px;
-  color: #999;
-  margin-top: 2px;
-}
-
-.geo3d-info {
-  position: absolute;
-  bottom: 26px;
-  right: 26px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 6px;
-  padding: 10px 14px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e8e8e8;
-  min-width: 140px;
-}
-
-.info-province {
-  font-size: 13px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 4px;
-}
-
-.info-detail {
-  font-size: 11px;
-  color: #666;
-}
-
 @media (max-width: 768px) {
-  .network-content {
-    grid-template-columns: 1fr;
+  .network-top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
   
   .network-container {
-    height: 400px;
+    height: 450px;
   }
   
   .network-legend {
-    flex-direction: row;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
   }
   
   .network-stats {
-    padding: 10px 12px;
+    gap: 8px;
   }
   
-  .network-stats .stat-divider {
-    height: 28px;
-  }
-  
-  .geo3d-container {
-    height: 400px;
-  }
-  
-  .geo3d-overlay {
-    top: 22px;
-    left: 22px;
-    right: 22px;
-  }
-  
-  .overlay-section {
+  .stat-card {
     padding: 8px 10px;
+    min-width: 100px;
   }
   
-  .view-controls {
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  
-  .geo3d-info {
-    bottom: 22px;
-    right: 22px;
-    left: 22px;
+  .stat-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
   }
 }
 </style>
