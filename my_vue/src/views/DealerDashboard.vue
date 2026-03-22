@@ -373,7 +373,9 @@ export default {
       showReportDropdown: false,
       // 报告模态框状态
       showReportModal: false,
-      reportCardData: {}
+      reportCardData: {},
+      // ResizeObserver实例
+      resizeObserver: null
     }
   },
   computed: {
@@ -478,6 +480,32 @@ export default {
       this.initCharts()
       this.renderCharts()
     })
+    
+    this.resizeObserver = new ResizeObserver(() => {
+      this.handleResize()
+    })
+    
+    const chartContainers = [
+      this.$refs.trendChart,
+      this.$refs.funnelChart,
+      this.$refs.rateChart,
+      this.$refs.responseTimeChart,
+      this.$refs.policyChart,
+      this.$refs.gsevChart
+    ].filter(el => el)
+    
+    chartContainers.forEach(el => {
+      this.resizeObserver.observe(el)
+    })
+    
+    if (Array.isArray(this.$refs.reviewCharts)) {
+      this.$refs.reviewCharts.forEach(el => {
+        if (el) {
+          this.resizeObserver.observe(el)
+        }
+      })
+    }
+    
     window.addEventListener('resize', this.handleResize)
   },
   watch: {
@@ -488,6 +516,11 @@ export default {
     },
   },
   beforeDestroy() {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect()
+      this.resizeObserver = null
+    }
+    
     window.removeEventListener('resize', this.handleResize)
     document.removeEventListener('click', this.closeExportDropdown)
     document.removeEventListener('click', this.closeReportDropdown)

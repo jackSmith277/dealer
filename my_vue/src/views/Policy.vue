@@ -135,7 +135,7 @@
                   @input="updateTimeMap"
                 />
                 <div class="time-slider-track">
-                  <div class="time-slider-progress" :style="{ width: ((currentTimeIndex + 1) / timePoints.length * 100) + '%' }"></div>
+                  <div class="time-slider-progress" :style="{ width: (timePoints.length > 1 ? (currentTimeIndex / (timePoints.length - 1) * 100) : 0) + '%' }"></div>
                 </div>
                 <div class="time-marks">
                   <div 
@@ -143,7 +143,7 @@
                     :key="index"
                     class="time-mark"
                     :class="{ active: currentTimeIndex >= getTimeIndex(point) }"
-                    :style="{ left: (getTimeIndex(point) / (timePoints.length - 1) * 100) + '%' }"
+                    :style="{ left: (timePoints.length > 1 ? (getTimeIndex(point) / (timePoints.length - 1) * 100) : 0) + '%' }"
                     :title="point"
                   >
                     <span class="mark-label">{{ point }}</span>
@@ -4692,7 +4692,7 @@ export default {
 /* 时间滑块 */
 .time-slider-container {
   position: relative;
-  padding: 8px 0 24px;
+  padding: 8px 0 48px;
 }
 
 .time-slider {
@@ -4719,7 +4719,7 @@ export default {
   height: 100%;
   background: #3498db;
   border-radius: 2px;
-  transition: width 0.3s ease;
+  transition: width 0.15s ease;
 }
 
 .time-marks {
@@ -4743,7 +4743,6 @@ export default {
   height: 8px;
   border-radius: 50%;
   background: #d9d9d9;
-  margin-bottom: 4px;
   transition: all 0.2s;
 }
 
@@ -4753,12 +4752,20 @@ export default {
 }
 
 .mark-label {
+  position: absolute;
+  top: 16px;
   font-size: 10px;
   color: #999;
   white-space: nowrap;
-  transform: rotate(-45deg);
-  transform-origin: left center;
-  margin-left: 4px;
+  transform: translateX(-50%);
+}
+
+.time-mark:first-child .mark-label {
+  transform: translateX(10%);
+}
+
+.time-mark:last-child .mark-label {
+  transform: translateX(-40%);
 }
 
 .time-mark.active .mark-label {

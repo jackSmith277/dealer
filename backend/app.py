@@ -735,17 +735,52 @@ def get_policies():
 def get_comments():
     try:
         csv_path = os.path.join(os.path.dirname(__file__), '试驾评价.csv')
-        df = pd.read_csv(csv_path, encoding='gbk')
+        
+        df = None
+        encodings = ['gbk', 'utf-8', 'gb2312', 'gb18030', 'utf-8-sig']
+        last_error = None
+        
+        for encoding in encodings:
+            try:
+                df = pd.read_csv(csv_path, encoding=encoding)
+                print(f'成功使用 {encoding} 编码读取CSV文件')
+                break
+            except Exception as enc_err:
+                last_error = enc_err
+                continue
+        
+        if df is None:
+            print(f'所有编码方式都失败，最后错误: {str(last_error)}')
+            return jsonify({'error': f'读取CSV文件失败: {str(last_error)}'}), 500
         
         comments = []
-        if '评价内容' in df.columns:
-            for content in df['评价内容']:
+        if '评价内容' in df.columns and '综合得分' in df.columns:
+            for idx, row in df.iterrows():
+                content = row.get('评价内容')
+                score = row.get('综合得分')
+                
                 if pd.notna(content) and str(content).strip():
-                    comments.append(str(content).strip())
+                    score_value = float(score) if pd.notna(score) else 3.0
+                    
+                    if score_value > 3:
+                        sentiment = 'positive'
+                    elif score_value < 3:
+                        sentiment = 'negative'
+                    else:
+                        sentiment = 'neutral'
+                    
+                    comments.append({
+                        'content': str(content).strip(),
+                        'score': score_value,
+                        'sentiment': sentiment
+                    })
         
+        print(f'成功读取 {len(comments)} 条评价')
         return jsonify(comments), 200
     except Exception as e:
         print(f'获取试驾评价失败: {str(e)}')
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'获取失败: {str(e)}'}), 500
 
 # 保存分析报告API
