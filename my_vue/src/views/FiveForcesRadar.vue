@@ -29,12 +29,9 @@
         <div id="aleftboxtmidd" class="aleftboxtmiddcont">
           <div class="selector-group">
             <div class="selector">
-              <label>选择经销商</label>
-              <select id="dealerSelect" v-model="selectedCode">
-                <option value="">全部经销商</option>
-                <option v-for="dealer in dealers" :key="dealer['经销商代码']" :value="dealer['经销商代码']">
-                  {{ dealer['经销商代码'] }} - {{ dealer['省份'] || '未知地区' }}
-                </option>
+              <label>选择年份</label>
+              <select v-model="selectedYear">
+                <option v-for="year in availableYears" :key="year" :value="year">{{ year }}年</option>
               </select>
             </div>
             <div class="selector">
@@ -46,18 +43,14 @@
                 </option>
               </select>
             </div>
-            <div class="selector manual">
-              <div class="manual-row">
-                <input v-model="inputCode" placeholder="经销商代码" class="input" @keyup.enter="applyManualDealer" />
-                <input v-model="inputProvince" placeholder="省份（可选）" class="input" @keyup.enter="applyManualDealer" />
-                <button class="btn" @click="applyManualDealer">应用</button>
-              </div>
-              <p v-if="currentDealer['经销商代码']" class="current-tip">
-                当前：{{ currentDealer['经销商代码'] }}（{{ currentDealer['省份'] || '未知省份' }}）
-              </p>
-              <p v-if="errorMessage" class="error-tip">
-                {{ errorMessage }}
-              </p>
+            <div class="selector dealer-selector-wrapper">
+              <label>选择经销商</label>
+              <DealerSelector 
+                :dealers="dealers" 
+                v-model="selectedCode"
+                :errorMessage="errorMessage"
+                @apply-manual="onApplyManualDealer"
+              />
             </div>
           </div>
         </div>
@@ -371,9 +364,9 @@
 
 <script>
 import * as echarts from 'echarts'
-import fiveForcesData from '@/assets/fiveForcesData.json'
+import axios from 'axios'
+import DealerSelector from '@/components/DealerSelector.vue'
 
-// 雷达图顺序：1. 服务力 2. 转化力 3. 经营力 4. 传播获客力 5. 体验力
 const forces = [
   { key: '服务力', hint: '提升交付、售后与口碑' },
   { key: '转化力', hint: '提升成交率与销售过程效率' },
@@ -384,13 +377,16 @@ const forces = [
 
 export default {
   name: 'FiveForcesRadar',
+  components: {
+    DealerSelector
+  },
   data() {
     return {
-      dealers: fiveForcesData || [],
-      selectedCode: fiveForcesData?.[0]?.['经销商代码'] || '',
+      dealers: [],
+      selectedCode: '',
+      selectedYear: 2024,
       selectedMonth: '',
-      inputCode: '',
-      inputProvince: '',
+      availableYears: [],
       errorMessage: '',
       orderedRadarChart: null,
       trendChart: null,
@@ -561,6 +557,7 @@ export default {
     },
   },
   mounted() {
+    this.loadAvailableYears()
     this.initCharts()
     window.addEventListener('resize', this.handleResize)
   },
@@ -570,6 +567,9 @@ export default {
     },
     selectedMonth() {
       this.updateCharts()
+    },
+    selectedYear() {
+      this.loadRadarData()
     },
         activeTab(newTab) {
       this.$nextTick(() => {
@@ -626,6 +626,37 @@ export default {
     this.forceCompareChart && this.forceCompareChart.dispose()
   },
   methods: {
+    async loadAvailableYears() {
+      try {
+        const response = await axios.get('http://localhost:5000/api/five-forces/years')
+        if (response.data.success) {
+          this.availableYears = response.data.data
+          if (this.availableYears.length > 0) {
+            this.selectedYear = this.availableYears[this.availableYears.length - 1]
+            await this.loadRadarData()
+          }
+        }
+      } catch (error) {
+        console.error('获取可用年份失败:', error)
+      }
+    },
+    async loadRadarData() {
+      try {
+        const params = { year: this.selectedYear }
+        const response = await axios.get('http://localhost:5000/api/five-forces/radar', { params })
+        if (response.data.success) {
+          this.dealers = response.data.data
+          if (this.dealers.length > 0 && !this.selectedCode) {
+            this.selectedCode = this.dealers[0]['经销商代码']
+          }
+          this.$nextTick(() => {
+            this.updateCharts()
+          })
+        }
+      } catch (error) {
+        console.error('获取五力雷达数据失败:', error)
+      }
+    },
     toNumber(val) {
       const num = Number(val)
       return Number.isFinite(num) ? num : 0
@@ -640,28 +671,8 @@ export default {
       }
       return colorMap[label] || 'c1965ff'
     },
-    applyManualDealer() {
-      const code = (this.inputCode || '').trim()
-      const province = (this.inputProvince || '').trim()
-
-      if (!code && !province) {
-        this.errorMessage = '请至少输入经销商代码或省份再查询'
-        return
-      }
-
-      let target = null
-      if (code) target = this.dealers.find((d) => String(d['经销商代码']) === code)
-      if (!target && province) {
-        const lower = province.toLowerCase()
-        target = this.dealers.find((d) => String(d['省份'] || '').toLowerCase().includes(lower))
-      }
-
-      if (!target) {
-        this.errorMessage = '未找到对应经销商，请检查代码或省份后重试'
-        return
-      }
-
-      this.selectedCode = target['经销商代码']
+    onApplyManualDealer(dealer) {
+      this.selectedCode = dealer['经销商代码']
       this.errorMessage = ''
     },
     initCharts() {

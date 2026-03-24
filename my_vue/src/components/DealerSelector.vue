@@ -1,31 +1,30 @@
 <template>
   <div class="dealer-selector">
     <div class="selector-group">
-      <div class="selector">
+      <div class="selector-row">
         <select v-model="localSelectedCode" @change="handleSelectionChange" class="dealer-select">
           <option value="">请选择经销商</option>
           <option v-for="dealer in dealers" :key="dealer['经销商代码']" :value="dealer['经销商代码']">
             {{ dealer['经销商代码'] }} - {{ dealer['省份'] || '未知地区' }}
           </option>
         </select>
-        <div v-if="showManualInput" class="manual-input-row">
-          <input
-            v-model="inputCode"
-            placeholder="输入经销商代码"
-            class="input"
-            @keyup.enter="applyManualDealer"
-          />
-          <select v-model="inputProvince" @change="applyManualDealer" class="province-select">
-            <option value="">选择省份</option>
-            <option v-for="province in provinces" :key="province" :value="province">
-              {{ province }}
-            </option>
-          </select>
-          <button class="btn" @click="applyManualDealer">查询</button>
+      </div>
+      <div class="manual-input-row">
+        <input
+          v-model="inputCode"
+          placeholder="手动输入经销商代码"
+          class="input"
+          @input="handleCodeInput"
+          @keyup.enter="applyManualDealer"
+        />
+        <div class="province-display" :class="{ 'has-province': matchedProvince }">
+          <span class="province-label">省份：</span>
+          <span class="province-value">{{ matchedProvince || '自动匹配' }}</span>
         </div>
+        <button class="btn" @click="applyManualDealer">应用</button>
       </div>
       <p v-if="currentDealer['经销商代码']" class="current-tip">
-        当前：{{ currentDealer['经销商代码'] }}（{{ currentDealer['省份'] || '未知省份' }}）
+        当前：{{ currentDealer['经销商代码'] }}（{{ currentDealer['省份'] || '未知省份' }}{{ currentDealer['城市'] ? ' - ' + currentDealer['城市'] : '' }}）
       </p>
       <p v-if="errorMessage" class="error-tip">
         {{ errorMessage }}
@@ -50,37 +49,28 @@ export default {
       type: String,
       default: ''
     },
-    showManualInput: {
-      type: Boolean,
-      default: false
+    errorMessage: {
+      type: String,
+      default: ''
     }
   },
   data() {
     return {
       localSelectedCode: this.selectedCode,
       inputCode: '',
-      inputProvince: '',
-      errorMessage: ''
+      matchedProvince: ''
     }
   },
   computed: {
     currentDealer() {
       return this.dealers.find((d) => d['经销商代码'] === this.localSelectedCode) || {}
-    },
-    provinces() {
-      const provinceSet = new Set()
-      this.dealers.forEach(dealer => {
-        if (dealer['省份']) {
-          provinceSet.add(dealer['省份'])
-        }
-      })
-      return Array.from(provinceSet).sort()
     }
   },
   watch: {
     selectedCode: {
       handler(newVal) {
         this.localSelectedCode = newVal
+        this.updateMatchedProvince(newVal)
       },
       immediate: true
     }
@@ -88,35 +78,44 @@ export default {
   methods: {
     handleSelectionChange() {
       this.$emit('update:selectedCode', this.localSelectedCode)
+      this.updateMatchedProvince(this.localSelectedCode)
+      this.inputCode = this.localSelectedCode
+    },
+    handleCodeInput() {
+      const code = (this.inputCode || '').trim()
+      this.updateMatchedProvince(code)
+    },
+    updateMatchedProvince(code) {
+      if (!code) {
+        this.matchedProvince = ''
+        return
+      }
+      const dealer = this.dealers.find((d) => String(d['经销商代码']) === code)
+      if (dealer) {
+        this.matchedProvince = dealer['省份'] || ''
+      } else {
+        this.matchedProvince = ''
+      }
     },
     applyManualDealer() {
       const code = (this.inputCode || '').trim()
-      const province = (this.inputProvince || '').trim()
 
-      if (!code && !province) {
-        this.errorMessage = '请至少输入经销商代码或省份再查询'
+      if (!code) {
+        this.$emit('update:error', '请输入经销商代码')
         return
       }
 
-      let target = null
-      // 优先按代码精确匹配
-      if (code) {
-        target = this.dealers.find((d) => String(d['经销商代码']) === code)
-      }
-      // 若无结果且填了省份，则按省份模糊匹配第一条
-      if (!target && province) {
-        const lower = province.toLowerCase()
-        target = this.dealers.find((d) => String(d['省份'] || '').toLowerCase().includes(lower))
-      }
+      const target = this.dealers.find((d) => String(d['经销商代码']) === code)
 
       if (!target) {
-        this.errorMessage = '未找到对应经销商，请检查代码或省份后重试'
+        this.$emit('update:error', '未找到对应经销商，请检查代码后重试')
         return
       }
 
       this.localSelectedCode = target['经销商代码']
       this.$emit('update:selectedCode', this.localSelectedCode)
-      this.errorMessage = ''
+      this.$emit('update:error', '')
+      this.$emit('apply-manual', target)
     }
   }
 }
@@ -131,50 +130,20 @@ export default {
 .selector-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
-.selector {
+.selector-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
 }
 
-/* 当showManualInput为true时，使用两行布局 */
-:deep(.show-manual-input) .selector {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-}
-
-:deep(.show-manual-input) .selector > * {
-  width: 100%;
-}
-
-:deep(.show-manual-input) .selector .dealer-select {
-  margin: 0;
-}
-
-/* 手动输入行的样式 */
 .manual-input-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
-}
-
-.manual-input-row .input {
-  flex: 1;
-  min-width: 150px;
-}
-
-.manual-input-row .province-select {
-  min-width: 120px;
-}
-
-.manual-input-row .btn {
-  white-space: nowrap;
+  flex-wrap: wrap;
 }
 
 .input {
@@ -183,6 +152,7 @@ export default {
   color: #333;
   padding: 8px 12px;
   border-radius: 4px;
+  flex: 1;
   min-width: 150px;
   font-size: 14px;
 }
@@ -191,6 +161,37 @@ export default {
   outline: none;
   border-color: #1890ff;
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.province-display {
+  display: flex;
+  align-items: center;
+  background: #f5f5f5;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  padding: 8px 12px;
+  min-width: 140px;
+}
+
+.province-display.has-province {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+.province-label {
+  color: #666;
+  font-size: 14px;
+  margin-right: 4px;
+}
+
+.province-value {
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.province-display.has-province .province-value {
+  color: #1890ff;
 }
 
 .btn {
@@ -202,6 +203,7 @@ export default {
   cursor: pointer;
   font-size: 14px;
   transition: all 0.3s;
+  white-space: nowrap;
 }
 
 .btn:hover {
@@ -221,29 +223,9 @@ export default {
   color: #ff4d4f;
 }
 
-/* 基础select样式 */
-select {
-  background: #ffffff;
-  border: 1px solid #d9d9d9;
-  color: #333;
-  padding: 8px 12px;
-  border-radius: 4px;
-  min-width: 200px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-select:focus {
-  outline: none;
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
-/* 适用于SalesPrediction页面的样式 */
 .dealer-select {
   width: 100%;
-  padding: 8px;
-  margin: 4px 0 10px 0;
+  padding: 8px 30px 8px 12px;
   border-radius: 4px;
   border: 1px solid #d9d9d9;
   font-size: 14px;
@@ -257,36 +239,10 @@ select:focus {
   background-repeat: no-repeat;
   background-position: right 8px center;
   background-size: 16px 16px;
-  padding-right: 30px;
-  min-width: unset;
+  cursor: pointer;
 }
 
 .dealer-select:focus {
-  outline: none;
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
-.province-select {
-  background: #ffffff;
-  border: 1px solid #d9d9d9;
-  color: #333;
-  padding: 8px 12px;
-  border-radius: 4px;
-  min-width: 120px;
-  font-size: 14px;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg fill='%23333' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 16px 16px;
-  padding-right: 30px;
-}
-
-.province-select:focus {
   outline: none;
   border-color: #1890ff;
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);

@@ -28,10 +28,10 @@
               <td>{{ history.dealer_code }}</td>
               <td>{{ history.dimension }}</td>
               <td>{{ history.change_percentage }}%</td>
-              <td>{{ history.month }}月</td>
-              <td>{{ history.prediction_result }}</td>
+              <td>{{ history.target_month }}月</td>
+              <td>{{ history.predicted_sales }}</td>
               <td>{{ history.comprehensive_score || 0 }}</td>
-              <td>{{ history.created_at }}</td>
+              <td>{{ formatLocalTime(history.created_at) }}</td>
               <td>
                 <button @click="viewHistoryDetail(history)" class="view-btn">查看详情</button>
               </td>
@@ -71,7 +71,7 @@
               </div>
               <div class="info-item">
                 <span class="label">预测月份:</span>
-                <span class="value">{{ selectedHistory.month }}月</span>
+                <span class="value">{{ selectedHistory.target_year }}年{{ selectedHistory.target_month }}月</span>
               </div>
               <div class="info-item">
                 <span class="label">雷达图月份:</span>
@@ -79,7 +79,7 @@
               </div>
               <div class="info-item">
                 <span class="label">预测结果:</span>
-                <span class="value">{{ selectedHistory.prediction_result }}</span>
+                <span class="value">{{ selectedHistory.predicted_sales }}</span>
               </div>
               <div class="info-item">
                 <span class="label">综合得分:</span>
@@ -87,7 +87,7 @@
               </div>
               <div class="info-item">
                 <span class="label">创建时间:</span>
-                <span class="value">{{ selectedHistory.created_at }}</span>
+                <span class="value">{{ formatLocalTime(selectedHistory.created_at) }}</span>
               </div>
             </div>
           </div>
@@ -146,7 +146,7 @@
 
 <script>
 import * as echarts from 'echarts'
-import { getPredictionHistory, getPredictionHistoryDetail } from '@/api/prediction'
+import { getPredictionHistory, getPredictionHistoryDetail, getOriginalSalesData } from '@/api/prediction'
 
 export default {
   name: 'HistoryRecords',
@@ -157,14 +157,26 @@ export default {
       showDetailDialog: false,
       salesChart: null,
       radarChart: null,
-      loading: false
+      loading: false,
+      originalSalesData: []
     }
   },
   mounted() {
     this.fetchHistoryList()
   },
   methods: {
-    // 返回销量预测页面
+    formatLocalTime(utcTimeStr) {
+      if (!utcTimeStr) return '-'
+      const date = new Date(utcTimeStr + ' UTC')
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const seconds = String(date.getSeconds()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    },
+    
     goBack() {
       this.$router.push('/dashboard/prediction')
     },
@@ -185,9 +197,20 @@ export default {
     },
     
     // 查看历史记录详情
-    viewHistoryDetail(history) {
+    async viewHistoryDetail(history) {
       this.selectedHistory = history
       this.showDetailDialog = true
+      
+      try {
+        const response = await getOriginalSalesData(history.dealer_code, 10)
+        if (response && response.data && Array.isArray(response.data)) {
+          this.originalSalesData = response.data
+        }
+      } catch (error) {
+        console.error('获取原始销量数据失败:', error)
+        this.originalSalesData = []
+      }
+      
       this.$nextTick(() => {
         this.renderSalesChart()
         this.renderRadarChart()
@@ -209,29 +232,39 @@ export default {
       }
     },
     
-    // 渲染销量折线图
     renderSalesChart() {
       if (!this.$refs.salesChart) return
       
       this.salesChart = echarts.init(this.$refs.salesChart)
       
-      // 模拟原始销量数据（实际应从后端获取）
       const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月']
-      const originalSales = [100, 110, 105, 115, 120, 118, 125, 130, 128, 135]
       
-      // 预测销量数据
-      const predictionData = [...originalSales]
-      // 在预测月份位置设置预测值
-      if (this.selectedHistory.month) {
-        const monthIndex = this.selectedHistory.month - 1
+      const originalSales = months.map((_, index) => {
+        const month = index + 1
+        const item = this.originalSalesData.find(d => d.month === month)
+        return item && item.sales != null ? item.sales : 0
+      })
+      
+      const predictionData = new Array(10).fill(null)
+      if (this.selectedHistory.target_month && this.selectedHistory.predicted_sales) {
+        const monthIndex = this.selectedHistory.target_month - 1
         if (monthIndex >= 0 && monthIndex < predictionData.length) {
-          predictionData[monthIndex] = this.selectedHistory.prediction_result
+          predictionData[monthIndex] = this.selectedHistory.predicted_sales
         }
       }
       
       const option = {
         tooltip: {
-          trigger: 'axis'
+          trigger: 'axis',
+          formatter: function(params) {
+            let result = params[0].name + '<br/>'
+            params.forEach(param => {
+              if (param.value !== null) {
+                result += param.marker + param.seriesName + ': ' + param.value + '<br/>'
+              }
+            })
+            return result
+          }
         },
         legend: {
           data: ['原始销量', '预测销量'],
@@ -270,17 +303,21 @@ export default {
           },
           {
             name: '预测销量',
-            type: 'line',
+            type: 'scatter',
             data: predictionData,
-            smooth: true,
             symbol: 'circle',
-            symbolSize: 8,
+            symbolSize: 12,
             itemStyle: {
-              color: '#ff6b6b'
+              color: '#ff4d4f',
+              borderColor: '#fff',
+              borderWidth: 2
             },
-            lineStyle: {
-              width: 2,
-              type: 'dashed'
+            emphasis: {
+              itemStyle: {
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowColor: 'rgba(255,77,79,0.5)'
+              }
             }
           }
         ]
@@ -288,7 +325,6 @@ export default {
       
       this.salesChart.setOption(option)
       
-      // 监听窗口 resize 事件
       window.addEventListener('resize', this.handleResize)
     },
     
