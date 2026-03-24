@@ -11,12 +11,11 @@
           <h2 class="card-title">销量预测设置</h2>
           <div class="form-content">
             <form @submit.prevent="submitForm">
-              <div class="form-group show-manual-input">
+              <div class="form-group">
                 <label for="dealer_code">选择经销商:</label>
                 <DealerSelector 
                   v-model="formData.dealer_code" 
                   :dealers="dealerList" 
-                  :showManualInput="true"
                 />
               </div>
 
@@ -101,7 +100,7 @@
             <!-- 预测销量文字显示 -->
             <div v-if="predictionResult" class="prediction-text">
               <p><strong>预测销量:</strong> 预计{{ predictionResult.target_year }}年{{ predictionResult.target_month }}月份销量为 <span class="highlighted-value">{{ predictionResult.predicted_sales ? Math.round(predictionResult.predicted_sales) : '-' }}</span></p>
-              <p v-if="predictionResult.delta"><strong>销量变化:</strong> {{ predictionResult.delta ? Math.round(predictionResult.delta) : 0 }} ({{ predictionResult.delta_pct ? (predictionResult.delta_pct * 100).toFixed(2) : 0 }}%)</p>
+              <p><strong>销量变化:</strong> {{ Math.round(predictionResult.sales_change) }} ({{ predictionResult.sales_change_pct.toFixed(2) }}%)</p>
             </div>
             
             <!-- 错误信息显示 - 只在确实有错误信息时才显示 -->
@@ -284,28 +283,24 @@ export default {
     // 获取原始销量数据
     async fetchOriginalSalesData() {
       try {
-        this.errorMessage = '' // 清空错误信息
-        // 不再在这里设置loading状态，由调用方控制
+        this.errorMessage = ''
         const response = await getOriginalSalesData(this.formData.dealer_code, 10)
+        console.log('获取原始销量数据响应:', response)
         
-        // 直接使用后端返回的数据
-        if (response.data && Array.isArray(response.data)) {
-          // 将后端返回的数据标准化为 1-10 月都存在的结构，缺失月份补 0
+        if (response && response.data && Array.isArray(response.data)) {
           this.salesChanges = this.normalizeSalesChanges(response.data)
-        } else if (response.message) {
-          // 后端返回了错误信息
+          console.log('标准化后的销量数据:', this.salesChanges)
+        } else if (response && response.message) {
           this.errorMessage = response.message
           console.error('后端返回错误:', response.message)
         } else {
-          // 如果后端返回格式不正确，显示错误信息
           console.error('后端返回数据格式错误:', response)
           this.errorMessage = '获取销量数据失败，请稍后重试'
         }
         this.updateSalesChart()
       } catch (error) {
         console.error('获取原始销量数据失败:', error)
-        this.backendAvailable = false // 标记后端不可用
-        // 尝试从错误响应中提取后端错误信息
+        this.backendAvailable = false
         if (error.response && error.response.data && error.response.data.message) {
           this.errorMessage = error.response.data.message
         } else {
@@ -338,13 +333,29 @@ export default {
 
         // 处理后端返回的预测数据
         if (response.point_result) {
+          const targetMonth = response.target_month
+          console.log('预测目标月份:', targetMonth)
+          console.log('当前销量数据:', this.salesChanges)
+          const salesItem = this.salesChanges.find(s => s.month === targetMonth)
+          console.log('找到的销量项:', salesItem)
+          const originalSales = salesItem?.original_sales || 0
+          console.log('原始销量:', originalSales)
+          const predictedSales = response.point_result.scenario
+          console.log('预测销量:', predictedSales)
+          const salesChange = predictedSales - originalSales
+          const salesChangePct = originalSales > 0 ? (salesChange / originalSales * 100) : 0
+          console.log('销量变化:', salesChange, '变化率:', salesChangePct)
+          
           this.predictionResult = {
             target_year: response.target_year,
-            target_month: response.target_month,
-            predicted_sales: response.point_result.scenario,
+            target_month: targetMonth,
+            predicted_sales: predictedSales,
             baseline: response.point_result.baseline,
             delta: response.point_result.delta,
-            delta_pct: response.point_result.delta_pct
+            delta_pct: response.point_result.delta_pct,
+            original_sales: originalSales,
+            sales_change: salesChange,
+            sales_change_pct: salesChangePct
           }
         }
 

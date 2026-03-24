@@ -3,60 +3,81 @@
     <header class="dashboard-header">
       <h1>经销商数据可视化平台</h1>
       <div class="header-info">
-        <span class="total-dealers">全国门店总数：<strong>{{ totalDealers }}</strong> 家</span>
+        <div class="year-selector">
+          <label>年份：</label>
+          <select v-model="selectedYear" @change="loadAllData">
+            <option v-for="year in availableYears" :key="year" :value="year">{{ year }}年</option>
+          </select>
+        </div>
       </div>
     </header>
 
-    <main class="dashboard-main">
-      <div class="row row-top">
-        <div class="col-left">
-          <div class="card radar-card">
-            <div class="card-header">
-              <h3>五力雷达图</h3>
-              <span class="sub-title">全国门店五力评分均值</span>
-            </div>
-            <div class="card-body">
-              <div ref="radarChart" class="chart-container"></div>
-            </div>
+    <div class="kpi-cards">
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-blue">📊</div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ headerKpi.totalDealers }}</div>
+          <div class="kpi-label">门店总数</div>
+          <div class="kpi-change" :class="headerKpi.totalDealersChange >= 0 ? 'positive' : 'negative'">
+            {{ headerKpi.totalDealersChange >= 0 ? '↑' : '↓' }} {{ Math.abs(headerKpi.totalDealersChange || 0) }} 较上年
           </div>
         </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-green">⭐</div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ headerKpi.avgScore }}</div>
+          <div class="kpi-label">平均评分</div>
+          <div class="kpi-change" :class="headerKpi.scoreChange >= 0 ? 'positive' : 'negative'">
+            {{ headerKpi.scoreChange >= 0 ? '↑' : '↓' }} {{ Math.abs(headerKpi.scoreChange || 0) }} ({{ headerKpi.scoreChangePct }}%)
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-orange">📈</div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ metricsComparison.totalSales }}</div>
+          <div class="kpi-label">总销量</div>
+          <div class="kpi-change" :class="metricsComparison.salesChangePct >= 0 ? 'positive' : 'negative'">
+            {{ metricsComparison.salesChangePct >= 0 ? '↑' : '↓' }} {{ Math.abs(metricsComparison.salesChangePct || 0) }}% 较上年
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-red">⚠️</div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ headerKpi.warningCount }}</div>
+          <div class="kpi-label">预警门店</div>
+          <div class="kpi-change" :class="headerKpi.warningChange <= 0 ? 'positive' : 'negative'">
+            {{ headerKpi.warningChange <= 0 ? '↓' : '↑' }} {{ Math.abs(headerKpi.warningChange || 0) }} 较上年
+          </div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-purple">🏆</div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ headerKpi.topProvince || '-' }}</div>
+          <div class="kpi-label">TOP省份</div>
+          <div class="kpi-sub">{{ headerKpi.topProvinceScore }}分</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-cyan">✅</div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ headerKpi.activeDealers }}</div>
+          <div class="kpi-label">活跃门店</div>
+          <div class="kpi-sub">占比 {{ headerKpi.activeRatio }}%</div>
+        </div>
+      </div>
+    </div>
 
-        <div class="col-center">
-          <div class="card map-card">
+    <main class="dashboard-main">
+      <div class="row row-map-region">
+        <div class="combined-card">
+          <div class="map-section">
             <div class="card-header">
               <h3>门店分布情况</h3>
               <span class="sub-title">{{ mapTitle }}</span>
-            </div>
-            <div class="map-filter-bar">
-              <div class="filter-group">
-                <label>区域：</label>
-                <select v-model="mapFilters.region" @change="updateMapData">
-                  <option value="all">全国</option>
-                  <option value="east">华东区</option>
-                  <option value="south">华南区</option>
-                  <option value="north">华北区</option>
-                  <option value="southwest">西南区</option>
-                  <option value="northwest">西北区</option>
-                  <option value="northeast">东北区</option>
-                  <option value="central">华中区</option>
-                </select>
-              </div>
-              <div class="filter-group">
-                <label>门店类型：</label>
-                <select v-model="mapFilters.storeType" @change="updateMapData">
-                  <option value="all">全部</option>
-                  <option value="direct">直营</option>
-                  <option value="franchise">加盟</option>
-                </select>
-              </div>
-              <div class="filter-group">
-                <label>达标状态：</label>
-                <select v-model="mapFilters.achieveStatus" @change="updateMapData">
-                  <option value="all">全部</option>
-                  <option value="achieved">达标</option>
-                  <option value="notAchieved">未达标</option>
-                </select>
-              </div>
             </div>
             <div class="map-nav-bar" v-if="mapLevel !== 'country'">
               <button class="nav-btn" @click="goBackLevel">
@@ -70,17 +91,118 @@
               </button>
               <span class="current-location">当前位置：{{ currentLocation }}</span>
             </div>
-            <div class="card-body">
+            <div class="card-body map-body">
               <div ref="chinaMap" class="map-container"></div>
             </div>
           </div>
+          <div class="region-section">
+            <div class="card-header">
+              <h3>区域业绩看板</h3>
+              <span class="sub-title">点击区域联动地图</span>
+            </div>
+            <div class="card-body region-body">
+              <div class="region-list-vertical">
+                <div 
+                  v-for="region in regionDashboard" 
+                  :key="region.region"
+                  class="region-item"
+                  :class="{ 'region-active': selectedRegion === region.region }"
+                  @click="selectRegion(region)"
+                >
+                  <div class="region-header">
+                    <span class="region-name">{{ region.region }}</span>
+                    <span class="region-score">{{ region.avg_score }}分</span>
+                  </div>
+                  <div class="region-stats">
+                    <div class="region-stat">
+                      <span class="stat-label">门店数</span>
+                      <span class="stat-value">{{ region.dealer_count }}家</span>
+                    </div>
+                    <div class="region-stat">
+                      <span class="stat-label">环比</span>
+                      <span class="stat-value" :class="region.change_pct >= 0 ? 'positive' : 'negative'">
+                        {{ region.change_pct >= 0 ? '+' : '' }}{{ region.change_pct }}%
+                      </span>
+                    </div>
+                    <div class="region-stat">
+                      <span class="stat-label">预警</span>
+                      <span class="stat-value warning">{{ region.warning_count }}家</span>
+                    </div>
+                  </div>
+                  <div class="region-bar">
+                    <div class="bar-fill" :style="{ width: getRegionBarWidth(region.avg_score) + '%' }"></div>
+                  </div>
+                  <div class="region-insight" v-if="region.insight">
+                    <span class="insight-icon">💡</span>
+                    <span class="insight-text">{{ region.insight }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div class="col-right">
+      <div class="row row-metrics">
+        <div class="col-metric" v-for="metric in metricsCards" :key="metric.label">
+          <div class="metric-card">
+            <div class="metric-icon">{{ metric.icon }}</div>
+            <div class="metric-content">
+              <div class="metric-value">{{ metric.value }}</div>
+              <div class="metric-label">{{ metric.label }}</div>
+              <div class="metric-change" :class="metric.changeClass">
+                {{ metric.changeText }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row row-charts">
+        <div class="col-left-main">
+          <div class="row-left-top">
+            <div class="col-line-full">
+              <div class="card line-card">
+                <div class="card-header">
+                  <h3>月度趋势图</h3>
+                  <span class="sub-title">{{ chartAreaTitle }}各项指标均值</span>
+                </div>
+                <div class="card-body">
+                  <div ref="lineChart" class="chart-container"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row-left-bottom">
+            <div class="col-radar">
+              <div class="card radar-card">
+                <div class="card-header">
+                  <h3>五力雷达图</h3>
+                  <span class="sub-title">{{ chartAreaTitle }}五力评分均值</span>
+                </div>
+                <div class="card-body">
+                  <div ref="radarChart" class="chart-container"></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-pie">
+              <div class="card pie-card">
+                <div class="card-header">
+                  <h3>门店评分统计</h3>
+                  <span class="sub-title">{{ chartAreaTitle }}门店分布</span>
+                </div>
+                <div class="card-body">
+                  <div ref="pieChart" class="chart-container"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-right-side">
           <div class="card ranking-card">
             <div class="card-header">
               <h3>门店排名</h3>
-              <span class="sub-title">按五力总评分排名 TOP10</span>
+              <span class="sub-title">{{ chartAreaTitle }}按五力总评分排名 TOP10</span>
             </div>
             <div class="card-body">
               <div class="ranking-table-wrapper">
@@ -107,55 +229,26 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="row row-bottom">
-        <div class="col-left">
-          <div class="card pie-card">
-            <div class="card-header">
-              <h3>门店评分统计</h3>
-              <span class="sub-title">不同评分区间门店分布</span>
-            </div>
-            <div class="card-body">
-              <div ref="pieChart" class="chart-container"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-center">
-          <div class="card line-card">
-            <div class="card-header">
-              <h3>月度趋势图</h3>
-              <span class="sub-title">10个月各项指标均值</span>
-            </div>
-            <div class="card-body">
-              <div ref="lineChart" class="chart-container"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-right">
           <div class="card warning-card">
             <div class="card-header">
               <h3>门店预警</h3>
-              <span class="sub-title">按评分等级分类</span>
+              <span class="sub-title">{{ chartAreaTitle }}按评分等级分类</span>
             </div>
             <div class="card-body">
               <div class="warning-sections">
                 <div class="warning-section warning-red">
                   <div class="warning-header">
                     <span class="warning-icon">!</span>
-                    <span class="warning-title">高风险门店</span>
+                    <span class="warning-title">高风险</span>
                     <span class="warning-count">{{ warningRed.length }}家</span>
                   </div>
                   <div class="warning-list">
-                    <div v-for="item in warningRed.slice(0, 5)" :key="item.code" class="warning-item">
+                    <div v-for="item in warningRed.slice(0, 3)" :key="item.code" class="warning-item">
                       <span class="dealer-code">{{ item.code }}</span>
                       <span class="dealer-score">{{ item.totalScore.toFixed(2) }}分</span>
                     </div>
-                    <div v-if="warningRed.length > 5" class="warning-more">
-                      还有 {{ warningRed.length - 5 }} 家...
+                    <div v-if="warningRed.length > 3" class="warning-more">
+                      还有 {{ warningRed.length - 3 }} 家...
                     </div>
                   </div>
                 </div>
@@ -163,16 +256,16 @@
                 <div class="warning-section warning-orange">
                   <div class="warning-header">
                     <span class="warning-icon">!</span>
-                    <span class="warning-title">中风险门店</span>
+                    <span class="warning-title">中风险</span>
                     <span class="warning-count">{{ warningOrange.length }}家</span>
                   </div>
                   <div class="warning-list">
-                    <div v-for="item in warningOrange.slice(0, 5)" :key="item.code" class="warning-item">
+                    <div v-for="item in warningOrange.slice(0, 3)" :key="item.code" class="warning-item">
                       <span class="dealer-code">{{ item.code }}</span>
                       <span class="dealer-score">{{ item.totalScore.toFixed(2) }}分</span>
                     </div>
-                    <div v-if="warningOrange.length > 5" class="warning-more">
-                      还有 {{ warningOrange.length - 5 }} 家...
+                    <div v-if="warningOrange.length > 3" class="warning-more">
+                      还有 {{ warningOrange.length - 3 }} 家...
                     </div>
                   </div>
                 </div>
@@ -180,16 +273,16 @@
                 <div class="warning-section warning-green">
                   <div class="warning-header">
                     <span class="warning-icon">✓</span>
-                    <span class="warning-title">健康门店</span>
+                    <span class="warning-title">健康</span>
                     <span class="warning-count">{{ warningGreen.length }}家</span>
                   </div>
                   <div class="warning-list">
-                    <div v-for="item in warningGreen.slice(0, 5)" :key="item.code" class="warning-item">
+                    <div v-for="item in warningGreen.slice(0, 3)" :key="item.code" class="warning-item">
                       <span class="dealer-code">{{ item.code }}</span>
                       <span class="dealer-score">{{ item.totalScore.toFixed(2) }}分</span>
                     </div>
-                    <div v-if="warningGreen.length > 5" class="warning-more">
-                      还有 {{ warningGreen.length - 5 }} 家...
+                    <div v-if="warningGreen.length > 3" class="warning-more">
+                      还有 {{ warningGreen.length - 3 }} 家...
                     </div>
                   </div>
                 </div>
@@ -206,18 +299,6 @@
           <h2>{{ selectedProvince }}门店详情</h2>
           <button class="close-btn" @click="closeStoreDetailModal">×</button>
         </div>
-        <div class="modal-filter-info">
-          <span>筛选条件：</span>
-          <span class="filter-tag" v-if="mapFilters.storeType !== 'all'">
-            {{ mapFilters.storeType === 'direct' ? '直营' : '加盟' }}
-          </span>
-          <span class="filter-tag" v-if="mapFilters.achieveStatus !== 'all'">
-            {{ mapFilters.achieveStatus === 'achieved' ? '达标' : '未达标' }}
-          </span>
-          <span class="filter-tag" v-if="mapFilters.region !== 'all'">
-            {{ getRegionName(mapFilters.region) }}
-          </span>
-        </div>
         <div class="modal-body">
           <div class="store-list-section">
             <div class="section-header">
@@ -227,7 +308,6 @@
                 <select v-model="storeSortBy" @change="sortStoreList">
                   <option value="sales">按业绩</option>
                   <option value="totalScore">按评分</option>
-                  <option value="achieveRate">按达标率</option>
                 </select>
               </div>
             </div>
@@ -235,9 +315,8 @@
               <table class="store-table">
                 <thead>
                   <tr>
-                    <th>门店名称</th>
-                    <th>类型</th>
-                    <th>达标</th>
+                    <th>门店代码</th>
+                    <th>城市</th>
                     <th>销量</th>
                     <th>评分</th>
                   </tr>
@@ -245,10 +324,7 @@
                 <tbody>
                   <tr v-for="store in sortedProvinceStores" :key="store.id">
                     <td>{{ store.name }}</td>
-                    <td>{{ store.storeType === 'direct' ? '直营' : '加盟' }}</td>
-                    <td :class="store.achieveStatus === 'achieved' ? 'achieved' : 'not-achieved'">
-                      {{ store.achieveStatus === 'achieved' ? '是' : '否' }}
-                    </td>
+                    <td>{{ store.city }}</td>
                     <td>{{ store.sales }}</td>
                     <td>{{ store.totalScore.toFixed(2) }}</td>
                   </tr>
@@ -293,8 +369,14 @@
 <script>
 import * as echarts from 'echarts'
 import axios from 'axios'
-import fiveForcesData from '@/assets/fiveForcesData.json'
-import dealerData from '@/assets/dealerData.json'
+
+const PROVINCE_REGION_MAP = {
+  '辽宁省': '东北',
+  '山东省': '华东',
+  '湖北省': '华中',
+  '广东省': '华南',
+  '广西壮族自治区': '华南'
+}
 
 export default {
   name: 'Index',
@@ -305,58 +387,61 @@ export default {
       pieChart: null,
       mapChart: null,
       trendChart: null,
-      fiveForcesData: [],
-      dealerData: [],
+      selectedYear: 2024,
+      availableYears: [2024, 2023, 2022],
+      radarAvg: {},
+      monthlyAvg: {},
+      rankingData: [],
+      warningData: { red: 0, orange: 0, green: 0 },
       totalDealers: 0,
       provinceDealerCount: {},
+      cityDealerCount: {},
       mapLevel: 'country',
       currentProvince: '',
       currentCity: '',
-      mapFilters: {
-        storeType: 'all',
-        achieveStatus: 'all',
-        region: 'all'
-      },
       mapStack: [],
-      mockStoreData: [],
+      provinceStores: [],
       showStoreDetailModal: false,
       selectedProvince: '',
-      storeSortBy: 'sales'
+      storeSortBy: 'sales',
+      headerKpi: {
+        totalDealers: 0,
+        totalDealersChange: 0,
+        avgScore: 0,
+        scoreChange: 0,
+        scoreChangePct: 0,
+        warningCount: 0,
+        warningChange: 0,
+        topProvince: '',
+        topProvinceScore: 0,
+        activeDealers: 0,
+        activeRatio: 0
+      },
+      regionDashboard: [],
+      selectedRegion: '',
+      metricsComparison: {
+        totalSales: 0,
+        salesChangePct: 0,
+        totalFlow: 0,
+        flowChangePct: 0,
+        totalLeads: 0,
+        leadsChangePct: 0,
+        avgSuccessRate: 0,
+        successRateChange: 0,
+        totalPotential: 0
+      },
+      insights: []
     }
   },
   computed: {
     radarData() {
-      if (this.fiveForcesData.length === 0) return []
-      const avgPropagation = this.fiveForcesData.reduce((sum, d) => sum + (d['传播获客力'] || 0), 0) / this.fiveForcesData.length
-      const avgExperience = this.fiveForcesData.reduce((sum, d) => sum + (d['体验力'] || 0), 0) / this.fiveForcesData.length
-      const avgConversion = this.fiveForcesData.reduce((sum, d) => sum + (d['转化力'] || 0), 0) / this.fiveForcesData.length
-      const avgService = this.fiveForcesData.reduce((sum, d) => sum + (d['服务力'] || 0), 0) / this.fiveForcesData.length
-      const avgOperation = this.fiveForcesData.reduce((sum, d) => sum + (d['经营力'] || 0), 0) / this.fiveForcesData.length
       return [
-        { name: '传播获客力', value: avgPropagation.toFixed(2) },
-        { name: '体验力', value: avgExperience.toFixed(2) },
-        { name: '转化力', value: avgConversion.toFixed(2) },
-        { name: '服务力', value: avgService.toFixed(2) },
-        { name: '经营力', value: avgOperation.toFixed(2) }
+        { name: '传播获客力', value: this.radarAvg['传播获客力'] || 0 },
+        { name: '体验力', value: this.radarAvg['体验力'] || 0 },
+        { name: '转化力', value: this.radarAvg['转化力'] || 0 },
+        { name: '服务力', value: this.radarAvg['服务力'] || 0 },
+        { name: '经营力', value: this.radarAvg['经营力'] || 0 }
       ]
-    },
-    rankingData() {
-      if (this.fiveForcesData.length === 0) return []
-      const withTotal = this.fiveForcesData.map(d => ({
-        code: d['经销商代码'],
-        province: d['省份'],
-        totalScore: (d['传播获客力'] || 0) + (d['体验力'] || 0) + (d['转化力'] || 0) + (d['服务力'] || 0) + (d['经营力'] || 0)
-      }))
-      return withTotal.sort((a, b) => b.totalScore - a.totalScore).slice(0, 10)
-    },
-    warningRed() {
-      return this.getDealersByScoreRange(0, 15)
-    },
-    warningOrange() {
-      return this.getDealersByScoreRange(15, 20)
-    },
-    warningGreen() {
-      return this.getDealersByScoreRange(20, 25)
     },
     pieData() {
       return [
@@ -365,30 +450,37 @@ export default {
         { name: '健康 (总分≥20)', value: this.warningGreen.length, color: '#52c41a' }
       ]
     },
+    warningRed() {
+      return this.warningData.red || []
+    },
+    warningOrange() {
+      return this.warningData.orange || []
+    },
+    warningGreen() {
+      return this.warningData.green || []
+    },
     mapTitle() {
       if (this.mapLevel === 'country') return '全国门店地理分布'
       if (this.mapLevel === 'province') return `${this.currentProvince}门店分布`
-      if (this.mapLevel === 'city') return `${this.currentCity}门店分布`
       return '门店地理分布'
     },
     currentLocation() {
       if (this.mapLevel === 'country') return '全国'
       if (this.mapLevel === 'province') return this.currentProvince
-      if (this.mapLevel === 'city') return `${this.currentProvince} > ${this.currentCity}`
       return ''
     },
+    chartAreaTitle() {
+      if (this.mapLevel === 'country') return '全国'
+      if (this.mapLevel === 'province' && this.currentCity) return this.currentCity
+      if (this.mapLevel === 'province') return this.currentProvince
+      return '全国'
+    },
     sortedProvinceStores() {
-      let stores = this.getFilteredStoreData().filter(s => s.province === this.selectedProvince)
+      let stores = [...this.provinceStores]
       if (this.storeSortBy === 'sales') {
         stores.sort((a, b) => b.sales - a.sales)
       } else if (this.storeSortBy === 'totalScore') {
         stores.sort((a, b) => b.totalScore - a.totalScore)
-      } else if (this.storeSortBy === 'achieveRate') {
-        stores.sort((a, b) => {
-          const aRate = a.achieveStatus === 'achieved' ? 1 : 0
-          const bRate = b.achieveStatus === 'achieved' ? 1 : 0
-          return bRate - aRate
-        })
       }
       return stores
     },
@@ -397,10 +489,43 @@ export default {
     },
     bottom10Stores() {
       return this.sortedProvinceStores.slice(-10).reverse()
+    },
+    metricsCards() {
+      return [
+        {
+          icon: '👥',
+          value: this.metricsComparison.totalFlow,
+          label: '总客流量',
+          changeText: `${this.metricsComparison.flowChangePct >= 0 ? '↑' : '↓'} ${Math.abs(this.metricsComparison.flowChangePct)}%`,
+          changeClass: this.metricsComparison.flowChangePct >= 0 ? 'positive' : 'negative'
+        },
+        {
+          icon: '📋',
+          value: this.metricsComparison.totalLeads,
+          label: '总线索量',
+          changeText: `${this.metricsComparison.leadsChangePct >= 0 ? '↑' : '↓'} ${Math.abs(this.metricsComparison.leadsChangePct)}%`,
+          changeClass: this.metricsComparison.leadsChangePct >= 0 ? 'positive' : 'negative'
+        },
+        {
+          icon: '🎯',
+          value: this.metricsComparison.avgSuccessRate + '%',
+          label: '平均成交率',
+          changeText: `${this.metricsComparison.successRateChange >= 0 ? '↑' : '↓'} ${Math.abs(this.metricsComparison.successRateChange)}%`,
+          changeClass: this.metricsComparison.successRateChange >= 0 ? 'positive' : 'negative'
+        },
+        {
+          icon: '👤',
+          value: this.metricsComparison.totalPotential,
+          label: '总潜客量',
+          changeText: '本年累计',
+          changeClass: 'neutral'
+        }
+      ]
     }
   },
   mounted() {
-    this.loadData()
+    this.loadAvailableYears()
+    this.loadAllData()
     window.addEventListener('resize', this.handleResize)
   },
   beforeDestroy() {
@@ -411,16 +536,27 @@ export default {
     if (this.mapChart) this.mapChart.dispose()
   },
   methods: {
-    loadData() {
-      this.fiveForcesData = fiveForcesData
-      this.dealerData = dealerData
-      this.totalDealers = this.fiveForcesData.length
-      console.log('加载的数据:', {
-        dealerDataLength: this.dealerData.length,
-        firstDealer: this.dealerData[0]
-      })
-      this.calculateProvinceCount()
-      this.generateMockStoreData()
+    async loadAvailableYears() {
+      try {
+        const response = await axios.get('/api/five-forces/years')
+        if (response.data.success) {
+          this.availableYears = response.data.data
+          if (this.availableYears.length > 0 && !this.availableYears.includes(this.selectedYear)) {
+            this.selectedYear = this.availableYears[0]
+          }
+        }
+      } catch (error) {
+        console.error('加载年份失败:', error)
+      }
+    },
+    async loadAllData() {
+      await Promise.all([
+        this.loadOverviewData(),
+        this.loadHeaderKpi(),
+        this.loadRegionDashboard(),
+        this.loadMetricsComparison(),
+        this.loadInsights()
+      ])
       this.$nextTick(() => {
         this.initRadarChart()
         this.initLineChart()
@@ -428,87 +564,194 @@ export default {
         this.initMap()
       })
     },
-    generateMockStoreData() {
-      const provinces = Object.keys(this.provinceDealerCount)
-      const cities = {
-        '广东省': ['广州市', '深圳市', '东莞市', '佛山市', '珠海市'],
-        '江苏省': ['南京市', '苏州市', '无锡市', '常州市', '南通市'],
-        '浙江省': ['杭州市', '宁波市', '温州市', '嘉兴市', '绍兴市'],
-        '山东省': ['济南市', '青岛市', '烟台市', '潍坊市', '临沂市'],
-        '河南省': ['郑州市', '洛阳市', '开封市', '南阳市', '新乡市'],
-        '四川省': ['成都市', '绵阳市', '德阳市', '宜宾市', '南充市'],
-        '湖北省': ['武汉市', '宜昌市', '襄阳市', '荆州市', '黄石市'],
-        '湖南省': ['长沙市', '株洲市', '湘潭市', '衡阳市', '岳阳市'],
-        '河北省': ['石家庄市', '唐山市', '保定市', '邯郸市', '秦皇岛市'],
-        '福建省': ['福州市', '厦门市', '泉州市', '漳州市', '莆田市'],
-        '安徽省': ['合肥市', '芜湖市', '蚌埠市', '淮南市', '马鞍山市'],
-        '辽宁省': ['沈阳市', '大连市', '鞍山市', '抚顺市', '本溪市'],
-        '陕西省': ['西安市', '宝鸡市', '咸阳市', '渭南市', '延安市'],
-        '江西省': ['南昌市', '九江市', '景德镇市', '萍乡市', '新余市'],
-        '重庆市': ['渝中区', '江北区', '南岸区', '九龙坡区', '沙坪坝区'],
-        '广西壮族自治区': ['南宁市', '柳州市', '桂林市', '梧州市', '北海市'],
-        '云南省': ['昆明市', '大理市', '丽江市', '曲靖市', '玉溪市'],
-        '天津市': ['和平区', '河东区', '河西区', '南开区', '河北区'],
-        '上海市': ['浦东新区', '黄浦区', '静安区', '徐汇区', '长宁区'],
-        '北京市': ['朝阳区', '海淀区', '丰台区', '东城区', '西城区']
-      }
-      
-      this.mockStoreData = []
-      const storeTypes = ['direct', 'franchise']
-      const businessStatuses = ['open', 'closed']
-      const regions = {
-        '广东省': 'south', '广西壮族自治区': 'south', '海南省': 'south', '福建省': 'east',
-        '江苏省': 'east', '浙江省': 'east', '上海市': 'east', '安徽省': 'east', '江西省': 'east',
-        '山东省': 'east', '北京市': 'north', '天津市': 'north', '河北省': 'north', '山西省': 'north',
-        '内蒙古自治区': 'north', '辽宁省': 'northeast', '吉林省': 'northeast', '黑龙江省': 'northeast',
-        '河南省': 'central', '湖北省': 'central', '湖南省': 'central',
-        '四川省': 'southwest', '重庆市': 'southwest', '贵州省': 'southwest', '云南省': 'southwest', '西藏自治区': 'southwest',
-        '陕西省': 'northwest', '甘肃省': 'northwest', '青海省': 'northwest', '宁夏回族自治区': 'northwest', '新疆维吾尔自治区': 'northwest'
-      }
-      
-      provinces.forEach(province => {
-        const count = this.provinceDealerCount[province]
-        const provinceCities = cities[province] || ['市中心']
+    async loadAreaChartData() {
+      try {
+        let url = `/api/index/area-data?year=${this.selectedYear}`
+        if (this.currentCity) {
+          url += `&province=${encodeURIComponent(this.currentProvince)}&city=${encodeURIComponent(this.currentCity)}`
+        } else if (this.mapLevel === 'province' && this.currentProvince) {
+          url += `&province=${encodeURIComponent(this.currentProvince)}`
+        }
         
-        for (let i = 0; i < count; i++) {
-          const city = provinceCities[Math.floor(Math.random() * provinceCities.length)]
-          this.mockStoreData.push({
-            id: `STORE${String(this.mockStoreData.length + 1).padStart(5, '0')}`,
-            name: `${province.replace(/省|市|自治区|壮族自治区/g, '')}${city.replace(/市|区/g, '')}店${i + 1}`,
-            province: province,
-            city: city,
-            region: regions[province] || 'east',
-            storeType: storeTypes[Math.floor(Math.random() * storeTypes.length)],
-            businessStatus: Math.random() > 0.1 ? 'open' : 'closed',
-            achieveStatus: Math.random() > 0.3 ? 'achieved' : 'notAchieved',
-            isNewStore: Math.random() > 0.9,
-            sales: Math.floor(100 + Math.random() * 400),
-            customerFlow: Math.floor(500 + Math.random() * 1500),
-            totalScore: 15 + Math.random() * 15,
-            openDate: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000)
+        const response = await axios.get(url)
+        if (response.data.success) {
+          const data = response.data.data
+          this.radarAvg = data.radar_avg
+          this.monthlyAvg = data.monthly_avg
+          this.rankingData = data.ranking
+          this.warningData = data.warning
+          
+          this.$nextTick(() => {
+            this.initRadarChart()
+            this.initLineChart()
+            this.initPieChart()
           })
         }
-      })
+      } catch (error) {
+        console.error('加载区域图表数据失败:', error)
+      }
     },
-    calculateProvinceCount() {
-      const count = {}
-      this.fiveForcesData.forEach(d => {
-        const province = d['省份']
-        if (province) {
-          count[province] = (count[province] || 0) + 1
+    async loadOverviewData() {
+      try {
+        const response = await axios.get(`/api/index/overview?year=${this.selectedYear}`)
+        if (response.data.success) {
+          const data = response.data.data
+          this.radarAvg = data.radar_avg
+          this.monthlyAvg = data.monthly_avg
+          this.rankingData = data.ranking
+          this.warningData = data.warning
+          this.totalDealers = data.total_dealers
+          this.provinceDealerCount = data.province_count
+          this.cityDealerCount = data.city_count || {}
+        }
+      } catch (error) {
+        console.error('加载概览数据失败:', error)
+      }
+    },
+    async loadHeaderKpi() {
+      try {
+        const response = await axios.get(`/api/index/header-kpi?year=${this.selectedYear}`)
+        if (response.data.success) {
+          this.headerKpi = response.data.data
+        }
+      } catch (error) {
+        console.error('加载头部KPI失败:', error)
+      }
+    },
+    async loadRegionDashboard() {
+      try {
+        const response = await axios.get(`/api/index/region-dashboard?year=${this.selectedYear}`)
+        if (response.data.success) {
+          this.regionDashboard = response.data.data
+        }
+      } catch (error) {
+        console.error('加载区域看板失败:', error)
+      }
+    },
+    async loadMetricsComparison() {
+      try {
+        const response = await axios.get(`/api/index/metrics-comparison?year=${this.selectedYear}`)
+        if (response.data.success) {
+          this.metricsComparison = response.data.data
+        }
+      } catch (error) {
+        console.error('加载核心指标对比失败:', error)
+      }
+    },
+    async loadInsights() {
+      try {
+        const response = await axios.get(`/api/index/insights?year=${this.selectedYear}`)
+        if (response.data.success) {
+          this.insights = response.data.data
+        }
+      } catch (error) {
+        console.error('加载数据洞察失败:', error)
+      }
+    },
+    getRegionBarWidth(score) {
+      const maxScore = 25
+      return Math.min((score / maxScore) * 100, 100)
+    },
+    selectRegion(region) {
+      if (this.selectedRegion === region.region) {
+        this.selectedRegion = ''
+        this.clearMapHighlight()
+      } else {
+        this.selectedRegion = region.region
+        this.highlightMapRegion(region.provinces)
+      }
+    },
+    clearMapHighlight() {
+      if (!this.mapChart || this.mapLevel !== 'country') return
+      this.renderCountryMap()
+    },
+    highlightMapRegion(provinces) {
+      if (!this.mapChart || this.mapLevel !== 'country') return
+      
+      const storeCount = this.getProvinceStoreCount()
+      const data = Object.keys(storeCount).map(province => {
+        const isHighlighted = provinces.includes(province)
+        return {
+          name: province,
+          value: storeCount[province],
+          itemStyle: {
+            areaColor: isHighlighted ? '#faad14' : undefined,
+            borderColor: isHighlighted ? '#d48806' : undefined,
+            borderWidth: isHighlighted ? 2 : 1
+          },
+          label: {
+            show: true,
+            color: isHighlighted ? '#fff' : '#666',
+            fontSize: isHighlighted ? 12 : 10,
+            fontWeight: isHighlighted ? 'bold' : 'normal'
+          }
         }
       })
-      this.provinceDealerCount = count
-    },
-    getDealersByScoreRange(min, max) {
-      return this.fiveForcesData
-        .map(d => ({
-          code: d['经销商代码'],
-          province: d['省份'],
-          totalScore: (d['传播获客力'] || 0) + (d['体验力'] || 0) + (d['转化力'] || 0) + (d['服务力'] || 0) + (d['经营力'] || 0)
-        }))
-        .filter(d => d.totalScore >= min && d.totalScore < max)
-        .sort((a, b) => a.totalScore - b.totalScore)
+      
+      const maxValue = Math.max(...Object.values(storeCount), 10)
+      
+      const option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'item',
+          formatter: function(params) {
+            if (params.value) {
+              return `${params.name}<br/>门店数量：${params.value}家<br/><span style="color:#999;font-size:11px;">点击查看详情</span>`
+            }
+            return `${params.name}<br/>暂无门店`
+          }
+        },
+        visualMap: {
+          min: 0,
+          max: maxValue,
+          left: 'left',
+          bottom: '5%',
+          text: ['高', '低'],
+          calculable: true,
+          inRange: {
+            color: ['#e6f7ff', '#91d5ff', '#40a9ff', '#1890ff', '#096dd9']
+          },
+          textStyle: {
+            color: '#666'
+          }
+        },
+        geo: {
+          map: 'china',
+          roam: true,
+          zoom: 1.2,
+          center: [105, 36],
+          label: {
+            show: true,
+            color: '#666',
+            fontSize: 10
+          },
+          itemStyle: {
+            areaColor: '#f5f5f5',
+            borderColor: '#1890ff',
+            borderWidth: 1
+          },
+          emphasis: {
+            itemStyle: {
+              areaColor: '#1890ff'
+            },
+            label: {
+              color: '#fff',
+              fontSize: 12
+            }
+          }
+        },
+        series: [
+          {
+            name: '门店分布',
+            type: 'map',
+            map: 'china',
+            geoIndex: 0,
+            data: data
+          }
+        ]
+      }
+      
+      this.mapChart.setOption(option, true)
     },
     initRadarChart() {
       this.radarChart = echarts.init(this.$refs.radarChart)
@@ -591,11 +834,14 @@ export default {
     },
     initLineChart() {
       this.lineChart = echarts.init(this.$refs.lineChart)
-      const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月']
-      const salesData = this.getMonthlyAvg('销量')
-      const customerData = this.getMonthlyAvg('客流量')
-      const leadData = this.getMonthlyAvg('线索量')
-      const potentialData = this.getMonthlyAvg('潜客量')
+      
+      const monthCount = this.selectedYear === 2024 ? 10 : 12
+      const months = Array.from({length: monthCount}, (_, i) => `${i + 1}月`)
+      
+      const salesData = months.map((_, i) => (this.monthlyAvg[i + 1] || {}).销量 || 0)
+      const customerData = months.map((_, i) => (this.monthlyAvg[i + 1] || {}).客流量 || 0)
+      const leadData = months.map((_, i) => (this.monthlyAvg[i + 1] || {}).线索量 || 0)
+      const potentialData = months.map((_, i) => (this.monthlyAvg[i + 1] || {}).潜客量 || 0)
       
       const option = {
         backgroundColor: 'transparent',
@@ -757,17 +1003,6 @@ export default {
       }
       this.lineChart.setOption(option)
     },
-    getMonthlyAvg(field) {
-      const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月']
-      const result = months.map(month => {
-        const key = `${month}${field}`
-        const values = this.dealerData.map(d => d[key]).filter(v => v !== null && v !== undefined)
-        if (values.length === 0) return 0
-        return Math.round(values.reduce((a, b) => a + b, 0) / values.length)
-      })
-      console.log(`计算 ${field} 数据:`, result)
-      return result
-    },
     initPieChart() {
       this.pieChart = echarts.init(this.$refs.pieChart)
       const option = {
@@ -833,36 +1068,8 @@ export default {
         console.error('加载地图数据失败:', error)
       }
     },
-    getFilteredStoreData() {
-      let data = [...this.mockStoreData]
-      
-      if (this.mapFilters.region !== 'all') {
-        data = data.filter(s => s.region === this.mapFilters.region)
-      }
-      if (this.mapFilters.storeType !== 'all') {
-        data = data.filter(s => s.storeType === this.mapFilters.storeType)
-      }
-      if (this.mapFilters.achieveStatus !== 'all') {
-        data = data.filter(s => s.achieveStatus === this.mapFilters.achieveStatus)
-      }
-      
-      return data
-    },
     getProvinceStoreCount() {
-      const filteredData = this.getFilteredStoreData()
-      const count = {}
-      filteredData.forEach(store => {
-        count[store.province] = (count[store.province] || 0) + 1
-      })
-      return count
-    },
-    getCityStoreCount(province) {
-      const filteredData = this.getFilteredStoreData().filter(s => s.province === province)
-      const count = {}
-      filteredData.forEach(store => {
-        count[store.city] = (count[store.city] || 0) + 1
-      })
-      return count
+      return this.provinceDealerCount
     },
     updateMapData() {
       this.renderMap()
@@ -872,8 +1079,6 @@ export default {
         this.renderCountryMap()
       } else if (this.mapLevel === 'province') {
         this.renderProvinceMap()
-      } else if (this.mapLevel === 'city') {
-        this.renderCityMap()
       }
     },
     renderCountryMap() {
@@ -955,13 +1160,10 @@ export default {
         const response = await axios.get(`https://geo.datav.aliyun.com/areas_v3/bound/${provinceAdcode}_full.json`)
         echarts.registerMap('province', response.data)
         
-        const cityStoreCount = this.getCityStoreCount(this.currentProvince)
-        const data = Object.keys(cityStoreCount).map(city => ({
-          name: city,
-          value: cityStoreCount[city]
-        }))
+        const provinceCount = this.provinceDealerCount[this.currentProvince] || 0
         
-        const maxValue = Math.max(...Object.values(cityStoreCount), 5)
+        const cityData = this.getCityDataForProvince(this.currentProvince)
+        const maxValue = Math.max(...cityData.map(d => d.value), 10)
         
         const option = {
           backgroundColor: 'transparent',
@@ -969,7 +1171,7 @@ export default {
             trigger: 'item',
             formatter: function(params) {
               if (params.value) {
-                return `${params.name}<br/>门店数量：${params.value}家<br/><span style="color:#999;font-size:11px;">点击查看门店列表</span>`
+                return `${params.name}<br/>门店数量：${params.value}家`
               }
               return `${params.name}<br/>暂无门店`
             }
@@ -1012,13 +1214,23 @@ export default {
               }
             }
           },
+          title: {
+            text: `${this.currentProvince}\n共${provinceCount}家经销商`,
+            left: 'center',
+            top: 20,
+            textStyle: {
+              color: '#333',
+              fontSize: 16,
+              fontWeight: 'bold'
+            }
+          },
           series: [
             {
               name: '门店分布',
               type: 'map',
               map: 'province',
               geoIndex: 0,
-              data: data
+              data: cityData
             }
           ]
         }
@@ -1028,74 +1240,27 @@ export default {
         console.error('加载省份地图失败:', error)
       }
     },
-    renderCityMap() {
-      const cityStores = this.getFilteredStoreData().filter(s => 
-        s.province === this.currentProvince && s.city === this.currentCity
-      )
-      
-      const option = {
-        backgroundColor: 'transparent',
-        title: {
-          text: `${this.currentCity}门店列表`,
-          left: 'center',
-          top: 10,
-          textStyle: {
-            color: '#333',
-            fontSize: 14
-          }
-        },
-        tooltip: {
-          trigger: 'item',
-          formatter: function(params) {
-            const store = params.data
-            return `${store.name}<br/>
-              类型：${store.storeType === 'direct' ? '直营' : '加盟'}<br/>
-              状态：${store.businessStatus === 'open' ? '营业中' : '已停业'}<br/>
-              达标：${store.achieveStatus === 'achieved' ? '是' : '否'}<br/>
-              销量：${store.sales}<br/>
-              评分：${store.totalScore.toFixed(2)}`
-          }
-        },
-        grid: {
-          left: '3%',
-          right: '4%',
-          bottom: '3%',
-          top: '15%',
-          containLabel: true
-        },
-        xAxis: {
-          type: 'category',
-          data: cityStores.map(s => s.name),
-          axisLabel: {
-            rotate: 45,
-            color: '#666',
-            fontSize: 10
-          }
-        },
-        yAxis: {
-          type: 'value',
-          name: '综合评分',
-          axisLabel: {
-            color: '#666'
-          }
-        },
-        series: [
-          {
-            name: '门店评分',
-            type: 'bar',
-            data: cityStores.map(s => ({
-              ...s,
-              value: s.totalScore,
-              itemStyle: {
-                color: s.achieveStatus === 'achieved' ? '#52c41a' : '#ff4d4f'
-              }
-            })),
-            barWidth: '60%'
-          }
-        ]
+    getCityDataForProvince(provinceName) {
+      const cityData = []
+      const provinceCities = {
+        '辽宁省': ['沈阳市', '大连市'],
+        '山东省': ['济南市', '青岛市', '烟台市'],
+        '广东省': ['广州市', '深圳市', '佛山市', '东莞市'],
+        '广西壮族自治区': ['南宁市', '柳州市', '桂林市'],
+        '湖北省': ['武汉市', '宜昌市', '襄阳市', '黄冈市']
       }
       
-      this.mapChart.setOption(option, true)
+      const cities = provinceCities[provinceName] || []
+      for (const city of cities) {
+        const count = this.cityDealerCount[city] || 0
+        if (count > 0) {
+          cityData.push({
+            name: city,
+            value: count
+          })
+        }
+      }
+      return cityData
     },
     bindMapEvents() {
       this.mapChart.on('click', async (params) => {
@@ -1104,27 +1269,73 @@ export default {
           if (provinceName && this.getProvinceStoreCount()[provinceName]) {
             this.mapStack.push({ level: 'country', province: '', city: '' })
             this.currentProvince = provinceName
+            this.currentCity = ''
             this.mapLevel = 'province'
+            
+            const region = PROVINCE_REGION_MAP[provinceName]
+            if (region) {
+              this.selectedRegion = region
+            }
+            
             await this.renderProvinceMap()
-          }
-        } else if (this.mapLevel === 'province' && params.componentType === 'series') {
-          const cityName = params.name
-          if (cityName) {
-            this.mapStack.push({ level: 'province', province: this.currentProvince, city: '' })
-            this.currentCity = cityName
-            this.mapLevel = 'city'
-            this.renderCityMap()
+            await this.loadAreaChartData()
+            this.bindProvinceMapEvents()
           }
         }
       })
+    },
+    bindProvinceMapEvents() {
+      this.mapChart.on('click', async (params) => {
+        if (this.mapLevel === 'province' && params.componentType === 'series') {
+          const cityName = params.name
+          if (cityName) {
+            let matchedCity = ''
+            for (const key of Object.keys(this.cityDealerCount)) {
+              if (key.includes(cityName) || cityName.includes(key)) {
+                matchedCity = key
+                break
+              }
+            }
+            
+            if (matchedCity || this.cityDealerCount[cityName]) {
+              const targetCity = matchedCity || cityName
+              if (this.currentCity === targetCity) {
+                this.currentCity = ''
+              } else {
+                this.currentCity = targetCity
+              }
+              this.highlightCity(this.currentCity)
+              await this.loadAreaChartData()
+            }
+          }
+        }
+      })
+    },
+    highlightCity(cityName) {
+      if (!this.mapChart) return
+      
+      const option = this.mapChart.getOption()
+      if (option.series && option.series[0]) {
+        const data = option.series[0].data.map(item => ({
+          ...item,
+          itemStyle: {
+            areaColor: item.name === cityName ? '#faad14' : undefined
+          }
+        }))
+        this.mapChart.setOption({
+          series: [{ data }]
+        })
+      }
     },
     goBackLevel() {
       if (this.mapStack.length > 0) {
         const prev = this.mapStack.pop()
         this.mapLevel = prev.level
         this.currentProvince = prev.province
-        this.currentCity = prev.city
+        this.currentCity = ''
+        this.selectedRegion = ''
         this.renderMap()
+        this.loadAreaChartData()
       }
     },
     goToCountry() {
@@ -1132,7 +1343,9 @@ export default {
       this.currentProvince = ''
       this.currentCity = ''
       this.mapStack = []
+      this.selectedRegion = ''
       this.renderMap()
+      this.loadAreaChartData()
     },
     getProvinceAdcode(provinceName) {
       const adcodeMap = {
@@ -1170,8 +1383,17 @@ export default {
       }
       return adcodeMap[provinceName] || '100000'
     },
-    showProvinceDetail() {
+    async showProvinceDetail() {
       this.selectedProvince = this.currentProvince
+      try {
+        const response = await axios.get(`/api/index/province-stores?year=${this.selectedYear}&province=${encodeURIComponent(this.selectedProvince)}`)
+        if (response.data.success) {
+          this.provinceStores = response.data.data
+        }
+      } catch (error) {
+        console.error('获取省份门店数据失败:', error)
+        this.provinceStores = []
+      }
       this.showStoreDetailModal = true
       this.$nextTick(() => {
         this.initTrendChart()
@@ -1185,18 +1407,6 @@ export default {
       }
     },
     sortStoreList() {
-    },
-    getRegionName(regionCode) {
-      const regionMap = {
-        'east': '华东区',
-        'south': '华南区',
-        'north': '华北区',
-        'southwest': '西南区',
-        'northwest': '西北区',
-        'northeast': '东北区',
-        'central': '华中区'
-      }
-      return regionMap[regionCode] || ''
     },
     initTrendChart() {
       if (!this.$refs.trendChart) return
@@ -1310,50 +1520,258 @@ export default {
 .header-info {
   font-size: 14px;
   color: #666;
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
-.total-dealers strong {
+.year-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.year-selector label {
+  color: #666;
+}
+
+.year-selector select {
+  padding: 4px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333;
+  background: #fff;
+  cursor: pointer;
+}
+
+.year-selector select:focus {
+  outline: none;
+  border-color: #1890ff;
+}
+
+.kpi-cards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.kpi-card {
+  flex: 1;
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.kpi-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.kpi-icon-blue { background: #e6f7ff; }
+.kpi-icon-green { background: #f6ffed; }
+.kpi-icon-orange { background: #fff7e6; }
+.kpi-icon-red { background: #fff2f0; }
+.kpi-icon-purple { background: #f9f0ff; }
+.kpi-icon-cyan { background: #e6fffb; }
+
+.kpi-content {
+  flex: 1;
+}
+
+.kpi-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.2;
+}
+
+.kpi-label {
+  font-size: 13px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.kpi-change {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.kpi-change.positive {
+  color: #52c41a;
+}
+
+.kpi-change.negative {
+  color: #ff4d4f;
+}
+
+.kpi-sub {
+  font-size: 12px;
   color: #1890ff;
-  font-size: 18px;
+  margin-top: 4px;
 }
 
 .dashboard-main {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: calc(100vh - 120px);
+  padding-bottom: 20px;
 }
 
 .row {
   display: flex;
   gap: 16px;
+}
+
+.row-map-region {
+  min-height: 600px;
+  height: auto;
+}
+
+.combined-card {
+  display: flex;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
   flex: 1;
 }
 
+.map-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #f0f0f0;
+}
+
+.region-section {
+  width: 380px;
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
+}
+
+.map-body {
+  flex: 1;
+  padding: 12px;
+}
+
+.region-body {
+  flex: 1;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.region-list-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row-map {
+  min-height: 500px;
+  height: auto;
+}
+
+.row-region {
+  min-height: 200px;
+  height: auto;
+}
+
 .row-top {
-  height: 45%;
+  min-height: 500px;
+  height: auto;
 }
 
-.row-bottom {
-  height: 55%;
+.row-metrics {
+  min-height: 160px;
+  height: auto;
 }
 
-.col-left {
-  width: 25%;
+.row-charts {
+  min-height: 800px;
+  height: auto;
+  display: flex;
+  gap: 16px;
+}
+
+.col-left-main {
+  width: 75%;
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
-.col-center {
+.row-left-top {
+  width: 100%;
+  min-height: 280px;
+}
+
+.col-line-full {
+  width: 100%;
+}
+
+.row-left-bottom {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  min-height: 280px;
+}
+
+.col-radar {
   width: 50%;
+}
+
+.col-pie {
+  width: 50%;
+}
+
+.col-right-side {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.col-right-side .card {
+  flex: 1;
+}
+
+.col-map {
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.col-right {
-  width: 25%;
+.col-region {
+  width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.col-full {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.col-metric {
+  flex: 1;
 }
 
 .card {
@@ -1393,43 +1811,6 @@ export default {
   overflow: hidden;
 }
 
-.map-filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #fafafa;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.filter-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.filter-group label {
-  font-size: 12px;
-  color: #666;
-  white-space: nowrap;
-}
-
-.filter-group select {
-  padding: 4px 8px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #333;
-  background: #fff;
-  cursor: pointer;
-  min-width: 80px;
-}
-
-.filter-group select:focus {
-  outline: none;
-  border-color: #1890ff;
-}
-
 .map-nav-bar {
   display: flex;
   align-items: center;
@@ -1464,7 +1845,203 @@ export default {
 .map-container {
   width: 100%;
   height: 100%;
-  min-height: 300px;
+  min-height: 600px;
+}
+
+.region-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.region-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  padding: 4px;
+}
+
+.region-item {
+  padding: 12px;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.region-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: #1890ff;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.region-item:hover {
+  background: #f0f5ff;
+  transform: translateX(-2px);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+}
+
+.region-item:hover::before {
+  opacity: 1;
+}
+
+.region-item.region-active {
+  border-color: #1890ff;
+  background: #e6f7ff;
+  box-shadow: 0 2px 12px rgba(24, 144, 255, 0.2);
+}
+
+.region-item.region-active::before {
+  opacity: 1;
+}
+
+.region-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  background: #f0f5ff;
+  border-radius: 4px;
+  border-left: 3px solid #1890ff;
+}
+
+.insight-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.insight-text {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.region-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.region-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.region-score {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.region-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.region-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #999;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.stat-value.positive {
+  color: #52c41a;
+}
+
+.stat-value.negative {
+  color: #ff4d4f;
+}
+
+.stat-value.warning {
+  color: #fa8c16;
+}
+
+.region-bar {
+  height: 4px;
+  background: #e8e8e8;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1890ff, #40a9ff);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.metric-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  height: 100%;
+  min-height: 120px;
+}
+
+.metric-icon {
+  font-size: 36px;
+}
+
+.metric-content {
+  flex: 1;
+}
+
+.metric-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.metric-change {
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.metric-change.positive {
+  color: #52c41a;
+}
+
+.metric-change.negative {
+  color: #ff4d4f;
+}
+
+.metric-change.neutral {
+  color: #999;
 }
 
 .ranking-table-wrapper {
@@ -1531,7 +2108,7 @@ export default {
 .warning-sections {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   height: 100%;
   overflow-y: auto;
 }
@@ -1539,6 +2116,8 @@ export default {
 .warning-section {
   border-radius: 6px;
   padding: 10px;
+  flex: 1;
+  min-height: 80px;
 }
 
 .warning-red {
@@ -1733,30 +2312,6 @@ export default {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.modal-filter-info {
-  padding: 12px 24px;
-  background: #e6f7ff;
-  border-bottom: 1px solid #91d5ff;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.modal-filter-info span:first-child {
-  font-size: 13px;
-  color: #1890ff;
-  font-weight: 500;
-}
-
-.filter-tag {
-  background: #1890ff;
-  color: #fff;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-}
-
 .modal-body {
   padding: 20px 24px;
   overflow-y: auto;
@@ -1831,16 +2386,6 @@ export default {
 
 .store-table tr:hover {
   background: #f5f7fa;
-}
-
-.store-table .achieved {
-  color: #52c41a;
-  font-weight: 500;
-}
-
-.store-table .not-achieved {
-  color: #ff4d4f;
-  font-weight: 500;
 }
 
 .top-bottom-section {
