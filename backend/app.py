@@ -903,6 +903,53 @@ def delete_analysis_report(id):
         print(f'删除分析报告失败: {str(e)}')
         return jsonify({'success': False, 'message': f'删除失败: {str(e)}'}), 500
 
+from wordcloud_service import wordcloud_generator
+
+@app.route('/api/wordcloud', methods=['POST'])
+def generate_wordcloud():
+    try:
+        data = request.get_json()
+        comments = data.get('comments', [])
+        positive_words = data.get('positiveWords', [])
+        negative_words = data.get('negativeWords', [])
+        neutral_words = data.get('neutralWords', [])
+        wordcloud_type = data.get('type', 'all')
+        
+        if wordcloud_type == 'circular':
+            image_base64 = wordcloud_generator.generate_circular_wordcloud(
+                positive_words, negative_words, neutral_words,
+                width=900, height=600
+            )
+        else:
+            filtered_comments = comments
+            if wordcloud_type == 'positive':
+                filtered_comments = [c for c in comments if c.get('sentiment') == 'positive']
+            elif wordcloud_type == 'negative':
+                filtered_comments = [c for c in comments if c.get('sentiment') == 'negative']
+            elif wordcloud_type == 'neutral':
+                filtered_comments = [c for c in comments if c.get('sentiment') == 'neutral']
+            
+            image_base64 = wordcloud_generator.generate_wordcloud_for_sentiment(
+                filtered_comments, wordcloud_type, width=900, height=550
+            )
+        
+        if image_base64:
+            return jsonify({
+                'success': True,
+                'image': image_base64
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'message': '无法生成词云，数据不足'
+            }), 400
+            
+    except Exception as e:
+        print(f'生成词云失败: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'生成失败: {str(e)}'}), 500
+
 if __name__ == '__main__':
     print('Starting Flask server...')
     try:
