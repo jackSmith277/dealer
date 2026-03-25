@@ -222,42 +222,55 @@
               <h2 class="section-title">评价关键词分布</h2>
               <p class="section-subtitle">鼠标悬停查看词频详情</p>
             </div>
-            <div class="wordcloud-static">
-              <span 
-                v-for="(word, index) in displayWords" 
-                :key="index"
-                class="static-word-tag"
-                :class="{ 'is-vertical': word.rotate }"
-                :style="{ 
-                  fontSize: getWordFontSize(word.value) + 'px', 
-                  color: getWordColor(index),
-                  marginTop: word.offset + 'px',
-                  opacity: getWordOpacity(index)
-                }"
-                @click="showKeywordComments(word.name)"
-              >
-                {{ word.name }}
-              </span>
+            <div class="wordcloud-image-container">
+              <div v-if="wordcloudLoading" class="wordcloud-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>正在生成词云...</span>
+              </div>
+              <img 
+                v-else-if="wordcloudImage" 
+                :src="wordcloudImage" 
+                alt="词云" 
+                class="wordcloud-image"
+              />
+              <div v-else class="wordcloud-static">
+                <span 
+                  v-for="(word, index) in displayWords" 
+                  :key="index"
+                  class="static-word-tag"
+                  :class="{ 'is-vertical': word.rotate }"
+                  :style="{ 
+                    fontSize: getWordFontSize(word.value) + 'px', 
+                    color: getWordColor(index),
+                    marginTop: word.offset + 'px',
+                    opacity: getWordOpacity(index)
+                  }"
+                  @click="showKeywordComments(word.name)"
+                >
+                  {{ word.name }}
+                </span>
+              </div>
             </div>
           </div>
 
           <div class="wordcloud-comparison card">
             <div class="section-header">
-              <h2 class="section-title">正负面词云对比</h2>
-              <p class="section-subtitle">直观展示用户关注点</p>
+              <h2 class="section-title">情感词云对比</h2>
+              <p class="section-subtitle">点击词条查看相关评论</p>
             </div>
             <div class="comparison-container">
               <div class="comparison-column">
-                <div class="comparison-header positive-header">
+                <div class="comparison-header positive-header" @click="showSentimentComments('positive')">
                   <i class="fas fa-thumbs-up"></i>
                   <span>正面关键词</span>
                 </div>
                 <div class="word-tags positive-tags">
                   <span 
-                    v-for="(word, index) in positiveWords.slice(0, 20)" 
+                    v-for="(word, index) in positiveWords.slice(0, 15)" 
                     :key="'pos-' + index"
                     class="word-tag positive-tag"
                     :style="{ fontSize: getTagSize(word.value, 'positive') + 'px' }"
+                    @click.stop="showKeywordComments(word.name, null, 'positive')"
                   >
                     {{ word.name }}
                   </span>
@@ -265,16 +278,35 @@
               </div>
               <div class="comparison-divider"></div>
               <div class="comparison-column">
-                <div class="comparison-header negative-header">
+                <div class="comparison-header neutral-header" @click="showSentimentComments('neutral')">
+                  <i class="fas fa-meh"></i>
+                  <span>中性关键词</span>
+                </div>
+                <div class="word-tags neutral-tags">
+                  <span 
+                    v-for="(word, index) in neutralWords.slice(0, 15)" 
+                    :key="'neu-' + index"
+                    class="word-tag neutral-tag"
+                    :style="{ fontSize: getTagSize(word.value, 'neutral') + 'px' }"
+                    @click.stop="showKeywordComments(word.name, null, 'neutral')"
+                  >
+                    {{ word.name }}
+                  </span>
+                </div>
+              </div>
+              <div class="comparison-divider"></div>
+              <div class="comparison-column">
+                <div class="comparison-header negative-header" @click="showSentimentComments('negative')">
                   <i class="fas fa-thumbs-down"></i>
                   <span>负面关键词</span>
                 </div>
                 <div class="word-tags negative-tags">
                   <span 
-                    v-for="(word, index) in negativeWords.slice(0, 20)" 
+                    v-for="(word, index) in negativeWords.slice(0, 35)" 
                     :key="'neg-' + index"
                     class="word-tag negative-tag"
                     :style="{ fontSize: getTagSize(word.value, 'negative') + 'px' }"
+                    @click.stop="showKeywordComments(word.name, null, 'negative')"
                   >
                     {{ word.name }}
                   </span>
@@ -511,8 +543,11 @@ export default {
       showTopicModal: false,
       positiveWords: [],
       negativeWords: [],
+      neutralWords: [],
       sentimentResults: [],
       topicStats: [],
+      wordcloudImage: null,
+      wordcloudLoading: false,
       topicKeywords: {
         '动力性能': {
           keywords: ['动力', '加速', '发动机', '马力', '提速', '推背感', '动力强', '动力弱', '起步', '超车', '爬坡', '涡轮', '混动', '纯电'],
@@ -569,7 +604,14 @@ export default {
         '智能', '便捷', '实用', '方便', '人性化', '贴心', '周到', '细心',
         '满意', '开心', '高兴', '惊喜', '意外', '超出预期', '物超所值',
         '流畅', '顺滑', '轻快', '轻松', '惬意', '享受', '舒适', '惬意',
-        '不错', '挺好', '还好', '还好', '可以', '还行', '挺好', '蛮好'
+        '不错', '挺好', '还好', '还好', '可以', '还行', '挺好', '蛮好',
+        '完美', '到位', '清晰', '解答', '良好', '不错', '便利', '良好',
+        '体验好', '试驾好', '服务热情', '品牌信任', '优惠活动', '朋友推荐',
+        '内饰好', '外观好', '安全好', '动力好', '性价比高', '便利实用',
+        '用心', '认真', '负责', '细心', '周到', '热情', '友好', '亲切',
+        '满意', '感谢', '感谢', '赞', '好评', '五星', '满分', '推荐',
+        '试驾体验好', '讲解清晰', '态度好', '服务周到', '环境好', '设施齐全',
+        '车型丰富', '功能齐全', '体验充分', '预约方便', '场地良好', '形式丰富'
       ],
       negativeDict: [
         '差', '烂', '糟', '失望', '后悔', '坑', '骗', '垃圾', '垃圾', '问题',
@@ -583,7 +625,57 @@ export default {
         '不智能', '鸡肋', '花哨', '不实用', '反人类', '难操作', '不友好',
         '不满', '生气', '愤怒', '恼火', '烦躁', '郁闷', '无语', '崩溃',
         '漏水', '漏油', '生锈', '掉漆', '开裂', '变形', '松动', '脱落',
-        '续航短', '充电慢', '电池差', '续航虚', '虚标', '缩水'
+        '续航短', '充电慢', '电池差', '续航虚', '虚标', '缩水',
+        '态度冷淡', '讲解不清晰', '等待时间长', '未提供饮品', '危险驾驶',
+        '车辆有异味', '车辆不整洁', '车辆有损坏', '试驾时间短', '功能体验不充分',
+        '智能交互不好', '动力性能差', '空间不足', '舒适性差', '内饰质感不好',
+        '极差', '有待提高', '神经', '盗用', '虚假', '坑骗', '糊弄', '差评',
+        '乱搞', '忽悠', '坑人', '骗人', '欺骗', '虚假试驾', '冒名顶替',
+        '一问三不知', '不专业', '不耐烦', '敷衍了事', '推卸责任', '态度恶劣',
+        '操控复杂', '收油太快', '刹车太快', '颠簸', '压抑感', '功能不全',
+        '没有360', '会车不便', '方向盘挡屏幕', '换挡不便', '后排难受',
+        '盗用信息', '投诉到底', '安全隐患', '发生事故', '坑骗客户', '失望透',
+        '态度恶略', '体验极差', '发动机故障', '强制保电', '子虚乌有', '经常坏',
+        '莫名其妙', '退款', '销售差劲', '打哈哈', '忘了', '隔音差', '路感差',
+        '糊弄人', '没试驾到', '等了很久', '没被安排', '不买保险', '玩手机',
+        '不了解', '回答问题不清晰', '冲业绩', '好忽悠', '不愿乘坐', '内在不足',
+        '油耗高', '胎噪大', '风噪大', '起步慢', '加速慢', '超车难', '爬坡无力',
+        '悬挂硬', '减震差', '底盘低', '通过性差', '转向重', '方向盘重',
+        '座椅硬', '座椅不舒服', '后排挤', '后备箱小', '储物空间少',
+        '车机卡', '屏幕小', '分辨率低', '反应慢', '死机', '黑屏', '闪退',
+        '信号差', '定位不准', '导航不准', '蓝牙断', '连不上', '充不进',
+        '空调差', '制冷慢', '制热慢', '异味大', '甲醛', '有毒',
+        '漆面薄', '钣金薄', '缝隙大', '异响多', '共振', '抖动大',
+        '保养贵', '维修贵', '配件贵', '等待久', '缺货', '没现车',
+        '销售忽悠', '销售骗人', '销售态度差', '销售不专业', '销售不耐烦',
+        '销售敷衍', '销售推诿', '销售拖延', '销售冷漠', '销售傲慢',
+        '承诺不兑现', '说好的没有', '变卦', '反悔', '不认账',
+        '套路深', '套路多', '强制消费', '捆绑销售', '隐形消费', '乱收费',
+        '合同陷阱', '文字游戏', '霸王条款', '不退定金', '定金不退',
+        '交车慢', '提车难', '拖延交车', '一拖再拖', '遥遥无期',
+        '货不对板', '配置缩水', '减配严重', '偷梁换柱', '以次充好',
+        '售后差', '售后推诿', '售后拖延', '售后敷衍', '售后冷漠',
+        '投诉无门', '维权难', '没人管', '没人理', '踢皮球',
+        '体验差', '感受差', '印象差', '观感差', '手感差', '脚感差',
+        '不推荐', '不买', '不考虑', '放弃', '退订', '后悔买',
+        '被坑', '被忽悠', '被欺骗', '被套路', '被糊弄', '被敷衍',
+        '浪费时间', '白跑一趟', '空欢喜', '一场空', '竹篮打水',
+        '不值这个价', '性价比低', '不划算', '亏了', '买贵了',
+        '比不上', '不如', '差远了', '差很多', '差一大截',
+        '难以接受', '无法接受', '不能接受', '接受不了', '忍不了'
+      ],
+      neutralDict: [
+        '一般', '普通', '还行', '还可以', '凑合', '过得去', '差不多',
+        '有待提高', '需要改进', '有待加强', '还需完善', '有待提升',
+        '中规中矩', '无功无过', '不好不坏', '一般般', '马马虎虎',
+        '感觉还行', '总体还行', '整体还行', '还算可以', '勉强接受',
+        '有待观察', '需要适应', '习惯就好', '慢慢适应',
+        '内饰质感达不到', '功能不齐全', '没有全影', '方向盘挡屏幕',
+        '换挡旋钮', '怀档', '试驾不长', '后排上下车难受', '只有外观',
+        '对车型不了解', '回答问题不清晰', '收油门', '刹车太快',
+        '操控有点复杂', '没有去试一下', '有心提升品质', '解答到位',
+        '服务较差', '内在不足', '质感达不到', '不愿再次乘坐',
+        '有待', '提升', '改进', '完善', '加强', '适应', '观察'
       ],
       degreeWords: {
         positive: ['非常', '特别', '超级', '极其', '十分', '相当', '格外', '尤其'],
@@ -751,6 +843,7 @@ export default {
         this.processComments()
         this.analyzeSentiment()
         this.analyzeTopics()
+        this.fetchWordcloud()
         this.$nextTick(() => {
           this.initCharts()
           this.startRotation()
@@ -792,6 +885,7 @@ export default {
     analyzeSentiment() {
       const positiveWordCount = {}
       const negativeWordCount = {}
+      const neutralWordCount = {}
       
       this.sentimentResults = this.rawComments.map((item, index) => {
         const comment = item.content
@@ -800,13 +894,37 @@ export default {
         
         const nlpResult = this.analyzeCommentSentiment(comment)
         
-        nlpResult.positiveWords.forEach(word => {
-          positiveWordCount[word] = (positiveWordCount[word] || 0) + 1
-        })
-        
-        nlpResult.negativeWords.forEach(word => {
-          negativeWordCount[word] = (negativeWordCount[word] || 0) + 1
-        })
+        if (score > 3) {
+          nlpResult.positiveWords.forEach(word => {
+            positiveWordCount[word] = (positiveWordCount[word] || 0) + 1
+          })
+          nlpResult.negativeWords.forEach(word => {
+            positiveWordCount[word] = (positiveWordCount[word] || 0) + 1
+          })
+          nlpResult.neutralWords.forEach(word => {
+            positiveWordCount[word] = (positiveWordCount[word] || 0) + 1
+          })
+        } else if (score < 3) {
+          nlpResult.negativeWords.forEach(word => {
+            negativeWordCount[word] = (negativeWordCount[word] || 0) + 1
+          })
+          nlpResult.positiveWords.forEach(word => {
+            negativeWordCount[word] = (negativeWordCount[word] || 0) + 1
+          })
+          nlpResult.neutralWords.forEach(word => {
+            negativeWordCount[word] = (negativeWordCount[word] || 0) + 1
+          })
+        } else {
+          nlpResult.neutralWords.forEach(word => {
+            neutralWordCount[word] = (neutralWordCount[word] || 0) + 1
+          })
+          nlpResult.positiveWords.forEach(word => {
+            neutralWordCount[word] = (neutralWordCount[word] || 0) + 1
+          })
+          nlpResult.negativeWords.forEach(word => {
+            neutralWordCount[word] = (neutralWordCount[word] || 0) + 1
+          })
+        }
         
         return {
           sentiment: sentiment,
@@ -826,6 +944,32 @@ export default {
       this.negativeWords = Object.entries(negativeWordCount)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value)
+      
+      this.neutralWords = Object.entries(neutralWordCount)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 30)
+    },
+    
+    async fetchWordcloud() {
+      this.wordcloudLoading = true
+      try {
+        const response = await axios.post('/api/wordcloud', {
+          comments: this.rawComments,
+          positiveWords: this.positiveWords,
+          negativeWords: this.negativeWords,
+          neutralWords: this.neutralWords,
+          type: 'all'
+        })
+        
+        if (response.data.success && response.data.image) {
+          this.wordcloudImage = response.data.image
+        }
+      } catch (err) {
+        console.error('获取词云失败:', err)
+      } finally {
+        this.wordcloudLoading = false
+      }
     },
     
     analyzeTopics() {
@@ -928,8 +1072,10 @@ export default {
       const words = comment.split(/[\s,，。！？、；：""''（）【】《》\n\r\t]+/)
       let positiveScore = 0
       let negativeScore = 0
+      let neutralScore = 0
       const positiveWords = []
       const negativeWords = []
+      const neutralWords = []
       
       words.forEach((word, index) => {
         const cleanWord = word.trim()
@@ -954,6 +1100,9 @@ export default {
             negativeScore += 1
             negativeWords.push(cleanWord)
           }
+        } else if (this.neutralDict.includes(cleanWord)) {
+          neutralScore += 0.5
+          neutralWords.push(cleanWord)
         }
       })
       
@@ -968,8 +1117,10 @@ export default {
         sentiment,
         positiveScore,
         negativeScore,
+        neutralScore,
         positiveWords,
         negativeWords,
+        neutralWords,
         text: comment
       }
     },
@@ -1389,7 +1540,7 @@ export default {
       
       this.topicBarChart = echarts.init(this.$refs.topicBarChart)
       
-      const topics = this.topicStats.slice(0, 6)
+      const topics = this.topicStats.slice(0, 8)
       
       const option = {
         backgroundColor: 'transparent',
@@ -1403,7 +1554,7 @@ export default {
           padding: [10, 15]
         },
         legend: {
-          data: ['正面', '负面'],
+          data: ['正面', '中性', '负面'],
           top: 5,
           right: 10,
           textStyle: { color: '#6b7280', fontSize: 11 },
@@ -1425,7 +1576,7 @@ export default {
             color: '#6b7280', 
             fontSize: 10,
             interval: 0,
-            rotate: 20
+
           }
         },
         yAxis: {
@@ -1448,6 +1599,19 @@ export default {
               borderRadius: [0, 0, 0, 0]
             },
             barWidth: '40%'
+          },
+          {
+            name: '中性',
+            type: 'bar',
+            stack: 'total',
+            data: topics.map(t => t.neutral),
+            itemStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#6b7280' },
+                { offset: 1, color: '#4b5563' }
+              ]),
+              borderRadius: [0, 0, 0, 0]
+            }
           },
           {
             name: '负面',
@@ -1945,16 +2109,30 @@ export default {
       })
     },
     
-    showKeywordComments(keyword, topicName) {
+    showKeywordComments(keyword, topicName, sentimentType) {
       this.selectedKeyword = keyword
       this.keywordComments = []
+      
+      if (!sentimentType) {
+        sentimentType = this.getKeywordSentiment(keyword)
+      }
+      
+      const sentimentFilter = (comment) => {
+        if (sentimentType === 'positive') {
+          return comment.score > 3
+        } else if (sentimentType === 'negative') {
+          return comment.score < 3
+        } else {
+          return comment.score === 3
+        }
+      }
       
       if (topicName) {
         const topic = this.topicStats.find(t => t.name === topicName)
         if (topic && topic.commentIndices) {
           topic.commentIndices.forEach(idx => {
             const comment = this.rawComments[idx]
-            if (comment && comment.content && this.containsKeyword(comment.content, keyword)) {
+            if (comment && comment.content && this.containsKeyword(comment.content, keyword) && sentimentFilter(comment)) {
               this.keywordComments.push({
                 content: comment.content,
                 score: comment.score,
@@ -1965,7 +2143,7 @@ export default {
         }
       } else {
         this.rawComments.forEach(comment => {
-          if (comment.content && this.containsKeyword(comment.content, keyword)) {
+          if (comment.content && this.containsKeyword(comment.content, keyword) && sentimentFilter(comment)) {
             this.keywordComments.push({
               content: comment.content,
               score: comment.score,
@@ -1979,10 +2157,53 @@ export default {
       this.showKeywordModal = true
     },
     
+    getKeywordSentiment(keyword) {
+      if (this.negativeWords.some(w => w.name === keyword)) {
+        return 'negative'
+      } else if (this.neutralWords.some(w => w.name === keyword)) {
+        return 'neutral'
+      } else if (this.positiveWords.some(w => w.name === keyword)) {
+        return 'positive'
+      }
+      return null
+    },
+    
     closeKeywordModal() {
       this.showKeywordModal = false
       this.selectedKeyword = null
       this.keywordComments = []
+    },
+    
+    showSentimentComments(sentimentType) {
+      this.selectedKeyword = sentimentType === 'positive' ? '正面评价' : 
+                             sentimentType === 'negative' ? '负面评价' : '中性评价'
+      this.keywordComments = []
+      
+      this.rawComments.forEach(comment => {
+        if (comment.content) {
+          const score = comment.score
+          let match = false
+          
+          if (sentimentType === 'positive' && score > 3) {
+            match = true
+          } else if (sentimentType === 'negative' && score < 3) {
+            match = true
+          } else if (sentimentType === 'neutral' && score === 3) {
+            match = true
+          }
+          
+          if (match) {
+            this.keywordComments.push({
+              content: comment.content,
+              score: comment.score,
+              sentiment: comment.sentiment
+            })
+          }
+        }
+      })
+      
+      this.keywordCommentsTotal = this.keywordComments.length
+      this.showKeywordModal = true
     },
     
     showTopicComments(topic) {
@@ -2100,9 +2321,29 @@ export default {
     },
     
     getTagSize(value, type) {
-      const words = type === 'positive' ? this.positiveWords : this.negativeWords
+      let words
+      if (type === 'positive') {
+        words = this.positiveWords
+      } else if (type === 'negative') {
+        words = this.negativeWords
+      } else {
+        words = this.neutralWords
+      }
+      
+      if (!words || words.length === 0) return 12
+      
       const max = words[0]?.value || 1
-      return Math.max(12, Math.min(24, (value / max) * 24))
+      const min = words[words.length - 1]?.value || 1
+      
+      const minSize = 12
+      const maxSize = 24
+      
+      if (max === min) return (maxSize + minSize) / 2
+      
+      const percent = (value - min) / (max - min)
+      const scale = Math.pow(percent, 0.5)
+      
+      return minSize + scale * (maxSize - minSize)
     },
     
 
@@ -2848,6 +3089,35 @@ export default {
   min-height: 280px;
 }
 
+.wordcloud-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 380px;
+  background: #fafafa;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.wordcloud-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #6b7280;
+}
+
+.wordcloud-loading i {
+  font-size: 32px;
+  color: #3b82f6;
+}
+
+.wordcloud-image {
+  max-width: 100%;
+  max-height: 500px;
+  object-fit: contain;
+}
+
 .wordcloud-static {
   display: flex;
   flex-wrap: wrap;
@@ -2993,7 +3263,7 @@ export default {
 
 .comparison-container {
   display: flex;
-  gap: 16px;
+  gap: 20px;
 }
 
 .comparison-column {
@@ -3003,67 +3273,93 @@ export default {
 .comparison-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 6px 10px;
   border-radius: 4px;
-  margin-bottom: 12px;
-  font-size: 13px;
+  margin-bottom: 10px;
+  font-size: 12px;
   font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.comparison-header:hover {
+  transform: translateY(-1px);
 }
 
 .positive-header {
-  background: #f6ffed;
-  color: #52c41a;
-  border: 1px solid #b7eb8f;
+  background: rgba(16, 185, 129, 0.08);
+  color: #10b981;
+}
+
+.positive-header:hover {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.neutral-header {
+  background: rgba(107, 114, 128, 0.08);
+  color: #6b7280;
+}
+
+.neutral-header:hover {
+  background: rgba(107, 114, 128, 0.15);
 }
 
 .negative-header {
-  background: #fff2f0;
-  color: #ff4d4f;
-  border: 1px solid #ffccc7;
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+}
+
+.negative-header:hover {
+  background: rgba(239, 68, 68, 0.15);
 }
 
 .comparison-divider {
   width: 1px;
-  background: #e8e8e8;
+  background: #e5e7eb;
 }
 
 .word-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   min-height: auto;
 }
 
 .word-tag {
-  padding: 3px 8px;
-  border-radius: 2px;
+  padding: 2px 6px;
+  border-radius: 3px;
   font-weight: 400;
   cursor: pointer;
-  transition: all 0.2s;
-  font-size: 12px;
+  transition: all 0.15s ease;
+  font-size: 11px;
 }
 
 .positive-tag {
-  background: #f6ffed;
-  color: #52c41a;
-  border: 1px solid #d9f7be;
+  background: rgba(16, 185, 129, 0.06);
+  color: #059669;
 }
 
 .positive-tag:hover {
-  background: #d9f7be;
-  border-color: #95de64;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.neutral-tag {
+  background: rgba(107, 114, 128, 0.06);
+  color: #4b5563;
+}
+
+.neutral-tag:hover {
+  background: rgba(107, 114, 128, 0.12);
 }
 
 .negative-tag {
-  background: #fff2f0;
-  color: #ff4d4f;
-  border: 1px solid #ffccc7;
+  background: rgba(239, 68, 68, 0.06);
+  color: #dc2626;
 }
 
 .negative-tag:hover {
-  background: #ffccc7;
-  border-color: #ff7875;
+  background: rgba(239, 68, 68, 0.12);
 }
 
 .chart-container {
@@ -3312,20 +3608,21 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  backdrop-filter: blur(2px);
 }
 
 .keyword-modal {
   background: #ffffff;
-  border-radius: 4px;
-  width: 600px;
+  border-radius: 8px;
+  width: 640px;
   max-width: 90%;
-  max-height: 75vh;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  max-height: 80vh;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -3334,45 +3631,47 @@ export default {
 .modal-header {
   display: flex;
   align-items: center;
-  padding: 14px 20px;
-  border-bottom: 1px solid #e8e8e8;
-  background: #fafafa;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
   flex-shrink: 0;
 }
 
 .modal-title {
   margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.85);
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex: 1;
 }
 
 .modal-title i {
-  color: #1890ff;
+  color: #3b82f6;
   font-size: 14px;
 }
 
 .modal-count {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
-  margin-right: 12px;
+  color: #9ca3af;
+  margin-right: 16px;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
 .modal-close {
   background: none;
   border: none;
-  font-size: 16px;
-  color: rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  color: #9ca3af;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 2px;
-  transition: all 0.2s;
-  width: 28px;
-  height: 28px;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3380,19 +3679,19 @@ export default {
 }
 
 .modal-close:hover {
-  background: #f5f5f5;
-  color: rgba(0, 0, 0, 0.75);
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
 .modal-body {
-  padding: 12px 20px 20px;
-  max-height: calc(75vh - 52px);
+  padding: 16px 24px 24px;
+  max-height: calc(80vh - 60px);
   overflow-y: auto;
   flex: 1;
 }
 
 .modal-body::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 .modal-body::-webkit-scrollbar-track {
@@ -3400,105 +3699,90 @@ export default {
 }
 
 .modal-body::-webkit-scrollbar-thumb {
-  background: #d9d9d9;
+  background: #e5e7eb;
   border-radius: 3px;
 }
 
 .modal-body::-webkit-scrollbar-thumb:hover {
-  background: #bfbfbf;
+  background: #d1d5db;
 }
 
 .no-comments {
   text-align: center;
-  color: rgba(0, 0, 0, 0.45);
-  padding: 40px 0;
+  color: #9ca3af;
+  padding: 48px 0;
   font-size: 13px;
 }
 
 .comment-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .comment-item {
-  padding: 12px 14px;
-  border-radius: 4px;
+  padding: 14px 16px;
+  border-radius: 6px;
   background: #fafafa;
-  border: 1px solid #e8e8e8;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
+  position: relative;
 }
 
 .comment-item:hover {
-  border-color: #d9d9d9;
-  background: #f5f5f5;
+  background: #f3f4f6;
 }
 
 .comment-item.positive {
-  border-left: 3px solid #52c41a;
+  border-left: 3px solid #10b981;
 }
 
 .comment-item.negative {
-  border-left: 3px solid #ff4d4f;
+  border-left: 3px solid #ef4444;
 }
 
 .comment-item.neutral {
-  border-left: 3px solid #8c8c8c;
+  border-left: 3px solid #6b7280;
 }
 
 .comment-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .comment-score {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.65);
-  font-weight: 400;
-}
-
-.comment-score::before {
-  content: '';
-  display: inline-block;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #bfbfbf;
-  margin-right: 8px;
-  vertical-align: middle;
+  color: #6b7280;
+  font-weight: 500;
 }
 
 .comment-sentiment {
   font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 2px;
-  font-weight: 400;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
 }
 
 .comment-sentiment.positive {
-  background: #f6ffed;
-  color: #52c41a;
-  border: 1px solid #b7eb8f;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
 }
 
 .comment-sentiment.negative {
-  background: #fff2f0;
-  color: #ff4d4f;
-  border: 1px solid #ffccc7;
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
 }
 
 .comment-sentiment.neutral {
-  background: #fafafa;
-  color: #8c8c8c;
-  border: 1px solid #d9d9d9;
+  background: rgba(107, 114, 128, 0.1);
+  color: #4b5563;
 }
 
 .comment-content {
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.85);
-  line-height: 1.6;
+  color: #374151;
+  line-height: 1.7;
   margin: 0;
 }
 
