@@ -2,8 +2,15 @@
   <div class="dashboard-container" :class="{ 'show-export-dropdown': showExportDropdown || showReportDropdown }">
     <!-- 页面标题和操作按钮 -->
     <div class="header-section">
-      <h1 class="page-title">汽车销售提升 · 2024</h1>
+      <h1 class="page-title">汽车销售提升 · {{ selectedYear }}</h1>
       <div class="header-controls">
+        <!-- 年份选择器 -->
+        <div class="time-range-selector">
+          <label class="time-range-label">年份：</label>
+          <select v-model="selectedYear" class="time-range-select">
+            <option v-for="year in availableYears" :key="year" :value="year">{{ year }}年</option>
+          </select>
+        </div>
         <!-- 时间范围选择器 -->
         <div class="time-range-selector">
           <label class="time-range-label">时间范围：</label>
@@ -310,12 +317,12 @@
 
 <script>
 import * as echarts from 'echarts'
-import dealerData from '@/assets/dealerData.json'
+import axios from 'axios'
 import DealerSelector from '@/components/DealerSelector'
 import ReportModal from '@/components/ReportModal.vue'
 import { extractCardData } from '@/DS/dataExtractor.js'
 
-const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月']
+const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 
 const metricKeys = {
   销量: (m) => `${m}销量`,
@@ -341,21 +348,18 @@ export default {
   },
   data() {
     return {
-      dealers: dealerData || [],
-      selectedCode: dealerData?.[0]?.['经销商代码'] || '',
-      months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月'],
-      timeRange: 'all', // all, quarter, month
+      dealers: [],
+      selectedCode: '',
+      selectedYear: 2024,
+      availableYears: [],
+      timeRange: 'all',
       selectedQuarter: 1,
       selectedMonth: 1,
-      // 加载状态
       loading: false,
       error: null,
-      // 导出下拉菜单状态
       showExportDropdown: false,
-      // 导出子菜单状态
       showAllExportSubmenu: false,
       showSelectedExportSubmenu: false,
-      // 图表实例
       charts: {
         trend: null,
         funnel: null,
@@ -365,13 +369,10 @@ export default {
         gsev: null,
         reviewCharts: []
       },
-      metricDisplayMode: 'peak', // peak, valley, both
-      // 卡片抖动和选择状态
+      metricDisplayMode: 'peak',
       isReportMode: false,
       selectedCards: [],
-      // 报告下拉菜单状态
       showReportDropdown: false,
-      // 报告模态框状态
       showReportModal: false,
       reportCardData: {},
       // ResizeObserver实例
@@ -379,25 +380,30 @@ export default {
     }
   },
   computed: {
+    months() {
+      if (this.selectedYear === 2024) {
+        return ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月']
+      }
+      return ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+    },
     currentDealer() {
       return this.dealers.find((d) => d['经销商代码'] === this.selectedCode) || {}
     },
-    // 根据选择的时间范围返回相应的月份
     filteredMonths() {
       if (this.timeRange === 'all') {
-        // 全部时间，返回所有月份
         return this.months
       } else if (this.timeRange === 'quarter') {
-        // 按季度，返回对应季度的月份
         const quarterMonths = {
           1: ['1月', '2月', '3月'],
           2: ['4月', '5月', '6月'],
           3: ['7月', '8月', '9月'],
           4: ['10月', '11月', '12月']
         }
+        if (this.selectedYear === 2024 && this.selectedQuarter === 4) {
+          return ['10月']
+        }
         return quarterMonths[this.selectedQuarter] || []
       } else if (this.timeRange === 'month') {
-        // 按月度，返回对应月份
         return [`${this.selectedMonth}月`]
       }
       return this.months
@@ -476,9 +482,9 @@ export default {
     },
   },
   mounted() {
+    this.loadAvailableYears()
     this.$nextTick(() => {
       this.initCharts()
-      this.renderCharts()
     })
     
     this.resizeObserver = new ResizeObserver(() => {
@@ -514,6 +520,10 @@ export default {
       console.log('当前经销商数据:', this.currentDealer)
       this.renderCharts()
     },
+    selectedYear(newYear, oldYear) {
+      console.log('年份变化:', oldYear, '->', newYear)
+      this.loadDealerData()
+    },
   },
   beforeDestroy() {
     if (this.resizeObserver) {
@@ -539,6 +549,44 @@ export default {
     })
   },
   methods: {
+    async loadAvailableYears() {
+      try {
+        const response = await axios.get('http://localhost:5000/api/dashboard/years')
+        if (response.data.success) {
+          this.availableYears = response.data.data
+          if (this.availableYears.length > 0) {
+            this.selectedYear = this.availableYears[this.availableYears.length - 1]
+            await this.loadDealerData()
+          }
+        }
+      } catch (error) {
+        console.error('获取可用年份失败:', error)
+        this.error = '获取可用年份失败'
+      }
+    },
+    async loadDealerData() {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await axios.get('http://localhost:5000/api/dashboard/metrics', {
+          params: { year: this.selectedYear }
+        })
+        if (response.data.success) {
+          this.dealers = response.data.data
+          if (this.dealers.length > 0 && !this.selectedCode) {
+            this.selectedCode = this.dealers[0]['经销商代码']
+          }
+          this.$nextTick(() => {
+            this.renderCharts()
+          })
+        }
+      } catch (error) {
+        console.error('获取经销商数据失败:', error)
+        this.error = '获取经销商数据失败'
+      } finally {
+        this.loading = false
+      }
+    },
     getMetricColorClass(label) {
       const colorMap = {
         '销量': 'ceeb1fd',
@@ -1380,12 +1428,11 @@ export default {
         const chart = this.charts.reviewCharts[index]
         if (!chart) return
         
-        const reviewCount = this.toNumber(this.currentDealer[metricKeys.评价数(month)])
-        const goodCount = this.toNumber(this.currentDealer[metricKeys.好评数(month)])
-        const badCount = this.toNumber(this.currentDealer[metricKeys.差评数(month)])
+        const evalScore = this.currentDealer[`${month}评价分`]
+        const goodPercent = this.currentDealer[`${month}好评率`]
+        const badPercent = this.currentDealer[`${month}差评率`]
         
-        // 如果没有评价数据，显示空状态
-        if (!reviewCount && !goodCount && !badCount) {
+        if (!evalScore && !goodPercent && !badPercent) {
           chart.setOption({
             backgroundColor: 'transparent',
             title: {
@@ -1402,19 +1449,24 @@ export default {
           return
         }
         
-        // 使用实际的评价总数计算百分比
-        const actualReviewCount = reviewCount || (goodCount + badCount)
-        const goodPercent = actualReviewCount > 0 ? (goodCount / actualReviewCount * 100).toFixed(1) : 0
-        const badPercent = actualReviewCount > 0 ? (badCount / actualReviewCount * 100).toFixed(1) : 0
+        const goodValue = goodPercent || (evalScore ? (evalScore / 5.0 * 100).toFixed(1) : 0)
+        const badValue = badPercent || (100 - parseFloat(goodValue)).toFixed(1)
         
         chart.setOption({
           backgroundColor: 'transparent',
           title: {
-            text: ''
+            text: evalScore ? `${evalScore}分` : '',
+            left: 'center',
+            top: '35%',
+            textStyle: {
+              color: '#1f2937',
+              fontSize: 11,
+              fontWeight: 'bold'
+            }
           },
           tooltip: {
             trigger: 'item',
-            formatter: '{b}: {c} ({d}%)',
+            formatter: '{b}: {c}%',
             backgroundColor: 'rgba(255, 255, 255, 0.95)',
             borderColor: '#e5e7eb',
             borderWidth: 1,
@@ -1449,7 +1501,7 @@ export default {
               },
               label: {
                 show: true,
-                formatter: '{b}\n{d}%',
+                formatter: '{b}\n{c}%',
                 color: '#6b7280',
                 fontSize: 11,
                 position: 'outside',
@@ -1476,8 +1528,8 @@ export default {
                 }
               },
               data: [
-                { value: goodCount, name: '好评', itemStyle: { color: '#10b981' } },
-                { value: badCount, name: '差评', itemStyle: { color: '#ef4444' } }
+                { value: goodValue, name: '好评', itemStyle: { color: '#10b981' } },
+                { value: badValue, name: '差评', itemStyle: { color: '#ef4444' } }
               ]
             }
           ]
