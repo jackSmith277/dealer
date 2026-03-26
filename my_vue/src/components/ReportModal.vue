@@ -188,7 +188,8 @@ export default {
             this.reportContent += chunk;
             this.progress = Math.min(90, this.progress + 1);
             this.progressText = '正在生成报告...';
-          }
+          },
+          this.dealerCode
         );
 
 

@@ -1989,7 +1989,7 @@ export default {
       const topics = this.topicStats.slice(0, 8)
       const colors = [
         '#3498db', '#10b981', '#f59e0b', '#8b5cf6', 
-        '#ef4444', '#06b6d4', '#ec4899', '#84cc16'
+        '#F0EFC2', '#06b6d4', '#EDA4A4', '#84cc16'
       ]
       
       const data = topics.map((t, i) => {
@@ -2005,7 +2005,8 @@ export default {
           }
           return {
             name: kw,
-            value: actualCount
+            value: actualCount,
+            topicName: t.name
           }
         })
         
@@ -2040,8 +2041,8 @@ export default {
         series: [{
           type: 'treemap',
           width: '96%',
-          height: '92%',
-          top: '4%',
+          height: '100%',
+          top: '0%',
           left: '2%',
           right: '2%',
           bottom: '4%',
@@ -2102,9 +2103,13 @@ export default {
       this.treemapChart.off('click')
       this.treemapChart.on('click', (params) => {
         if (params.data) {
-          const keyword = params.data.name
-          const topicName = params.treePath && params.treePath.length > 1 ? params.treePath[params.treePath.length - 2] : null
-          this.showKeywordComments(keyword, topicName)
+          if (params.data.children) {
+            this.showTopicComments({ name: params.data.name, commentIndices: this.topicStats.find(t => t.name === params.data.name)?.commentIndices || [] })
+          } else {
+            const keyword = params.data.name
+            const topicName = params.data.topicName || null
+            this.showKeywordComments(keyword, topicName)
+          }
         }
       })
     },
@@ -2113,26 +2118,12 @@ export default {
       this.selectedKeyword = keyword
       this.keywordComments = []
       
-      if (!sentimentType) {
-        sentimentType = this.getKeywordSentiment(keyword)
-      }
-      
-      const sentimentFilter = (comment) => {
-        if (sentimentType === 'positive') {
-          return comment.score > 3
-        } else if (sentimentType === 'negative') {
-          return comment.score < 3
-        } else {
-          return comment.score === 3
-        }
-      }
-      
       if (topicName) {
         const topic = this.topicStats.find(t => t.name === topicName)
         if (topic && topic.commentIndices) {
           topic.commentIndices.forEach(idx => {
             const comment = this.rawComments[idx]
-            if (comment && comment.content && this.containsKeyword(comment.content, keyword) && sentimentFilter(comment)) {
+            if (comment && comment.content && this.containsKeyword(comment.content, keyword)) {
               this.keywordComments.push({
                 content: comment.content,
                 score: comment.score,
@@ -2143,7 +2134,7 @@ export default {
         }
       } else {
         this.rawComments.forEach(comment => {
-          if (comment.content && this.containsKeyword(comment.content, keyword) && sentimentFilter(comment)) {
+          if (comment.content && this.containsKeyword(comment.content, keyword)) {
             this.keywordComments.push({
               content: comment.content,
               score: comment.score,
@@ -2210,38 +2201,51 @@ export default {
       this.selectedTopic = topic
       this.topicComments = []
       
-      const topicKeywords = this.topicKeywords[topic.name]?.keywords || []
-      
-      this.rawComments.forEach((comment, index) => {
-        if (comment.content) {
-          let bestTopic = null
-          let bestScore = 0
-          
-          Object.keys(this.topicKeywords).forEach(topicName => {
-            const keywords = this.topicKeywords[topicName].keywords
-            let score = 0
-            
-            keywords.forEach(keyword => {
-              if (this.containsKeyword(comment.content, keyword)) {
-                score++
-              }
-            })
-            
-            if (score > bestScore) {
-              bestScore = score
-              bestTopic = topicName
-            }
-          })
-          
-          if (bestTopic === topic.name && bestScore > 0) {
+      if (topic.commentIndices && topic.commentIndices.length > 0) {
+        topic.commentIndices.forEach(idx => {
+          const comment = this.rawComments[idx]
+          if (comment && comment.content) {
             this.topicComments.push({
               content: comment.content,
               score: comment.score,
               sentiment: comment.sentiment
             })
           }
-        }
-      })
+        })
+      } else {
+        const topicKeywords = this.topicKeywords[topic.name]?.keywords || []
+        
+        this.rawComments.forEach((comment, index) => {
+          if (comment.content) {
+            let bestTopic = null
+            let bestScore = 0
+            
+            Object.keys(this.topicKeywords).forEach(topicName => {
+              const keywords = this.topicKeywords[topicName].keywords
+              let score = 0
+              
+              keywords.forEach(keyword => {
+                if (this.containsKeyword(comment.content, keyword)) {
+                  score++
+                }
+              })
+              
+              if (score > bestScore) {
+                bestScore = score
+                bestTopic = topicName
+              }
+            })
+            
+            if (bestTopic === topic.name && bestScore > 0) {
+              this.topicComments.push({
+                content: comment.content,
+                score: comment.score,
+                sentiment: comment.sentiment
+              })
+            }
+          }
+        })
+      }
       
       this.showTopicModal = true
     },
