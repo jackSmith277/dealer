@@ -123,9 +123,221 @@
           </div>
 
           <div class="detail-cards-section">
-            <h3>选中的卡片数据</h3>
-            <div class="cards-display">
-              <pre>{{ formatSelectedCards(selectedReport.selected_cards) }}</pre>
+            <h3><i class="fas fa-th-large"></i> 选中的卡片数据</h3>
+            <div class="cards-grid">
+              <div v-if="parsedCards.trend" class="data-card trend-card">
+                <div class="card-header">
+                  <i class="fas fa-chart-line"></i>
+                  <span>销量趋势分析</span>
+                </div>
+                <div class="card-body">
+                  <div class="trend-chart-mini">
+                    <div class="trend-item" v-for="(month, idx) in parsedCards.trend.months" :key="idx">
+                      <span class="month-label">{{ month }}</span>
+                      <div class="trend-bars">
+                        <div class="bar-item">
+                          <div class="bar sales" :style="{ width: getBarWidth(parsedCards.trend.sales[idx], parsedCards.trend.sales) }"></div>
+                          <span class="bar-value">{{ parsedCards.trend.sales[idx] }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="parsedCards.funnel" class="data-card funnel-card">
+                <div class="card-header">
+                  <i class="fas fa-filter"></i>
+                  <span>销售漏斗</span>
+                </div>
+                <div class="card-body">
+                  <div class="funnel-stages">
+                    <div class="funnel-stage">
+                      <span class="stage-name">线索</span>
+                      <span class="stage-value">{{ parsedCards.funnel.leads }}</span>
+                    </div>
+                    <div class="funnel-arrow"><i class="fas fa-arrow-down"></i> {{ parsedCards.funnel.leadConversionRate }}%</div>
+                    <div class="funnel-stage">
+                      <span class="stage-name">潜客</span>
+                      <span class="stage-value">{{ parsedCards.funnel.potential }}</span>
+                    </div>
+                    <div class="funnel-arrow"><i class="fas fa-arrow-down"></i> {{ parsedCards.funnel.storeRate }}%</div>
+                    <div class="funnel-stage">
+                      <span class="stage-name">进店</span>
+                      <span class="stage-value">{{ parsedCards.funnel.store }}</span>
+                    </div>
+                    <div class="funnel-arrow"><i class="fas fa-arrow-down"></i> {{ parsedCards.funnel.salesRate }}%</div>
+                    <div class="funnel-stage highlight">
+                      <span class="stage-name">成交</span>
+                      <span class="stage-value">{{ parsedCards.funnel.sales }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="parsedCards.snapshot" class="data-card snapshot-card">
+                <div class="card-header">
+                  <i class="fas fa-camera"></i>
+                  <span>月度快照</span>
+                </div>
+                <div class="card-body">
+                  <div class="snapshot-grid">
+                    <div class="snapshot-item" v-for="(snap, idx) in parsedCards.snapshot.data" :key="idx">
+                      <div class="snap-month">{{ snap.month }}</div>
+                      <div class="snap-metrics">
+                        <div class="snap-metric">
+                          <span class="metric-label">销量</span>
+                          <span class="metric-value">{{ snap.sales }}</span>
+                        </div>
+                        <div class="snap-metric">
+                          <span class="metric-label">客流</span>
+                          <span class="metric-value">{{ snap.traffic }}</span>
+                        </div>
+                        <div class="snap-metric">
+                          <span class="metric-label">成交率</span>
+                          <span class="metric-value rate">{{ snap.rate }}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="parsedCards.metrics" class="data-card metrics-card">
+                <div class="card-header">
+                  <i class="fas fa-tachometer-alt"></i>
+                  <span>核心指标</span>
+                </div>
+                <div class="card-body">
+                  <div class="metrics-grid">
+                    <div class="metric-item" v-for="(m, idx) in parsedCards.metrics.metrics" :key="idx">
+                      <div class="metric-name">{{ m.label }}</div>
+                      <div class="metric-display">{{ m.display }}</div>
+                      <div class="metric-month">{{ m.bestMonth }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="parsedCards.rate" class="data-card rate-card">
+                <div class="card-header">
+                  <i class="fas fa-percentage"></i>
+                  <span>成交/战败率</span>
+                </div>
+                <div class="card-body">
+                  <div class="rate-comparison">
+                    <div class="rate-item success">
+                      <div class="rate-label">平均成交率</div>
+                      <div class="rate-value">{{ parsedCards.rate.avgSuccessRate }}%</div>
+                      <div class="rate-bar">
+                        <div class="bar-fill" :style="{ width: parsedCards.rate.avgSuccessRate + '%' }"></div>
+                      </div>
+                    </div>
+                    <div class="rate-item defeat">
+                      <div class="rate-label">平均战败率</div>
+                      <div class="rate-value">{{ parsedCards.rate.avgDefeatRate }}%</div>
+                      <div class="rate-bar">
+                        <div class="bar-fill" :style="{ width: parsedCards.rate.avgDefeatRate + '%' }"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="parsedCards.responseTime" class="data-card response-card">
+                <div class="card-header">
+                  <i class="fas fa-clock"></i>
+                  <span>响应时间分析</span>
+                </div>
+                <div class="card-body">
+                  <div class="response-stats">
+                    <div class="response-item">
+                      <span class="response-label">成交响应</span>
+                      <span class="response-value">{{ parsedCards.responseTime.success }}小时</span>
+                    </div>
+                    <div class="response-item">
+                      <span class="response-label">战败响应</span>
+                      <span class="response-value">{{ parsedCards.responseTime.defeat }}小时</span>
+                    </div>
+                    <div class="response-item avg">
+                      <span class="response-label">平均响应</span>
+                      <span class="response-value">{{ parsedCards.responseTime.average }}小时</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="parsedCards.gsev" class="data-card gsev-card">
+                <div class="card-header">
+                  <i class="fas fa-car"></i>
+                  <span>GSEV分析</span>
+                </div>
+                <div class="card-body">
+                  <div class="gsev-stats">
+                    <div class="gsev-main">
+                      <span class="gsev-value">{{ parsedCards.gsev.avgGsev }}</span>
+                      <span class="gsev-unit">辆</span>
+                    </div>
+                    <div class="gsev-trend" :class="parsedCards.gsev.trend">
+                      <i :class="parsedCards.gsev.trend === '上升' ? 'fas fa-arrow-up' : parsedCards.gsev.trend === '下降' ? 'fas fa-arrow-down' : 'fas fa-minus'"></i>
+                      {{ parsedCards.gsev.trend }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="parsedCards.policy" class="data-card policy-card">
+                <div class="card-header">
+                  <i class="fas fa-file-alt"></i>
+                  <span>政策分析</span>
+                </div>
+                <div class="card-body">
+                  <div class="policy-stats">
+                    <div class="policy-item">
+                      <span class="policy-label">政策总数</span>
+                      <span class="policy-value">{{ parsedCards.policy.totalCount }}</span>
+                    </div>
+                    <div class="policy-item">
+                      <span class="policy-label">月均政策</span>
+                      <span class="policy-value">{{ parsedCards.policy.avgCount }}</span>
+                    </div>
+                    <div class="policy-item">
+                      <span class="policy-label">政策影响</span>
+                      <span class="policy-value impact">{{ parsedCards.policy.impact }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="parsedCards.review" class="data-card review-card">
+                <div class="card-header">
+                  <i class="fas fa-star"></i>
+                  <span>评价分析</span>
+                </div>
+                <div class="card-body">
+                  <div class="review-stats">
+                    <div class="review-total">
+                      <span class="total-value">{{ parsedCards.review.totalCount }}</span>
+                      <span class="total-label">总评价</span>
+                    </div>
+                    <div class="review-breakdown">
+                      <div class="breakdown-item good">
+                        <span class="breakdown-label">好评</span>
+                        <span class="breakdown-value">{{ parsedCards.review.goodRate }}%</span>
+                      </div>
+                      <div class="breakdown-item bad">
+                        <span class="breakdown-label">差评</span>
+                        <span class="breakdown-value">{{ parsedCards.review.badRate }}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="Object.keys(parsedCards).length === 0" class="no-cards">
+                <i class="fas fa-inbox"></i>
+                <span>暂无卡片数据</span>
+              </div>
             </div>
           </div>
 
@@ -168,10 +380,28 @@ export default {
       selectedReport: null
     };
   },
+  computed: {
+    parsedCards() {
+      if (!this.selectedReport || !this.selectedReport.selected_cards) {
+        return {};
+      }
+      try {
+        return JSON.parse(this.selectedReport.selected_cards);
+      } catch {
+        return {};
+      }
+    }
+  },
   mounted() {
     this.loadReports();
   },
   methods: {
+    getBarWidth(value, allValues) {
+      if (!value || !allValues || allValues.length === 0) return '0%';
+      const max = Math.max(...allValues);
+      if (max === 0) return '0%';
+      return Math.round((value / max) * 100) + '%';
+    },
     async loadReports() {
       this.loading = true;
       this.error = null;
@@ -761,22 +991,461 @@ export default {
   border-bottom: 2px solid #1890ff;
 }
 
-.cards-display {
-  background: #f9fafb;
-  border-radius: 8px;
-  padding: 16px;
-  overflow-x: auto;
-  border: 1px solid #e5e7eb;
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
 }
 
-.cards-display pre {
-  margin: 0;
-  font-family: 'Courier New', monospace;
-  font-size: 13px;
+.data-card {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.data-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.data-card .card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  font-weight: 600;
   color: #374151;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  line-height: 1.6;
+}
+
+.data-card .card-header i {
+  color: #1890ff;
+  font-size: 14px;
+}
+
+.data-card .card-body {
+  padding: 16px;
+}
+
+.no-cards {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #9ca3af;
+  gap: 8px;
+}
+
+.no-cards i {
+  font-size: 32px;
+}
+
+.trend-chart-mini {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.trend-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.trend-item:last-child {
+  border-bottom: none;
+}
+
+.trend-item .month-label {
+  width: 40px;
+  font-size: 12px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.trend-bars {
+  flex: 1;
+}
+
+.bar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar-item .bar {
+  height: 8px;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.bar-item .bar.sales {
+  background: linear-gradient(90deg, #1890ff, #40a9ff);
+}
+
+.bar-item .bar-value {
+  font-size: 12px;
+  color: #374151;
+  min-width: 40px;
+  text-align: right;
+}
+
+.funnel-stages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.funnel-stage {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 16px;
+  background: #f9fafb;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.funnel-stage.highlight {
+  background: linear-gradient(135deg, #1890ff, #096dd9);
+  color: white;
+}
+
+.funnel-stage .stage-name {
+  color: #6b7280;
+}
+
+.funnel-stage.highlight .stage-name {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.funnel-stage .stage-value {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.funnel-stage.highlight .stage-value {
+  color: white;
+}
+
+.funnel-arrow {
+  font-size: 11px;
+  color: #1890ff;
+  padding: 2px 0;
+}
+
+.snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.snapshot-item {
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.snap-month {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1890ff;
+  margin-bottom: 6px;
+}
+
+.snap-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.snap-metric {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.snap-metric .metric-label {
+  color: #6b7280;
+}
+
+.snap-metric .metric-value {
+  font-weight: 500;
+  color: #374151;
+}
+
+.snap-metric .metric-value.rate {
+  color: #1890ff;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.metrics-grid .metric-item {
+  text-align: center;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.metrics-grid .metric-name {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.metrics-grid .metric-display {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.metrics-grid .metric-month {
+  font-size: 11px;
+  color: #1890ff;
+  margin-top: 4px;
+}
+
+.rate-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rate-item {
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.rate-item .rate-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.rate-item .rate-value {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.rate-item.success .rate-value {
+  color: #10b981;
+}
+
+.rate-item.defeat .rate-value {
+  color: #ef4444;
+}
+
+.rate-bar {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.rate-item.success .bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 3px;
+}
+
+.rate-item.defeat .bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444, #f87171);
+  border-radius: 3px;
+}
+
+.response-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.response-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.response-item.avg {
+  background: linear-gradient(135deg, #1890ff, #096dd9);
+}
+
+.response-item.avg .response-label,
+.response-item.avg .response-value {
+  color: white;
+}
+
+.response-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.response-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.gsev-stats {
+  text-align: center;
+  padding: 16px;
+}
+
+.gsev-main {
+  margin-bottom: 12px;
+}
+
+.gsev-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.gsev-unit {
+  font-size: 14px;
+  color: #6b7280;
+  margin-left: 4px;
+}
+
+.gsev-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.gsev-trend.上升 {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.gsev-trend.下降 {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.gsev-trend.稳定 {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.policy-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.policy-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.policy-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.policy-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.policy-value.impact {
+  color: #1890ff;
+}
+
+.review-stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.review-total {
+  text-align: center;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.total-value {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.total-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.review-breakdown {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.breakdown-item.good {
+  background: #d1fae5;
+}
+
+.breakdown-item.bad {
+  background: #fee2e2;
+}
+
+.breakdown-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.breakdown-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.breakdown-item.good .breakdown-value {
+  color: #059669;
+}
+
+.breakdown-item.bad .breakdown-value {
+  color: #dc2626;
 }
 
 /* Markdown 样式 */
