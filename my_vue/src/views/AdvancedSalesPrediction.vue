@@ -5,12 +5,11 @@
         <div class="form-card">
           <h2 class="card-title">基准设置 (Baseline)</h2>
           <div class="form-content">
-            <div class="form-group show-manual-input">
+            <div class="form-group">
               <label for="dealer_code">经销商选择:</label>
               <DealerSelector 
                 v-model="baseline.dealer_code" 
                 :dealers="dealerList" 
-                :showManualInput="true"
               />
             </div>
 
@@ -554,8 +553,6 @@ export default {
       const baselineInterval80Upper = [];
       const baselineInterval90Lower = [];
       const baselineInterval90Upper = [];
-      const baselineQ25 = [];
-      const baselineQ75 = [];
       const scenarioLines = [];
 
       if (this.predictionResults.length > 0) {
@@ -567,8 +564,6 @@ export default {
           baselineInterval80Upper.push(item.interval80_upper || item.q90);
           baselineInterval90Lower.push(item.interval90_lower || item.q05);
           baselineInterval90Upper.push(item.interval90_upper || item.q95);
-          baselineQ25.push(item.q25);
-          baselineQ75.push(item.q75);
         });
 
         for (let i = 1; i < this.predictionResults.length; i++) {
@@ -591,8 +586,7 @@ export default {
         }
       }
 
-      const horizons = this.predictionResults.length > 0 ? this.predictionResults[0].monthly.length : parseInt(this.baseline.horizons);
-      const intervalStrategy = parseInt(this.baseline.interval_strategy);
+      const totalMonths = months.length;
       const series = [
         {
           name: '基准情景',
@@ -608,134 +602,54 @@ export default {
           itemStyle: {
             color: '#1890ff'
           }
+        },
+        {
+          name: '90%置信区间',
+          type: 'custom',
+          renderItem: function(params, api) {
+            const points = [];
+            for (let i = 0; i < params.dataIndex; i++) {
+              points.push(api.coord([api.value(0, i), api.value(1, i)]));
+            }
+            for (let i = params.dataIndex; i >= 0; i--) {
+              points.push(api.coord([api.value(0, i), api.value(2, i)]));
+            }
+            return {
+              type: 'polygon',
+              shape: {
+                points: points
+              },
+              style: {
+                fill: 'rgba(82, 196, 26, 0.15)'
+              }
+            };
+          },
+          data: months.slice(0, 3).map((month, index) => [index, baselineInterval90Upper[index], baselineInterval90Lower[index]])
+        },
+        {
+          name: '80%置信区间',
+          type: 'custom',
+          renderItem: function(params, api) {
+            const points = [];
+            for (let i = 0; i < params.dataIndex; i++) {
+              points.push(api.coord([api.value(0, i), api.value(1, i)]));
+            }
+            for (let i = params.dataIndex; i >= 0; i--) {
+              points.push(api.coord([api.value(0, i), api.value(2, i)]));
+            }
+            return {
+              type: 'polygon',
+              shape: {
+                points: points
+              },
+              style: {
+                fill: 'rgba(24, 144, 255, 0.25)'
+              }
+            };
+          },
+          data: months.map((month, index) => [index, baselineInterval80Upper[index], baselineInterval80Lower[index]])
         }
       ];
-
-      if (horizons <= 3) {
-        series.push(
-          {
-            name: '90%置信区间',
-            type: 'custom',
-            renderItem: function(params, api) {
-              const points = [];
-              for (let i = 0; i < params.dataIndex; i++) {
-                points.push(api.coord([api.value(0, i), api.value(1, i)]));
-              }
-              for (let i = params.dataIndex; i >= 0; i--) {
-                points.push(api.coord([api.value(0, i), api.value(2, i)]));
-              }
-              return {
-                type: 'polygon',
-                shape: {
-                  points: points
-                },
-                style: {
-                  fill: 'rgba(82, 196, 26, 0.15)'
-                }
-              };
-            },
-            data: months.map((month, index) => [index, baselineInterval90Upper[index], baselineInterval90Lower[index]])
-          },
-          {
-            name: '80%置信区间',
-            type: 'custom',
-            renderItem: function(params, api) {
-              const points = [];
-              for (let i = 0; i < params.dataIndex; i++) {
-                points.push(api.coord([api.value(0, i), api.value(1, i)]));
-              }
-              for (let i = params.dataIndex; i >= 0; i--) {
-                points.push(api.coord([api.value(0, i), api.value(2, i)]));
-              }
-              return {
-                type: 'polygon',
-                shape: {
-                  points: points
-                },
-                style: {
-                  fill: 'rgba(24, 144, 255, 0.25)'
-                }
-              };
-            },
-            data: months.map((month, index) => [index, baselineInterval80Upper[index], baselineInterval80Lower[index]])
-          },
-          {
-            name: '50%置信区间',
-            type: 'custom',
-            renderItem: function(params, api) {
-              const points = [];
-              for (let i = 0; i < params.dataIndex; i++) {
-                points.push(api.coord([api.value(0, i), api.value(1, i)]));
-              }
-              for (let i = params.dataIndex; i >= 0; i--) {
-                points.push(api.coord([api.value(0, i), api.value(2, i)]));
-              }
-              return {
-                type: 'polygon',
-                shape: {
-                  points: points
-                },
-                style: {
-                  fill: 'rgba(250, 173, 20, 0.35)'
-                }
-              };
-            },
-            data: months.map((month, index) => [index, baselineQ75[index], baselineQ25[index]])
-          }
-        );
-      } else if (horizons <= 6) {
-        series.push(
-          {
-            name: '80%置信区间',
-            type: 'custom',
-            renderItem: function(params, api) {
-              const points = [];
-              for (let i = 0; i < params.dataIndex; i++) {
-                points.push(api.coord([api.value(0, i), api.value(1, i)]));
-              }
-              for (let i = params.dataIndex; i >= 0; i--) {
-                points.push(api.coord([api.value(0, i), api.value(2, i)]));
-              }
-              return {
-                type: 'polygon',
-                shape: {
-                  points: points
-                },
-                style: {
-                  fill: 'rgba(24, 144, 255, 0.2)'
-                }
-              };
-            },
-            data: months.map((month, index) => [index, baselineInterval80Upper[index], baselineInterval80Lower[index]])
-          }
-        );
-      } else {
-        series.push(
-          {
-            name: '80%置信区间',
-            type: 'custom',
-            renderItem: function(params, api) {
-              const points = [];
-              for (let i = 0; i < params.dataIndex; i++) {
-                points.push(api.coord([api.value(0, i), api.value(1, i)]));
-              }
-              for (let i = params.dataIndex; i >= 0; i--) {
-                points.push(api.coord([api.value(0, i), api.value(2, i)]));
-              }
-              return {
-                type: 'polygon',
-                shape: {
-                  points: points
-                },
-                style: {
-                  fill: 'rgba(24, 144, 255, 0.2)'
-                }
-              };
-            },
-            data: months.map((month, index) => [index, baselineInterval80Upper[index], baselineInterval80Lower[index]])
-          }
-        );
-      }
 
       // 添加情景线
       series.push(...scenarioLines);
@@ -746,7 +660,7 @@ export default {
           trigger: 'axis'
         },
         legend: {
-          data: ['基准情景', ...(horizons <= 3 ? ['90%置信区间', '80%置信区间', '50%置信区间'] : ['80%置信区间']), ...this.scenarios.map(s => `${s.dimension} ${s.change_percentage > 0 ? '+' : ''}${s.change_percentage}%`)],
+          data: ['基准情景', '90%置信区间', '80%置信区间', ...this.scenarios.map(s => `${s.dimension} ${s.change_percentage > 0 ? '+' : ''}${s.change_percentage}%`)],
           top: 10
         },
         grid: {
