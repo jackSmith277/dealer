@@ -76,10 +76,11 @@ export async function callDeepSeek(prompt, options = {}) {
 /**
  * 生成销售数据分析报告
  * @param {object} cardData - 选中的卡片数据
+ * @param {string} dealerCode - 经销商代码
  * @returns {Promise<string>} - 分析报告文本
  */
-export async function generateSalesReport(cardData) {
-  const prompt = buildSalesReportPrompt(cardData);
+export async function generateSalesReport(cardData, dealerCode) {
+  const prompt = buildSalesReportPrompt(cardData, dealerCode);
   return await callDeepSeek(prompt, {
     temperature: 0.7,
     maxTokens: 4000
@@ -89,10 +90,17 @@ export async function generateSalesReport(cardData) {
 /**
  * 构建销售报告的提示词
  * @param {object} cardData - 卡片数据
+ * @param {string} dealerCode - 经销商代码
  * @returns {string} - 提示词
  */
-function buildSalesReportPrompt(cardData) {
-  let prompt = `请基于以下汽车经销商的销售数据，生成一份专业的分析报告。报告应包含：
+function buildSalesReportPrompt(cardData, dealerCode) {
+  const dealerTitle = dealerCode ? `${dealerCode}汽车经销商` : '汽车经销商';
+
+  let prompt = `请基于以下${dealerTitle}的销售数据，生成一份专业的分析报告。
+
+**重要要求：报告标题必须使用"# ${dealerTitle}销售数据分析报告"格式，不要使用"XX汽车经销商"这样的占位符。**
+
+报告应包含：
 1. 数据概览
 2. 关键指标分析
 3. 趋势分析
@@ -324,16 +332,16 @@ export async function callDeepSeekStream(prompt, onChunk, options = {}) {
 
   try {
 
-    
+
     // 检查必要的配置
     if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === 'your_api_key_here' || DEEPSEEK_API_KEY === 'sk-your-api-key-here') {
       throw new Error('DeepSeek API Key 未配置，请在项目根目录的 .env 文件中配置 VITE_DEEPSEEK_API_KEY');
     }
-    
+
     if (!DEEPSEEK_API_URL) {
       throw new Error('DeepSeek API URL 未配置，请在项目根目录的 .env 文件中配置 VITE_DEEPSEEK_API_URL');
     }
-    
+
     const response = await fetch(DEEPSEEK_API_URL, {
       method: 'POST',
       headers: {
@@ -374,7 +382,7 @@ export async function callDeepSeekStream(prompt, onChunk, options = {}) {
 
     while (true) {
       const { done, value } = await reader.read();
-      
+
       if (done) {
 
         break;
@@ -415,17 +423,19 @@ export async function callDeepSeekStream(prompt, onChunk, options = {}) {
  * 生成流式销售报告
  * @param {object} cardData - 选中的卡片数据
  * @param {function} onChunk - 接收到数据块时的回调函数
+ * @param {string} dealerCode - 经销商代码
  */
-export async function generateSalesReportStream(cardData, onChunk) {
+export async function generateSalesReportStream(cardData, onChunk, dealerCode) {
   console.log('generateSalesReportStream 被调用');
   console.log('cardData:', cardData);
+  console.log('dealerCode:', dealerCode);
   console.log('API Key 存在:', !!DEEPSEEK_API_KEY);
   console.log('API Key 前缀:', DEEPSEEK_API_KEY ? DEEPSEEK_API_KEY.substring(0, 10) : 'undefined');
-  
-  const prompt = buildSalesReportPrompt(cardData);
+
+  const prompt = buildSalesReportPrompt(cardData, dealerCode);
   console.log('生成的 prompt 长度:', prompt.length);
   console.log('prompt 预览:', prompt.substring(0, 200));
-  
+
   return await callDeepSeekStream(prompt, onChunk, {
     temperature: 0.7,
     maxTokens: 4000
