@@ -36,6 +36,25 @@
         
         <!-- 操作按钮组 -->
         <div class="button-group">
+          <!-- 返回首页按钮 -->
+          <button class="btn btn-gray" @click="$router.push('/dashboard/index')">
+            <i class="fas fa-home"></i> 返回首页
+          </button>
+          <!-- 销量预测下拉菜单 -->
+          <div class="dropdown">
+            <button class="btn btn-gray dropdown-toggle" @click="togglePredictionDropdown">
+              <i class="fas fa-chart-line mr-1"></i>销量预测
+              <i :class="['fas', showPredictionDropdown ? 'fa-chevron-up' : 'fa-chevron-down', 'ml-1']"></i>
+            </button>
+            <div v-if="showPredictionDropdown" class="dropdown-menu">
+              <button class="dropdown-item" @click="$router.push('/dashboard/prediction')">
+                <i class="fas fa-chart-bar mr-1"></i>销量预测
+              </button>
+              <button class="dropdown-item" @click="$router.push('/dashboard/advanced-prediction')">
+                <i class="fas fa-chart-area mr-1"></i>高级销量预测
+              </button>
+            </div>
+          </div>
           <!-- 分析报告下拉菜单 -->
           <div class="dropdown">
             <button class="btn btn-gray dropdown-toggle" @click="toggleReportDropdown">
@@ -48,6 +67,9 @@
               </button>
               <button class="dropdown-item" @click="generateReportFromSelection">
                 <i class="fas fa-file-export mr-1"></i>生成报告
+              </button>
+              <button class="dropdown-item" @click="goToAnalysisReports">
+                <i class="fas fa-history mr-1"></i>查看历史分析报告
               </button>
             </div>
           </div>
@@ -262,7 +284,10 @@
               @change="toggleCardSelection('policy')"
             />
           </div>
-          <h2 class="tith2">政策影响</h2>
+          <div class="title-row">
+            <h2 class="tith2">政策影响</h2>
+            <button class="view-detail-btn" @click="goToPolicy">查看详情</button>
+          </div>
           <div class="chart-container" ref="policyChart"></div>
         </div>
       </div>
@@ -292,7 +317,10 @@
             @change="toggleCardSelection('review')"
           />
         </div>
-        <h2 class="tith2">好坏评占比</h2>
+        <div class="title-row">
+          <h2 class="tith2">好坏评占比</h2>
+          <button class="view-detail-btn" @click="goToComment">查看详情</button>
+        </div>
         <div class="review-charts-container">
           <div class="review-charts-row">
             <div v-for="(month, index) in months" :key="month" class="review-chart-item">
@@ -373,6 +401,7 @@ export default {
       isReportMode: false,
       selectedCards: [],
       showReportDropdown: false,
+      showPredictionDropdown: false,
       showReportModal: false,
       reportCardData: {},
       // ResizeObserver实例
@@ -549,6 +578,15 @@ export default {
     })
   },
   methods: {
+    goToAnalysisReports() {
+      this.$router.push('/dashboard/analysis-reports')
+    },
+    goToPolicy() {
+      this.$router.push('/dashboard/policy')
+    },
+    goToComment() {
+      this.$router.push('/dashboard/comment')
+    },
     async loadAvailableYears() {
       try {
         const response = await axios.get('http://localhost:5000/api/dashboard/years')
@@ -2414,12 +2452,33 @@ export default {
         throw error
       }
     },
+    // 切换销量预测下拉菜单
+    togglePredictionDropdown() {
+      this.showPredictionDropdown = !this.showPredictionDropdown
+      if (this.showPredictionDropdown) {
+        this.showExportDropdown = false
+        this.showReportDropdown = false
+        setTimeout(() => {
+          document.addEventListener('click', this.closePredictionDropdown)
+        }, 100)
+      } else {
+        document.removeEventListener('click', this.closePredictionDropdown)
+      }
+    },
+    // 关闭销量预测下拉菜单
+    closePredictionDropdown(event) {
+      if (!event.target.closest('.dropdown')) {
+        this.showPredictionDropdown = false
+        document.removeEventListener('click', this.closePredictionDropdown)
+      }
+    },
     // 切换报告下拉菜单
     toggleReportDropdown() {
       this.showReportDropdown = !this.showReportDropdown
       // 关闭其他下拉菜单
       if (this.showReportDropdown) {
         this.showExportDropdown = false
+        this.showPredictionDropdown = false
         // 添加点击其他地方关闭下拉菜单的监听
         setTimeout(() => {
           document.addEventListener('click', this.closeReportDropdown)
@@ -3311,6 +3370,36 @@ export default {
   margin-bottom: 20px;
 }
 
+.dealer-selector-container .dealer-selector {
+  width: 100%;
+}
+
+.dealer-selector-container .selector-group {
+  width: 100%;
+}
+
+.dealer-selector-container .selector-row {
+  width: 100%;
+}
+
+.dealer-selector-container .dealer-select {
+  width: 100%;
+}
+
+.dealer-selector-container .manual-input-row {
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.dealer-selector-container .input {
+  flex: 1;
+  max-width: none;
+}
+
+.dealer-selector-container .province-display {
+  min-width: 120px;
+}
+
 .aleftboxtbott {
   background-color: #ffffff;
   border-radius: 8px;
@@ -3636,6 +3725,30 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.view-detail-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #1890ff;
+  background: #e6f7ff;
+  border: 1px solid #91d5ff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.view-detail-btn:hover {
+  color: #fff;
+  background: #1890ff;
+  border-color: #1890ff;
 }
 
 /* 评价占比框样式 */

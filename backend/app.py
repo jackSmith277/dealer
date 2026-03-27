@@ -8,7 +8,7 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 from flask_migrate import Migrate
-
+from wordcloud_service import wordcloud_generator
 # 加载环境变量
 load_dotenv()
 
@@ -62,13 +62,6 @@ class PredictionHistory(db.Model):
     target_year = db.Column(db.Integer, default=2024)
     target_month = db.Column(db.Integer, nullable=False)
     predicted_sales = db.Column(db.Float, nullable=False)
-    month_for_radar = db.Column(db.Integer, nullable=False)
-    propagation_force = db.Column(db.Float, default=0)
-    experience_force = db.Column(db.Float, default=0)
-    conversion_force = db.Column(db.Float, default=0)
-    service_force = db.Column(db.Float, default=0)
-    operation_force = db.Column(db.Float, default=0)
-    comprehensive_score = db.Column(db.Float, default=0)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
 # 分析报告模型
@@ -544,13 +537,6 @@ def get_prediction_history():
                 'target_year': history.target_year,
                 'target_month': history.target_month,
                 'predicted_sales': history.predicted_sales,
-                'month_for_radar': history.month_for_radar,
-                'propagation_force': history.propagation_force,
-                'experience_force': history.experience_force,
-                'conversion_force': history.conversion_force,
-                'service_force': history.service_force,
-                'operation_force': history.operation_force,
-                'comprehensive_score': history.comprehensive_score,
                 'created_at': history.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
         
@@ -581,13 +567,6 @@ def get_prediction_history_detail(id):
             'target_year': history.target_year,
             'target_month': history.target_month,
             'predicted_sales': history.predicted_sales,
-            'month_for_radar': history.month_for_radar,
-            'propagation_force': history.propagation_force,
-            'experience_force': history.experience_force,
-            'conversion_force': history.conversion_force,
-            'service_force': history.service_force,
-            'operation_force': history.operation_force,
-            'comprehensive_score': history.comprehensive_score,
             'created_at': history.created_at.strftime('%Y-%m-%d %H:%M:%S')
         }
         
@@ -618,14 +597,7 @@ def save_prediction_history():
             base_month=data.get('base_month'),
             target_year=data.get('target_year', 2024),
             target_month=data.get('target_month'),
-            predicted_sales=data.get('predicted_sales'),
-            month_for_radar=data.get('month_for_radar'),
-            propagation_force=data.get('propagation_force', 0),
-            experience_force=data.get('experience_force', 0),
-            conversion_force=data.get('conversion_force', 0),
-            service_force=data.get('service_force', 0),
-            operation_force=data.get('operation_force', 0),
-            comprehensive_score=data.get('comprehensive_score', 0)
+            predicted_sales=data.get('predicted_sales')
         )
         
         db.session.add(history)
@@ -742,17 +714,52 @@ def get_policies():
 def get_comments():
     try:
         csv_path = os.path.join(os.path.dirname(__file__), '试驾评价.csv')
-        df = pd.read_csv(csv_path, encoding='gbk')
+        
+        df = None
+        encodings = ['gbk', 'utf-8', 'gb2312', 'gb18030', 'utf-8-sig']
+        last_error = None
+        
+        for encoding in encodings:
+            try:
+                df = pd.read_csv(csv_path, encoding=encoding)
+                print(f'成功使用 {encoding} 编码读取CSV文件')
+                break
+            except Exception as enc_err:
+                last_error = enc_err
+                continue
+        
+        if df is None:
+            print(f'所有编码方式都失败，最后错误: {str(last_error)}')
+            return jsonify({'error': f'读取CSV文件失败: {str(last_error)}'}), 500
         
         comments = []
-        if '评价内容' in df.columns:
-            for content in df['评价内容']:
+        if '评价内容' in df.columns and '综合得分' in df.columns:
+            for idx, row in df.iterrows():
+                content = row.get('评价内容')
+                score = row.get('综合得分')
+                
                 if pd.notna(content) and str(content).strip():
-                    comments.append(str(content).strip())
+                    score_value = float(score) if pd.notna(score) else 3.0
+                    
+                    if score_value > 3:
+                        sentiment = 'positive'
+                    elif score_value < 3:
+                        sentiment = 'negative'
+                    else:
+                        sentiment = 'neutral'
+                    
+                    comments.append({
+                        'content': str(content).strip(),
+                        'score': score_value,
+                        'sentiment': sentiment
+                    })
         
+        print(f'成功读取 {len(comments)} 条评价')
         return jsonify(comments), 200
     except Exception as e:
         print(f'获取试驾评价失败: {str(e)}')
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'获取失败: {str(e)}'}), 500
 
 # 保存分析报告API
@@ -910,6 +917,35 @@ class MonthlyRadarScores(db.Model):
     conversion_force = db.Column(db.Numeric(18, 4), nullable=True)
     service_force = db.Column(db.Numeric(18, 4), nullable=True)
     operation_force = db.Column(db.Numeric(18, 4), nullable=True)
+
+
+@app.route('/api/dealers/list', methods=['GET'])
+def get_dealers_list():
+    try:
+        dealer_info_map = {}
+        try:
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province, city FROM v_dealer_info"))
+            for row in dealer_info_result:
+                dealer_info_map[row[0]] = {'province': row[1], 'city': row[2]}
+        except:
+            pass
+        
+        dealers = []
+        for dealer_code, info in dealer_info_map.items():
+            dealers.append({
+                'dealer_code': dealer_code,
+                'province': info.get('province', ''),
+                'city': info.get('city', '')
+            })
+        
+        return jsonify({
+            'success': True,
+            'dealers': dealers
+        }), 200
+        
+    except Exception as e:
+        print(f'获取经销商列表失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
 
 
 @app.route('/api/dashboard/metrics', methods=['GET'])
@@ -1131,22 +1167,28 @@ def get_index_overview():
                 }
         
         ranking_data = []
-        dealer_scores = {}
+        dealer_all_scores = {}
         for r in radar_records:
             dc = r.dealer_code
-            if dc not in dealer_scores:
-                total = float(r.spread_force or 0) + float(r.experience_force or 0) + float(r.conversion_force or 0) + float(r.service_force or 0) + float(r.operation_force or 0)
-                dealer_scores[dc] = {
-                    'code': dc,
-                    'province': dealer_info_map.get(dc, {}).get('province', ''),
-                    'totalScore': round(total, 2)
-                }
+            total = float(r.spread_force or 0) * 0.2 + float(r.experience_force or 0) * 0.2 + float(r.conversion_force or 0) * 0.4 + float(r.service_force or 0) * 0.1 + float(r.operation_force or 0) * 0.1
+            if dc not in dealer_all_scores:
+                dealer_all_scores[dc] = []
+            dealer_all_scores[dc].append(total)
         
-        ranking_data = sorted(dealer_scores.values(), key=lambda x: x['totalScore'], reverse=True)[:10]
+        dealer_scores = {}
+        for dc, scores in dealer_all_scores.items():
+            avg_score = sum(scores) / len(scores) if scores else 0
+            dealer_scores[dc] = {
+                'code': dc,
+                'province': dealer_info_map.get(dc, {}).get('province', ''),
+                'totalScore': round(avg_score, 2)
+            }
         
-        warning_red = sorted([d for d in dealer_scores.values() if d['totalScore'] < 15], key=lambda x: x['totalScore'])
-        warning_orange = sorted([d for d in dealer_scores.values() if 15 <= d['totalScore'] < 20], key=lambda x: x['totalScore'])
-        warning_green = sorted([d for d in dealer_scores.values() if d['totalScore'] >= 20], key=lambda x: -x['totalScore'])
+        ranking_data = sorted(dealer_scores.values(), key=lambda x: x['totalScore'], reverse=True)
+        
+        warning_red = sorted([d for d in dealer_scores.values() if d['totalScore'] < 3], key=lambda x: x['totalScore'])
+        warning_orange = sorted([d for d in dealer_scores.values() if 3 <= d['totalScore'] < 4], key=lambda x: x['totalScore'])
+        warning_green = sorted([d for d in dealer_scores.values() if d['totalScore'] >= 4], key=lambda x: -x['totalScore'])
         
         province_count = {}
         city_count = {}
@@ -1163,7 +1205,6 @@ def get_index_overview():
             'data': {
                 'radar_avg': radar_avg,
                 'monthly_avg': monthly_avg,
-                'ranking': ranking_data,
                 'warning': {
                     'red': warning_red,
                     'orange': warning_orange,
@@ -1177,6 +1218,83 @@ def get_index_overview():
         
     except Exception as e:
         print(f'获取概览数据失败: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+
+@app.route('/api/index/ranking', methods=['GET'])
+def get_ranking():
+    try:
+        year = request.args.get('year', type=int, default=2024)
+        sort_by = request.args.get('sort_by', type=str, default='total')
+        
+        dealer_info_map = {}
+        try:
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province, city, fed_level FROM v_dealer_info"))
+            for row in dealer_info_result:
+                dealer_info_map[row[0]] = {'province': row[1], 'city': row[2], 'fed_level': row[3]}
+        except:
+            pass
+        
+        radar_query = MonthlyRadarScores.query.filter(MonthlyRadarScores.stat_year == year)
+        radar_records = radar_query.all()
+        
+        dealer_scores = {}
+        for r in radar_records:
+            dc = r.dealer_code
+            if dc not in dealer_scores:
+                dealer_scores[dc] = {
+                    'spread': [],
+                    'experience': [],
+                    'conversion': [],
+                    'service': [],
+                    'operation': [],
+                    'total': []
+                }
+            
+            total = float(r.spread_force or 0) * 0.2 + float(r.experience_force or 0) * 0.2 + float(r.conversion_force or 0) * 0.4 + float(r.service_force or 0) * 0.1 + float(r.operation_force or 0) * 0.1
+            
+            dealer_scores[dc]['spread'].append(float(r.spread_force or 0))
+            dealer_scores[dc]['experience'].append(float(r.experience_force or 0))
+            dealer_scores[dc]['conversion'].append(float(r.conversion_force or 0))
+            dealer_scores[dc]['service'].append(float(r.service_force or 0))
+            dealer_scores[dc]['operation'].append(float(r.operation_force or 0))
+            dealer_scores[dc]['total'].append(total)
+        
+        ranking_data = []
+        for dc, scores in dealer_scores.items():
+            avg_spread = sum(scores['spread']) / len(scores['spread']) if scores['spread'] else 0
+            avg_experience = sum(scores['experience']) / len(scores['experience']) if scores['experience'] else 0
+            avg_conversion = sum(scores['conversion']) / len(scores['conversion']) if scores['conversion'] else 0
+            avg_service = sum(scores['service']) / len(scores['service']) if scores['service'] else 0
+            avg_operation = sum(scores['operation']) / len(scores['operation']) if scores['operation'] else 0
+            avg_total = sum(scores['total']) / len(scores['total']) if scores['total'] else 0
+            
+            score_map = {
+                'total': avg_total,
+                'spread': avg_spread,
+                'experience': avg_experience,
+                'conversion': avg_conversion,
+                'service': avg_service,
+                'operation': avg_operation
+            }
+            
+            ranking_data.append({
+                'code': dc,
+                'province': dealer_info_map.get(dc, {}).get('province', ''),
+                'score': round(score_map.get(sort_by, avg_total), 2)
+            })
+        
+        ranking_data = sorted(ranking_data, key=lambda x: x['score'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'data': ranking_data
+        }), 200
+        
+    except Exception as e:
+        print(f'获取排名数据失败: {str(e)}')
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
@@ -1203,7 +1321,7 @@ def get_province_stores():
         for r in radar_records:
             dc = r.dealer_code
             if dc not in dealer_scores:
-                total = float(r.spread_force or 0) + float(r.experience_force or 0) + float(r.conversion_force or 0) + float(r.service_force or 0) + float(r.operation_force or 0)
+                total = float(r.spread_force or 0) * 0.2 + float(r.experience_force or 0) * 0.2 + float(r.conversion_force or 0) * 0.4 + float(r.service_force or 0) * 0.1 + float(r.operation_force or 0) * 0.1
                 dealer_scores[dc] = {
                     'code': dc,
                     'province': dealer_info_map.get(dc, {}).get('province', ''),
@@ -1269,33 +1387,43 @@ def get_header_kpi():
         radar_query = MonthlyRadarScores.query.filter(MonthlyRadarScores.stat_year == year)
         radar_records = radar_query.all()
         
-        dealer_scores = {}
+        dealer_all_scores = {}
         for r in radar_records:
             dc = r.dealer_code
-            if dc not in dealer_scores:
-                total = float(r.spread_force or 0) + float(r.experience_force or 0) + float(r.conversion_force or 0) + float(r.service_force or 0) + float(r.operation_force or 0)
-                dealer_scores[dc] = total
+            total = float(r.spread_force or 0) * 0.2 + float(r.experience_force or 0) * 0.2 + float(r.conversion_force or 0) * 0.4 + float(r.service_force or 0) * 0.1 + float(r.operation_force or 0) * 0.1
+            if dc not in dealer_all_scores:
+                dealer_all_scores[dc] = []
+            dealer_all_scores[dc].append(total)
+        
+        dealer_scores = {}
+        for dc, scores in dealer_all_scores.items():
+            dealer_scores[dc] = sum(scores) / len(scores) if scores else 0
         
         total_dealers = len(dealer_info_map)
         avg_score = round(sum(dealer_scores.values()) / len(dealer_scores), 2) if dealer_scores else 0
         
-        warning_count = len([s for s in dealer_scores.values() if s < 15])
+        warning_count = len([s for s in dealer_scores.values() if s < 3])
         
         prev_year = year - 1
         prev_radar_query = MonthlyRadarScores.query.filter(MonthlyRadarScores.stat_year == prev_year)
         prev_radar_records = prev_radar_query.all()
-        prev_dealer_scores = {}
+        prev_dealer_all_scores = {}
         for r in prev_radar_records:
             dc = r.dealer_code
-            if dc not in prev_dealer_scores:
-                total = float(r.spread_force or 0) + float(r.experience_force or 0) + float(r.conversion_force or 0) + float(r.service_force or 0) + float(r.operation_force or 0)
-                prev_dealer_scores[dc] = total
+            total = float(r.spread_force or 0) * 0.2 + float(r.experience_force or 0) * 0.2 + float(r.conversion_force or 0) * 0.4 + float(r.service_force or 0) * 0.1 + float(r.operation_force or 0) * 0.1
+            if dc not in prev_dealer_all_scores:
+                prev_dealer_all_scores[dc] = []
+            prev_dealer_all_scores[dc].append(total)
+        
+        prev_dealer_scores = {}
+        for dc, scores in prev_dealer_all_scores.items():
+            prev_dealer_scores[dc] = sum(scores) / len(scores) if scores else 0
         
         prev_avg_score = sum(prev_dealer_scores.values()) / len(prev_dealer_scores) if prev_dealer_scores else avg_score
         score_change = round(avg_score - prev_avg_score, 2)
         score_change_pct = round((score_change / prev_avg_score * 100), 1) if prev_avg_score > 0 else 0
         
-        prev_warning_count = len([s for s in prev_dealer_scores.values() if s < 15])
+        prev_warning_count = len([s for s in prev_dealer_scores.values() if s < 3])
         warning_change = warning_count - prev_warning_count
         
         province_avg_scores = {}
@@ -1314,22 +1442,18 @@ def get_header_kpi():
                 top_province_score = avg
                 top_province = province
         
-        metrics_records = MonthlyMetrics11d.query.filter(MonthlyMetrics11d.stat_year == year).all()
-        active_dealers = len(set(r.dealer_code for r in metrics_records if r.sales and float(r.sales) > 0))
+        active_dealers = total_dealers - warning_count
         
         return jsonify({
             'success': True,
             'data': {
-                'total_dealers': total_dealers,
-                'avg_score': avg_score,
-                'score_change': score_change,
-                'score_change_pct': score_change_pct,
-                'warning_count': warning_count,
-                'warning_change': warning_change,
-                'top_province': top_province,
-                'top_province_score': round(top_province_score, 2),
-                'active_dealers': active_dealers,
-                'active_ratio': round(active_dealers / total_dealers * 100, 1) if total_dealers > 0 else 0
+                'totalDealers': total_dealers,
+                'avgScore': avg_score,
+                'warningCount': warning_count,
+                'topProvince': top_province,
+                'topProvinceScore': round(top_province_score, 2),
+                'activeDealers': active_dealers,
+                'activeRatio': round(active_dealers / total_dealers * 100, 1) if total_dealers > 0 else 0
             }
         }), 200
         
@@ -1365,7 +1489,7 @@ def get_region_dashboard():
             if region not in region_data:
                 region_data[region] = {
                     'dealers': set(),
-                    'scores': [],
+                    'dealer_scores': {},
                     'provinces': set(),
                     'spread_forces': [],
                     'experience_forces': [],
@@ -1376,8 +1500,10 @@ def get_region_dashboard():
             
             region_data[region]['dealers'].add(dc)
             region_data[region]['provinces'].add(province)
-            total = float(r.spread_force or 0) + float(r.experience_force or 0) + float(r.conversion_force or 0) + float(r.service_force or 0) + float(r.operation_force or 0)
-            region_data[region]['scores'].append(total)
+            total = float(r.spread_force or 0) * 0.2 + float(r.experience_force or 0) * 0.2 + float(r.conversion_force or 0) * 0.4 + float(r.service_force or 0) * 0.1 + float(r.operation_force or 0) * 0.1
+            if dc not in region_data[region]['dealer_scores']:
+                region_data[region]['dealer_scores'][dc] = []
+            region_data[region]['dealer_scores'][dc].append(total)
             region_data[region]['spread_forces'].append(float(r.spread_force or 0))
             region_data[region]['experience_forces'].append(float(r.experience_force or 0))
             region_data[region]['conversion_forces'].append(float(r.conversion_force or 0))
@@ -1397,7 +1523,7 @@ def get_region_dashboard():
             if region not in prev_region_data:
                 prev_region_data[region] = {'scores': []}
             
-            total = float(r.spread_force or 0) + float(r.experience_force or 0) + float(r.conversion_force or 0) + float(r.service_force or 0) + float(r.operation_force or 0)
+            total = float(r.spread_force or 0) * 0.2 + float(r.experience_force or 0) * 0.2 + float(r.conversion_force or 0) * 0.4 + float(r.service_force or 0) * 0.1 + float(r.operation_force or 0) * 0.1
             prev_region_data[region]['scores'].append(total)
         
         force_names = {
@@ -1411,13 +1537,14 @@ def get_region_dashboard():
         region_list = []
         for region, data in region_data.items():
             dealer_count = len(data['dealers'])
-            avg_score = round(sum(data['scores']) / len(data['scores']), 2) if data['scores'] else 0
             
-            prev_scores = prev_region_data.get(region, {}).get('scores', [])
-            prev_avg = sum(prev_scores) / len(prev_scores) if prev_scores else avg_score
-            change_pct = round((avg_score - prev_avg) / prev_avg * 100, 1) if prev_avg > 0 else 0
+            dealer_avg_scores = {}
+            for dc, scores in data['dealer_scores'].items():
+                dealer_avg_scores[dc] = sum(scores) / len(scores) if scores else 0
             
-            warning_count = len([s for s in data['scores'] if s < 15])
+            avg_score = round(sum(dealer_avg_scores.values()) / len(dealer_avg_scores), 2) if dealer_avg_scores else 0
+            
+            warning_count = len([s for s in dealer_avg_scores.values() if s < 3])
             
             avg_spread = sum(data['spread_forces']) / len(data['spread_forces']) if data['spread_forces'] else 0
             avg_experience = sum(data['experience_forces']) / len(data['experience_forces']) if data['experience_forces'] else 0
@@ -1434,22 +1561,20 @@ def get_region_dashboard():
             }
             top_force = max(forces, key=forces.get)
             bottom_force = min(forces, key=forces.get)
+            top_score = forces[top_force]
+            bottom_score = forces[bottom_force]
             
-            insight = ''
-            if change_pct > 5:
-                insight = f'{force_names[top_force]}表现优异，建议保持'
-            elif change_pct < -5:
-                insight = f'{force_names[bottom_force]}需重点提升'
-            elif warning_count > dealer_count * 0.3:
-                insight = f'预警门店较多，{force_names[bottom_force]}待加强'
+            if avg_score >= 4:
+                insight = f'综合表现优秀，{force_names[top_force]}达{top_score:.2f}分，建议保持并推广成功经验'
+            elif avg_score >= 3:
+                insight = f'{force_names[top_force]}表现较好({top_score:.2f}分)，建议重点提升{force_names[bottom_force]}({bottom_score:.2f}分)'
             else:
-                insight = f'{force_names[top_force]}领先，{force_names[bottom_force]}可优化'
+                insight = f'整体评分偏低，{force_names[bottom_force]}({bottom_score:.2f}分)急需改善，建议全面诊断'
             
             region_list.append({
                 'region': region,
                 'dealer_count': dealer_count,
                 'avg_score': avg_score,
-                'change_pct': change_pct,
                 'warning_count': warning_count,
                 'provinces': list(data['provinces']),
                 'insight': insight,
@@ -1475,40 +1600,50 @@ def get_region_dashboard():
 def get_metrics_comparison():
     try:
         year = request.args.get('year', type=int, default=2024)
+        month = request.args.get('month', type=int, default=10)
         
-        metrics_records = MonthlyMetrics11d.query.filter(MonthlyMetrics11d.stat_year == year).all()
+        metrics_records = MonthlyMetrics11d.query.filter(
+            MonthlyMetrics11d.stat_year == year,
+            MonthlyMetrics11d.stat_month == month
+        ).all()
         
         total_sales = sum(float(r.sales or 0) for r in metrics_records)
         total_flow = sum(float(r.customer_flow or 0) for r in metrics_records)
         total_leads = sum(float(r.leads or 0) for r in metrics_records)
         total_potential = sum(float(r.potential_customers or 0) for r in metrics_records)
-        avg_success_rate = sum(float(r.success_rate or 0) for r in metrics_records) / len(metrics_records) if metrics_records else 0
         
-        prev_year = year - 1
-        prev_metrics_records = MonthlyMetrics11d.query.filter(MonthlyMetrics11d.stat_year == prev_year).all()
-        
-        prev_total_sales = sum(float(r.sales or 0) for r in prev_metrics_records)
-        prev_total_flow = sum(float(r.customer_flow or 0) for r in prev_metrics_records)
-        prev_total_leads = sum(float(r.leads or 0) for r in prev_metrics_records)
-        prev_avg_success_rate = sum(float(r.success_rate or 0) for r in prev_metrics_records) / len(prev_metrics_records) if prev_metrics_records else 0
-        
-        sales_change_pct = round((total_sales - prev_total_sales) / prev_total_sales * 100, 1) if prev_total_sales > 0 else 0
-        flow_change_pct = round((total_flow - prev_total_flow) / prev_total_flow * 100, 1) if prev_total_flow > 0 else 0
-        leads_change_pct = round((total_leads - prev_total_leads) / prev_total_leads * 100, 1) if prev_total_leads > 0 else 0
-        success_rate_change = round(avg_success_rate - prev_avg_success_rate, 2)
+        sales_list = [float(r.sales or 0) for r in metrics_records if r.sales]
+        flow_list = [float(r.customer_flow or 0) for r in metrics_records if r.customer_flow]
+        leads_list = [float(r.leads or 0) for r in metrics_records if r.leads]
+        potential_list = [float(r.potential_customers or 0) for r in metrics_records if r.potential_customers]
         
         return jsonify({
             'success': True,
             'data': {
-                'total_sales': int(total_sales),
-                'sales_change_pct': sales_change_pct,
-                'total_flow': int(total_flow),
-                'flow_change_pct': flow_change_pct,
-                'total_leads': int(total_leads),
-                'leads_change_pct': leads_change_pct,
-                'avg_success_rate': round(avg_success_rate, 2),
-                'success_rate_change': success_rate_change,
-                'total_potential': int(total_potential)
+                'sales': {
+                    'total': int(total_sales),
+                    'max': int(max(sales_list)) if sales_list else 0,
+                    'min': int(min(sales_list)) if sales_list else 0,
+                    'avg': int(sum(sales_list) / len(sales_list)) if sales_list else 0
+                },
+                'flow': {
+                    'total': int(total_flow),
+                    'max': int(max(flow_list)) if flow_list else 0,
+                    'min': int(min(flow_list)) if flow_list else 0,
+                    'avg': int(sum(flow_list) / len(flow_list)) if flow_list else 0
+                },
+                'leads': {
+                    'total': int(total_leads),
+                    'max': int(max(leads_list)) if leads_list else 0,
+                    'min': int(min(leads_list)) if leads_list else 0,
+                    'avg': int(sum(leads_list) / len(leads_list)) if leads_list else 0
+                },
+                'potential': {
+                    'total': int(total_potential),
+                    'max': int(max(potential_list)) if potential_list else 0,
+                    'min': int(min(potential_list)) if potential_list else 0,
+                    'avg': int(sum(potential_list) / len(potential_list)) if potential_list else 0
+                }
             }
         }), 200
         
@@ -1540,7 +1675,7 @@ def get_insights():
         for r in radar_records:
             dc = r.dealer_code
             if dc not in dealer_scores:
-                total = float(r.spread_force or 0) + float(r.experience_force or 0) + float(r.conversion_force or 0) + float(r.service_force or 0) + float(r.operation_force or 0)
+                total = float(r.spread_force or 0) * 0.2 + float(r.experience_force or 0) * 0.2 + float(r.conversion_force or 0) * 0.4 + float(r.service_force or 0) * 0.1 + float(r.operation_force or 0) * 0.1
                 dealer_scores[dc] = total
                 dealer_forces[dc] = {
                     'spread': float(r.spread_force or 0),
@@ -1693,7 +1828,7 @@ def get_area_data():
         for r in radar_records:
             dc = r.dealer_code
             if dc not in dealer_scores:
-                total = float(r.spread_force or 0) + float(r.experience_force or 0) + float(r.conversion_force or 0) + float(r.service_force or 0) + float(r.operation_force or 0)
+                total = float(r.spread_force or 0) * 0.2 + float(r.experience_force or 0) * 0.2 + float(r.conversion_force or 0) * 0.4 + float(r.service_force or 0) * 0.1 + float(r.operation_force or 0) * 0.1
                 dealer_scores[dc] = {
                     'code': dc,
                     'province': dealer_info_map.get(dc, {}).get('province', ''),
@@ -1701,16 +1836,16 @@ def get_area_data():
                     'totalScore': round(total, 2)
                 }
         
-        ranking_data = sorted(dealer_scores.values(), key=lambda x: x['totalScore'], reverse=True)[:10]
+        ranking_data = sorted(dealer_scores.values(), key=lambda x: x['totalScore'], reverse=True)
         
-        warning_red = sorted([d for d in dealer_scores.values() if d['totalScore'] < 15], key=lambda x: x['totalScore'])
-        warning_orange = sorted([d for d in dealer_scores.values() if 15 <= d['totalScore'] < 20], key=lambda x: x['totalScore'])
-        warning_green = sorted([d for d in dealer_scores.values() if d['totalScore'] >= 20], key=lambda x: -x['totalScore'])
+        warning_red = sorted([d for d in dealer_scores.values() if d['totalScore'] < 3], key=lambda x: x['totalScore'])
+        warning_orange = sorted([d for d in dealer_scores.values() if 3 <= d['totalScore'] < 4], key=lambda x: x['totalScore'])
+        warning_green = sorted([d for d in dealer_scores.values() if d['totalScore'] >= 4], key=lambda x: -x['totalScore'])
         
         pie_data = [
-            {'name': '高风险 (总分<15)', 'value': len(warning_red)},
-            {'name': '中风险 (15≤总分<20)', 'value': len(warning_orange)},
-            {'name': '健康 (总分≥20)', 'value': len(warning_green)}
+            {'name': '高风险 (总分<3)', 'value': len(warning_red)},
+            {'name': '中风险 (3≤总分<4)', 'value': len(warning_orange)},
+            {'name': '健康 (总分≥4)', 'value': len(warning_green)}
         ]
         
         return jsonify({
@@ -1735,6 +1870,93 @@ def get_area_data():
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
 
+@app.route('/api/wordcloud', methods=['POST'])
+def generate_wordcloud():
+    try:
+        data = request.get_json()
+        comments = data.get('comments', [])
+        positive_words = data.get('positiveWords', [])
+        negative_words = data.get('negativeWords', [])
+        neutral_words = data.get('neutralWords', [])
+        wordcloud_type = data.get('type', 'all')
+        
+        if wordcloud_type == 'circular':
+            image_base64 = wordcloud_generator.generate_circular_wordcloud(
+                positive_words, negative_words, neutral_words,
+                width=900, height=600
+            )
+        else:
+            filtered_comments = comments
+            if wordcloud_type == 'positive':
+                filtered_comments = [c for c in comments if c.get('sentiment') == 'positive']
+            elif wordcloud_type == 'negative':
+                filtered_comments = [c for c in comments if c.get('sentiment') == 'negative']
+            elif wordcloud_type == 'neutral':
+                filtered_comments = [c for c in comments if c.get('sentiment') == 'neutral']
+            
+            image_base64 = wordcloud_generator.generate_wordcloud_for_sentiment(
+                filtered_comments, wordcloud_type, width=900, height=550
+            )
+        
+        if image_base64:
+            return jsonify({
+                'success': True,
+                'image': image_base64
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'message': '无法生成词云，数据不足'
+            }), 400
+            
+    except Exception as e:
+        print(f'生成词云失败: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'生成失败: {str(e)}'}), 500
+
+@app.route('/api/radar/data', methods=['GET'])
+def get_radar_data():
+    try:
+        year = request.args.get('year', type=int, default=2024)
+        month = request.args.get('month', type=int, default=1)
+        
+        dealer_info_map = {}
+        try:
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province FROM v_dealer_info"))
+            for row in dealer_info_result:
+                dealer_info_map[row[0]] = row[1]
+        except:
+            pass
+        
+        query = MonthlyRadarScores.query.filter(
+            MonthlyRadarScores.stat_year == year,
+            MonthlyRadarScores.stat_month == month
+        )
+        records = query.all()
+        
+        data = []
+        for record in records:
+            data.append({
+                'dealer_code': record.dealer_code,
+                'province': dealer_info_map.get(record.dealer_code, ''),
+                'spread_force': float(record.spread_force) if record.spread_force else 0,
+                'experience_force': float(record.experience_force) if record.experience_force else 0,
+                'conversion_force': float(record.conversion_force) if record.conversion_force else 0,
+                'service_force': float(record.service_force) if record.service_force else 0,
+                'operation_force': float(record.operation_force) if record.operation_force else 0
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': data
+        }), 200
+        
+    except Exception as e:
+        print(f'获取雷达数据失败: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
 
 if __name__ == '__main__':
     print('Starting Flask server...')

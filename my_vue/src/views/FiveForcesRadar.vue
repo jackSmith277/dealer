@@ -4,8 +4,8 @@
       <h1 class="page-title">五力模型分析</h1>
       <div class="header-controls">
         <div class="button-group">
-          <button class="btn btn-gray" @click="$router.push('/dashboard')">
-            <i class="fas fa-arrow-left"></i> 返回大屏
+          <button class="btn btn-gray" @click="$router.push('/dashboard/index')">
+            <i class="fas fa-arrow-left"></i> 返回首页
           </button>
           <button class="btn btn-primary" @click="showFormulaModal = true">
             <i class="fas fa-calculator"></i> 计算公式
@@ -18,31 +18,12 @@
       <div class="selector-card">
         <h2 class="section-title">经销商选择</h2>
         <div class="selector-content">
-          <div class="selector-row">
-            <div class="selector-item">
-              <label>经销商</label>
-              <select v-model="selectedCode" class="dealer-select">
-                <option value="">全部经销商</option>
-                <option v-for="dealer in dealers" :key="dealer['经销商代码']" :value="dealer['经销商代码']">
-                  {{ dealer['经销商代码'] }} - {{ dealer['省份'] || '未知' }}
-                </option>
-              </select>
-            </div>
-            <div class="selector-item quick-search-item">
-              <label>快速查询</label>
-              <div class="quick-search">
-                <input v-model="inputCode" placeholder="输入经销商代码" @keyup.enter="applyManualDealer" />
-                <button class="search-btn" @click="applyManualDealer">查询</button>
-              </div>
-            </div>
-            <div class="current-dealer-info" v-if="currentDealer['经销商代码']">
-              <span class="info-label">当前：</span>
-              <span class="info-value">{{ currentDealer['经销商代码'] }} ({{ currentDealer['省份'] || '未知' }})</span>
-            </div>
-            <div class="error-message" v-if="errorMessage">
-              <i class="fas fa-exclamation-circle"></i> {{ errorMessage }}
-            </div>
-          </div>
+          <DealerSelector 
+            v-model="selectedCode" 
+            :dealers="dealerList" 
+            :error-message="errorMessage"
+            @update:error="errorMessage = $event"
+          />
         </div>
       </div>
     </div>
@@ -234,23 +215,27 @@
 
 <script>
 import * as echarts from 'echarts'
-import fiveForcesData from '@/assets/fiveForcesData.json'
+import axios from 'axios'
+import DealerSelector from '@/components/DealerSelector.vue'
 
 const forces = [
-  { key: '服务力', hint: '交付、售后与口碑' },
-  { key: '转化力', hint: '成交率与销售效率' },
-  { key: '经营力', hint: '经营结构与资源配置' },
   { key: '传播获客力', hint: '曝光与线索触达' },
   { key: '体验力', hint: '到店、试驾与沟通' },
+  { key: '转化力', hint: '成交率与销售效率' },
+  { key: '服务力', hint: '交付、售后与口碑' },
+  { key: '经营力', hint: '经营结构与资源配置' },
 ]
 
 export default {
   name: 'FiveForcesRadar',
+  components: {
+    DealerSelector
+  },
   data() {
     return {
-      dealers: fiveForcesData || [],
-      selectedCode: fiveForcesData?.[0]?.['经销商代码'] || '',
-      inputCode: '',
+      dealers: [],
+      dealerList: [],
+      selectedCode: '',
       errorMessage: '',
       radarChart: null,
       provinceChart: null,
@@ -260,6 +245,8 @@ export default {
       compareDealer1: '',
       compareDealer2: '',
       compareDealer3: '',
+      selectedYear: 2024,
+      selectedMonth: 1,
       formulas: [
         {
           force: '传播获客力',
@@ -404,7 +391,8 @@ export default {
     },
   },
   mounted() {
-    this.initCharts()
+    this.loadDealerList()
+    this.loadRadarData()
     window.addEventListener('resize', this.handleResize)
   },
   watch: {
@@ -421,6 +409,44 @@ export default {
     this.compareRadarChart && this.compareRadarChart.dispose()
   },
   methods: {
+    async loadDealerList() {
+      try {
+        const response = await axios.get('/api/dealers/list')
+        if (response.data && response.data.dealers) {
+          this.dealerList = response.data.dealers.map(d => ({
+            '经销商代码': d.dealer_code,
+            '省份': d.province || '',
+            '城市': d.city || ''
+          }))
+        }
+      } catch (error) {
+        console.error('加载经销商列表失败:', error)
+      }
+    },
+    async loadRadarData() {
+      try {
+        const response = await axios.get(`/api/radar/data?year=${this.selectedYear}&month=${this.selectedMonth}`)
+        if (response.data && response.data.success) {
+          this.dealers = response.data.data.map(d => ({
+            '经销商代码': d.dealer_code,
+            '省份': d.province || '',
+            '传播获客力': d.spread_force || 0,
+            '体验力': d.experience_force || 0,
+            '转化力': d.conversion_force || 0,
+            '服务力': d.service_force || 0,
+            '经营力': d.operation_force || 0
+          }))
+          if (this.dealers.length > 0 && !this.selectedCode) {
+            this.selectedCode = this.dealers[0]['经销商代码']
+          }
+          this.$nextTick(() => {
+            this.initCharts()
+          })
+        }
+      } catch (error) {
+        console.error('加载雷达数据失败:', error)
+      }
+    },
     toNumber(val) {
       const num = Number(val)
       return Number.isFinite(num) ? num : 0
@@ -438,20 +464,6 @@ export default {
     },
     selectDealer(code) {
       this.selectedCode = code
-    },
-    applyManualDealer() {
-      const code = (this.inputCode || '').trim()
-      if (!code) {
-        this.errorMessage = '请输入经销商代码'
-        return
-      }
-      const target = this.dealers.find((d) => String(d['经销商代码']) === code)
-      if (!target) {
-        this.errorMessage = '未找到该经销商'
-        return
-      }
-      this.selectedCode = target['经销商代码']
-      this.errorMessage = ''
     },
     initCharts() {
       this.$nextTick(() => {
@@ -731,6 +743,36 @@ export default {
 
 .dealer-selector-container {
   margin-bottom: 20px;
+}
+
+.dealer-selector-container .dealer-selector {
+  width: 100%;
+}
+
+.dealer-selector-container .selector-group {
+  width: 100%;
+}
+
+.dealer-selector-container .selector-row {
+  width: 100%;
+}
+
+.dealer-selector-container .dealer-select {
+  width: 100%;
+}
+
+.dealer-selector-container .manual-input-row {
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.dealer-selector-container .input {
+  flex: 1;
+  max-width: none;
+}
+
+.dealer-selector-container .province-display {
+  min-width: 120px;
 }
 
 .selector-card {

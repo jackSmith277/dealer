@@ -2,7 +2,12 @@
   <div class="sales-prediction-container">
     <div class="page-header">
       <h1 class="page-title">销量预测</h1>
-      <button @click="goToHistory" class="history-btn">查看历史记录</button>
+      <div class="header-controls">
+        <button class="btn btn-gray" @click="$router.push('/dashboard')">
+          <i class="fas fa-arrow-left"></i> 返回
+        </button>
+        <button @click="goToHistory" class="history-btn">查看历史记录</button>
+      </div>
     </div>
     
     <div class="content-layout">
@@ -52,43 +57,13 @@
                 </select>
               </div>
 
-              <div class="form-group">
-                <label for="month_for_radar">雷达图月份:</label>
-                <select id="month_for_radar" name="month_for_radar" v-model="formData.month_for_radar" @change="handleMonthChange">
-                  <option v-for="m in 10" :key="m" :value="m">{{ m }} 月</option>
-                </select>
-              </div>
-
               <button type="submit" class="submit-btn" :disabled="loading">
                 {{ loading ? '预测中...' : '提交' }}
               </button>
             </form>
-
-            <!-- Button for Displaying Five Forces Calculation Formula -->
-            <button type="button" @click="toggleFormula" class="formula-btn">显示五力计算公式</button>
-          </div>
-        </div>
-
-        <!-- 五力计算公式模态框 -->
-        <div v-if="showFormula" class="modal-overlay" @click="toggleFormula">
-          <div class="modal-content" @click.stop>
-            <div class="modal-header">
-              <h2 class="modal-title">五力计算公式</h2>
-              <button type="button" class="modal-close" @click="toggleFormula">×</button>
-            </div>
-            <div class="modal-body">
-              <ul>
-                <li><strong>传播获客力</strong> = (客流量 * 50% + 潜客量 * 20% + 线索量 * 30%)</li>
-                <li><strong>体验力</strong> = (成交率 * 40% + 战败率 * 40% + 服务评分 * 20%)</li>
-                <li><strong>转化力</strong> = (销量 * 50% + 成交率 * 10% + 成交响应时间 * 2.5% + 战败响应时间 * 2.5% + 试驾数 * 5% + 政策 * 5% + GSEV * 10% + 服务评分 * 5% + 终端检核平均分 * 10%)</li>
-                <li><strong>服务力</strong> = (服务评分 * 40% + 试驾数 * 30% + 终端检核平均分 * 30%)</li>
-                <li><strong>经营力</strong> = 固定为 3.5</li>
-              </ul>
-            </div>
           </div>
         </div>
       </div>
-      <!-- left-section end -->
       
       <div class="right-section">
         <div class="chart-card">
@@ -140,70 +115,7 @@
             </div>
           </div>
         </div>
-        
-        <div class="bottom-cards">
-          <!-- 雷达图 -->
-          <div class="radar-card">
-            <h2 class="card-title">五力雷达图</h2>
-            <div class="radar-content">
-              <div class="dealer-info">经销商代码: <strong>{{ formData.dealer_code }}</strong></div>
-              <div class="radar-chart">
-                <div id="radar-chart" style="width: 100%; height: 300px;"></div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 五力数据 -->
-          <div class="five-forces-card">
-            <h2 class="card-title">五力数据</h2>
-            <div class="five-forces-content">
-              <table class="styled-table">
-                <thead>
-                  <tr>
-                    <th>能力维度</th>
-                    <th>权重</th>
-                    <th>最终得分</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>传播获客力</td>
-                    <td>20%</td>
-                    <td>{{ fiveForcesData['传播获客力'] || 0 }}</td>
-                  </tr>
-                  <tr>
-                    <td>体验力</td>
-                    <td>20%</td>
-                    <td>{{ fiveForcesData['体验力'] || 0 }}</td>
-                  </tr>
-                  <tr>
-                    <td>转化力</td>
-                    <td>40%</td>
-                    <td>{{ fiveForcesData['转化力'] || 0 }}</td>
-                  </tr>
-                  <tr>
-                    <td>服务力</td>
-                    <td>10%</td>
-                    <td>{{ fiveForcesData['服务力'] || 0 }}</td>
-                  </tr>
-                  <tr>
-                    <td>经营力</td>
-                    <td>10%</td>
-                    <td>{{ fiveForcesData['经营力'] || 0 }}</td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colspan="2">综合得分</td>
-                    <td>{{ fiveForcesData['综合得分'] || 0 }}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-        </div>
       </div>
-      <!-- right-section end -->
     </div>
   </div>
 </template>
@@ -231,16 +143,13 @@ export default {
         dimension: 'customer_flow',
         change_percentage: 10,
         base_year: 2024,
-        base_month: 10,
-        month_for_radar: 10
+        base_month: 10
       },
       dealerCodes: [],
       dealerList: dealerData,
       percentageOptions: Array.from({length: 59}, (_, i) => (i + 1) * 5),
-      showFormula: false,
       predictionResult: null,
       salesChanges: [],
-      fiveForcesData: {},
       salesChart: null,
       loading: false,
       useMockData: false,
@@ -274,10 +183,6 @@ export default {
       // 获取原始销量数据
       await this.fetchOriginalSalesData()
       // 五力数据将通过预测结果获取
-    },
-
-    toggleFormula() {
-      this.showFormula = !this.showFormula;
     },
 
     // 获取原始销量数据
@@ -316,7 +221,6 @@ export default {
         this.loading = true
         
         this.predictionResult = null
-        this.fiveForcesData = {}
         
         await this.fetchOriginalSalesData()
         
@@ -378,99 +282,6 @@ export default {
           this.salesChanges = updatedSalesChanges;
         }
 
-        // 处理五力数据
-        if (response.dealer_scores) {
-          // 处理后端返回的dealer_scores数据结构
-          const dealerCode = this.formData.dealer_code
-          const month = this.formData.month_for_radar
-          const monthStr = `${month}月`
-          
-          
-          // 尝试不同类型的经销商代码键
-          let dealerData = null
-          
-          // 首先尝试直接使用经销商代码
-          if (response.dealer_scores[dealerCode]) {
-            dealerData = response.dealer_scores[dealerCode]
-          }
-          
-          // 尝试转换为数字类型
-          if (!dealerData) {
-            const dealerCodeNum = parseInt(dealerCode)
-            if (response.dealer_scores[dealerCodeNum]) {
-              dealerData = response.dealer_scores[dealerCodeNum]
-            }
-          }
-          
-          // 尝试遍历所有键，找到匹配的经销商代码
-          if (!dealerData) {
-            for (const key in response.dealer_scores) {
-              if (key.toString() === dealerCode.toString()) {
-                dealerData = response.dealer_scores[key]
-                break
-              }
-            }
-          }
-          
-          // 尝试获取第一个可用的经销商数据
-          if (!dealerData) {
-            const firstKey = Object.keys(response.dealer_scores)[0]
-            if (firstKey) {
-              dealerData = response.dealer_scores[firstKey]
-            }
-          }
-          
-          // 如果dealer_scores直接包含五力数据（不是嵌套结构）
-          if (!dealerData && response.dealer_scores['传播获客力'] !== undefined) {
-            dealerData = response.dealer_scores
-          }
-          
-          
-          // 从后端数据中提取当前经销商和月份的五力数据
-          if (dealerData) {            
-            // 转换数据结构，提取五个维度的得分
-            const newFiveForcesData = {}
-            
-            // 尝试直接使用维度名称作为字段名
-            const dimensions = ['传播获客力', '体验力', '转化力', '服务力', '经营力', '综合得分']
-            
-            for (const dimension of dimensions) {
-              // 首先尝试直接使用维度名称
-              if (dealerData[dimension] !== undefined && dealerData[dimension] !== null) {
-                newFiveForcesData[dimension] = dealerData[dimension]
-              } 
-              // 然后尝试带月份的字段名
-              else {
-                const possibleFields = [
-                  `${monthStr}${dimension}`,
-                  `${month}月${dimension}`,
-                  `${dimension}${monthStr}`,
-                  `${dimension}${month}月`
-                ]
-                
-                let foundValue = null
-                for (const field of possibleFields) {
-                  if (dealerData[field] !== undefined && dealerData[field] !== null) {
-                    foundValue = dealerData[field]
-                    break
-                  }
-                }
-                if (foundValue !== null) {
-                  newFiveForcesData[dimension] = foundValue
-                }
-              }
-            }
-            
-            // 直接更新数据，确保响应式
-            this.fiveForcesData = { ...newFiveForcesData }
-          } else {
-            this.fiveForcesData = {}
-          }
-          
-          // 更新雷达图
-          this.updateRadarChart()
-        }
-
         
         this.updateSalesChart()
         
@@ -482,8 +293,7 @@ export default {
           this.errorMessage = '预测成功，但保存历史记录失败，请稍后重试'
         }
       } catch (error) {
-        this.backendAvailable = false // 标记后端不可用
-        // 尝试从错误响应中提取后端错误信息
+        this.backendAvailable = false
         console.log(error)
         if (error.response && error.response.data && error.response.data.message) {
           this.errorMessage = error.response.data.message
@@ -491,22 +301,14 @@ export default {
           this.errorMessage = error.message 
         }
         
-        // 保存错误信息，因为fetchOriginalSalesData会清空它
         const savedErrorMessage = this.errorMessage
         
-        // 预测失败时清空所有相关数据，确保不显示之前的数据
         this.predictionResult = null
-        this.fiveForcesData = {}
         
-        // 重新获取原始销量数据，确保只显示原始销量，不显示预测数据
         await this.fetchOriginalSalesData()
         
-        // 恢复错误信息
         this.errorMessage = savedErrorMessage
         
-        // 更新雷达图，确保不显示之前的数据
-        this.updateRadarChart()
-        // 更新销量图表，确保不显示之前的数据
         this.updateSalesChart()
 
       } finally {
@@ -517,15 +319,6 @@ export default {
     // 保存预测结果到历史记录
     async savePredictionToHistory() {
       try {
-        console.log('保存历史记录前的fiveForcesData:', this.fiveForcesData)
-        
-        const propagationForce = this.fiveForcesData['传播获客力'] !== undefined ? this.fiveForcesData['传播获客力'] : 0
-        const experienceForce = this.fiveForcesData['体验力'] !== undefined ? this.fiveForcesData['体验力'] : 0
-        const conversionForce = this.fiveForcesData['转化力'] !== undefined ? this.fiveForcesData['转化力'] : 0
-        const serviceForce = this.fiveForcesData['服务力'] !== undefined ? this.fiveForcesData['服务力'] : 0
-        const operationForce = this.fiveForcesData['经营力'] !== undefined ? this.fiveForcesData['经营力'] : 0
-        const comprehensiveScore = this.fiveForcesData['综合得分'] !== undefined ? this.fiveForcesData['综合得分'] : 0
-        
         const historyData = {
           dealer_code: this.formData.dealer_code,
           dimension: this.formData.dimension,
@@ -534,14 +327,7 @@ export default {
           base_month: this.formData.base_month,
           target_year: this.predictionResult ? this.predictionResult.target_year : this.formData.base_year,
           target_month: this.predictionResult ? this.predictionResult.target_month : this.formData.base_month + 1,
-          predicted_sales: this.predictionResult ? Math.round(this.predictionResult.predicted_sales) : null,
-          month_for_radar: this.formData.month_for_radar,
-          propagation_force: propagationForce,
-          experience_force: experienceForce,
-          conversion_force: conversionForce,
-          service_force: serviceForce,
-          operation_force: operationForce,
-          comprehensive_score: comprehensiveScore
+          predicted_sales: this.predictionResult ? Math.round(this.predictionResult.predicted_sales) : null
         }
         
         console.log('准备保存的历史记录数据:', historyData)
@@ -770,6 +556,33 @@ export default {
   margin: 0;
 }
 
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-gray {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.btn-gray:hover {
+  background-color: #e0e0e0;
+}
+
 .history-btn {
   padding: 8px 16px;
   background-color: #1890ff;
@@ -801,7 +614,7 @@ export default {
 .form-card {
   display: flex;
   flex-direction: column;
-  min-height: 845px;
+  min-height: auto;
 }
 
 .form-content {
@@ -818,7 +631,7 @@ export default {
 }
 
 .form-content form .form-group:last-child {
-  margin-bottom: auto;
+  margin-bottom: 15px;
 }
 
 .right-section {
@@ -853,7 +666,7 @@ export default {
 }
 
 .form-group {
-  margin-bottom: 25px;
+  margin-bottom: 15px;
   text-align: left;
 }
 

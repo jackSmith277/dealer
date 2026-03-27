@@ -71,38 +71,10 @@
             </li>
             <li 
               class="sub-menu-item"
-              :class="{ active: $route.path === '/dashboard/prediction' }"
-              @click="$router.push('/dashboard/prediction')"
-            >
-              <span class="sub-menu-title">销量预测</span>
-            </li>
-            <li 
-              class="sub-menu-item"
-              :class="{ active: $route.path === '/dashboard/advanced-prediction' }"
-              @click="$router.push('/dashboard/advanced-prediction')"
-            >
-              <span class="sub-menu-title">高级销量预测</span>
-            </li>
-            <li 
-              class="sub-menu-item"
               :class="{ active: $route.path === '/dashboard/store-ranking' }"
               @click="$router.push('/dashboard/store-ranking')"
             >
               <span class="sub-menu-title">门店排行对比</span>
-            </li>
-            <li 
-              class="sub-menu-item"
-              :class="{ active: $route.path === '/dashboard/history' }"
-              @click="$router.push('/dashboard/history')"
-            >
-              <span class="sub-menu-title">历史记录</span>
-            </li>
-            <li 
-              class="sub-menu-item"
-              :class="{ active: $route.path === '/dashboard/analysis-reports' }"
-              @click="$router.push('/dashboard/analysis-reports')"
-            >
-              <span class="sub-menu-title">分析报告</span>
             </li>
             <li 
               class="sub-menu-item"
@@ -129,11 +101,19 @@
             <span class="menu-arrow" :class="{ active: expandedSubMenus.includes('analysis') }">></span>
           </div>
           <ul class="sub-menu" v-show="expandedSubMenus.includes('analysis')">
-            <li class="sub-menu-item">
-              <span class="sub-menu-title">潜客分析</span>
+            <li 
+              class="sub-menu-item"
+              :class="{ active: $route.path === '/dashboard/prediction' }"
+              @click="$router.push('/dashboard/prediction')"
+            >
+              <span class="sub-menu-title">销量预测</span>
             </li>
-            <li class="sub-menu-item">
-              <span class="sub-menu-title">成交转化</span>
+            <li 
+              class="sub-menu-item"
+              :class="{ active: $route.path === '/dashboard/advanced-prediction' }"
+              @click="$router.push('/dashboard/advanced-prediction')"
+            >
+              <span class="sub-menu-title">高级销量预测</span>
             </li>
           </ul>
         </li>
@@ -172,20 +152,22 @@ export default {
     }
   },
   mounted() {
-    // 根据当前路由自动展开对应的子菜单
     const path = this.$route.path
     if (path.includes('/profile') || path.includes('/admin/dealers')) {
       this.expandedSubMenus = ['info']
-    } else if (path.includes('/dashboard') || path.includes('/radar') || path.includes('/prediction') || path.includes('/history') || path.includes('/analysis-reports') || path.includes('/policy') || path.includes('/comment')) {
+    } else if (path.includes('/prediction')) {
+      this.expandedSubMenus = ['analysis']
+    } else if (path.includes('/dashboard') || path.includes('/radar') || path.includes('/history') || path.includes('/analysis-reports') || path.includes('/policy') || path.includes('/comment')) {
       this.expandedSubMenus = ['dashboard']
     }
   },
   watch: {
     '$route.path'(newPath) {
-      // 路由变化时自动展开对应的子菜单
       if (newPath.includes('/profile') || newPath.includes('/admin/dealers')) {
         this.expandedSubMenus = ['info']
-      } else if (newPath.includes('/dashboard') || newPath.includes('/radar') || newPath.includes('/prediction') || newPath.includes('/history') || newPath.includes('/analysis-reports') || newPath.includes('/policy') || newPath.includes('/comment')) {
+      } else if (newPath.includes('/prediction')) {
+        this.expandedSubMenus = ['analysis']
+      } else if (newPath.includes('/dashboard') || newPath.includes('/radar') || newPath.includes('/history') || newPath.includes('/analysis-reports') || newPath.includes('/policy') || newPath.includes('/comment')) {
         this.expandedSubMenus = ['dashboard']
       }
     }

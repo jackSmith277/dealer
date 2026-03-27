@@ -143,7 +143,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .input {
@@ -153,7 +153,7 @@ export default {
   padding: 8px 12px;
   border-radius: 4px;
   flex: 1;
-  min-width: 150px;
+  min-width: 120px;
   font-size: 14px;
 }
 

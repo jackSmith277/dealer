@@ -2,6 +2,11 @@
   <div class="policy-container">
     <div class="header-section">
       <h1 class="page-title">地方促消费政策展示</h1>
+      <div class="header-controls">
+        <button class="btn btn-gray" @click="$router.push('/dashboard')">
+          <i class="fas fa-arrow-left"></i> 返回
+        </button>
+      </div>
     </div>
 
       <!-- 数据统计仪表盘 -->

@@ -18,9 +18,6 @@
         <div class="kpi-content">
           <div class="kpi-value">{{ headerKpi.totalDealers }}</div>
           <div class="kpi-label">门店总数</div>
-          <div class="kpi-change" :class="headerKpi.totalDealersChange >= 0 ? 'positive' : 'negative'">
-            {{ headerKpi.totalDealersChange >= 0 ? '↑' : '↓' }} {{ Math.abs(headerKpi.totalDealersChange || 0) }} 较上年
-          </div>
         </div>
       </div>
       <div class="kpi-card">
@@ -28,19 +25,6 @@
         <div class="kpi-content">
           <div class="kpi-value">{{ headerKpi.avgScore }}</div>
           <div class="kpi-label">平均评分</div>
-          <div class="kpi-change" :class="headerKpi.scoreChange >= 0 ? 'positive' : 'negative'">
-            {{ headerKpi.scoreChange >= 0 ? '↑' : '↓' }} {{ Math.abs(headerKpi.scoreChange || 0) }} ({{ headerKpi.scoreChangePct }}%)
-          </div>
-        </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-icon-orange">📈</div>
-        <div class="kpi-content">
-          <div class="kpi-value">{{ metricsComparison.totalSales }}</div>
-          <div class="kpi-label">总销量</div>
-          <div class="kpi-change" :class="metricsComparison.salesChangePct >= 0 ? 'positive' : 'negative'">
-            {{ metricsComparison.salesChangePct >= 0 ? '↑' : '↓' }} {{ Math.abs(metricsComparison.salesChangePct || 0) }}% 较上年
-          </div>
         </div>
       </div>
       <div class="kpi-card">
@@ -48,9 +32,6 @@
         <div class="kpi-content">
           <div class="kpi-value">{{ headerKpi.warningCount }}</div>
           <div class="kpi-label">预警门店</div>
-          <div class="kpi-change" :class="headerKpi.warningChange <= 0 ? 'positive' : 'negative'">
-            {{ headerKpi.warningChange <= 0 ? '↓' : '↑' }} {{ Math.abs(headerKpi.warningChange || 0) }} 较上年
-          </div>
         </div>
       </div>
       <div class="kpi-card">
@@ -119,12 +100,6 @@
                       <span class="stat-value">{{ region.dealer_count }}家</span>
                     </div>
                     <div class="region-stat">
-                      <span class="stat-label">环比</span>
-                      <span class="stat-value" :class="region.change_pct >= 0 ? 'positive' : 'negative'">
-                        {{ region.change_pct >= 0 ? '+' : '' }}{{ region.change_pct }}%
-                      </span>
-                    </div>
-                    <div class="region-stat">
                       <span class="stat-label">预警</span>
                       <span class="stat-value warning">{{ region.warning_count }}家</span>
                     </div>
@@ -150,9 +125,7 @@
             <div class="metric-content">
               <div class="metric-value">{{ metric.value }}</div>
               <div class="metric-label">{{ metric.label }}</div>
-              <div class="metric-change" :class="metric.changeClass">
-                {{ metric.changeText }}
-              </div>
+              <div class="metric-detail">{{ metric.detail }}</div>
             </div>
           </div>
         </div>
@@ -166,6 +139,7 @@
                 <div class="card-header">
                   <h3>月度趋势图</h3>
                   <span class="sub-title">{{ chartAreaTitle }}各项指标均值</span>
+                  <button class="view-detail-btn" @click="goToDealerDashboard">查看单店</button>
                 </div>
                 <div class="card-body">
                   <div ref="lineChart" class="chart-container"></div>
@@ -179,6 +153,7 @@
                 <div class="card-header">
                   <h3>五力雷达图</h3>
                   <span class="sub-title">{{ chartAreaTitle }}五力评分均值</span>
+                  <button class="view-detail-btn" @click="goToFiveForcesRadar">查看单店</button>
                 </div>
                 <div class="card-body">
                   <div ref="radarChart" class="chart-container"></div>
@@ -202,7 +177,14 @@
           <div class="card ranking-card">
             <div class="card-header">
               <h3>门店排名</h3>
-              <span class="sub-title">{{ chartAreaTitle }}按五力总评分排名 TOP10</span>
+              <select v-model="rankingSortBy" class="ranking-sort-select" @change="loadRankingData">
+                <option value="total">综合评分</option>
+                <option value="spread">传播获客力</option>
+                <option value="experience">体验力</option>
+                <option value="conversion">转化力</option>
+                <option value="service">服务力</option>
+                <option value="operation">经营力</option>
+              </select>
             </div>
             <div class="card-body">
               <div class="ranking-table-wrapper">
@@ -212,7 +194,7 @@
                       <th>排名</th>
                       <th>门店代码</th>
                       <th>省份</th>
-                      <th>总评分</th>
+                      <th>{{ rankingSortByLabel }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -222,7 +204,7 @@
                       </td>
                       <td>{{ item.code }}</td>
                       <td>{{ item.province }}</td>
-                      <td class="score-cell">{{ item.totalScore.toFixed(2) }}</td>
+                      <td class="score-cell">{{ item.score.toFixed(2) }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -235,7 +217,7 @@
               <span class="sub-title">{{ chartAreaTitle }}按评分等级分类</span>
             </div>
             <div class="card-body">
-              <div class="warning-sections">
+              <div class="warning-sections scrollable">
                 <div class="warning-section warning-red">
                   <div class="warning-header">
                     <span class="warning-icon">!</span>
@@ -243,12 +225,9 @@
                     <span class="warning-count">{{ warningRed.length }}家</span>
                   </div>
                   <div class="warning-list">
-                    <div v-for="item in warningRed.slice(0, 3)" :key="item.code" class="warning-item">
+                    <div v-for="item in warningRed" :key="item.code" class="warning-item">
                       <span class="dealer-code">{{ item.code }}</span>
                       <span class="dealer-score">{{ item.totalScore.toFixed(2) }}分</span>
-                    </div>
-                    <div v-if="warningRed.length > 3" class="warning-more">
-                      还有 {{ warningRed.length - 3 }} 家...
                     </div>
                   </div>
                 </div>
@@ -260,12 +239,9 @@
                     <span class="warning-count">{{ warningOrange.length }}家</span>
                   </div>
                   <div class="warning-list">
-                    <div v-for="item in warningOrange.slice(0, 3)" :key="item.code" class="warning-item">
+                    <div v-for="item in warningOrange" :key="item.code" class="warning-item">
                       <span class="dealer-code">{{ item.code }}</span>
                       <span class="dealer-score">{{ item.totalScore.toFixed(2) }}分</span>
-                    </div>
-                    <div v-if="warningOrange.length > 3" class="warning-more">
-                      还有 {{ warningOrange.length - 3 }} 家...
                     </div>
                   </div>
                 </div>
@@ -277,12 +253,9 @@
                     <span class="warning-count">{{ warningGreen.length }}家</span>
                   </div>
                   <div class="warning-list">
-                    <div v-for="item in warningGreen.slice(0, 3)" :key="item.code" class="warning-item">
+                    <div v-for="item in warningGreen" :key="item.code" class="warning-item">
                       <span class="dealer-code">{{ item.code }}</span>
                       <span class="dealer-score">{{ item.totalScore.toFixed(2) }}分</span>
-                    </div>
-                    <div v-if="warningGreen.length > 3" class="warning-more">
-                      还有 {{ warningGreen.length - 3 }} 家...
                     </div>
                   </div>
                 </div>
@@ -392,6 +365,7 @@ export default {
       radarAvg: {},
       monthlyAvg: {},
       rankingData: [],
+      rankingSortBy: 'total',
       warningData: { red: 0, orange: 0, green: 0 },
       totalDealers: 0,
       provinceDealerCount: {},
@@ -434,6 +408,17 @@ export default {
     }
   },
   computed: {
+    rankingSortByLabel() {
+      const labels = {
+        'total': '综合评分',
+        'spread': '传播获客力',
+        'experience': '体验力',
+        'conversion': '转化力',
+        'service': '服务力',
+        'operation': '经营力'
+      }
+      return labels[this.rankingSortBy] || '综合评分'
+    },
     radarData() {
       return [
         { name: '传播获客力', value: this.radarAvg['传播获客力'] || 0 },
@@ -445,9 +430,9 @@ export default {
     },
     pieData() {
       return [
-        { name: '高风险 (总分<15)', value: this.warningRed.length, color: '#ff4d4f' },
-        { name: '中风险 (15≤总分<20)', value: this.warningOrange.length, color: '#fa8c16' },
-        { name: '健康 (总分≥20)', value: this.warningGreen.length, color: '#52c41a' }
+        { name: '高风险 (总分<3)', value: this.warningRed.length, color: '#ff4d4f' },
+        { name: '中风险 (3≤总分<4)', value: this.warningOrange.length, color: '#fa8c16' },
+        { name: '健康 (总分≥4)', value: this.warningGreen.length, color: '#52c41a' }
       ]
     },
     warningRed() {
@@ -493,32 +478,28 @@ export default {
     metricsCards() {
       return [
         {
+          icon: '🚗',
+          value: this.metricsComparison.sales?.total || 0,
+          label: '总销量',
+          detail: `最高${this.metricsComparison.sales?.max || 0} / 最低${this.metricsComparison.sales?.min || 0} / 平均${this.metricsComparison.sales?.avg || 0}`
+        },
+        {
           icon: '👥',
-          value: this.metricsComparison.totalFlow,
+          value: this.metricsComparison.flow?.total || 0,
           label: '总客流量',
-          changeText: `${this.metricsComparison.flowChangePct >= 0 ? '↑' : '↓'} ${Math.abs(this.metricsComparison.flowChangePct)}%`,
-          changeClass: this.metricsComparison.flowChangePct >= 0 ? 'positive' : 'negative'
+          detail: `最高${this.metricsComparison.flow?.max || 0} / 最低${this.metricsComparison.flow?.min || 0} / 平均${this.metricsComparison.flow?.avg || 0}`
         },
         {
           icon: '📋',
-          value: this.metricsComparison.totalLeads,
+          value: this.metricsComparison.leads?.total || 0,
           label: '总线索量',
-          changeText: `${this.metricsComparison.leadsChangePct >= 0 ? '↑' : '↓'} ${Math.abs(this.metricsComparison.leadsChangePct)}%`,
-          changeClass: this.metricsComparison.leadsChangePct >= 0 ? 'positive' : 'negative'
-        },
-        {
-          icon: '🎯',
-          value: this.metricsComparison.avgSuccessRate + '%',
-          label: '平均成交率',
-          changeText: `${this.metricsComparison.successRateChange >= 0 ? '↑' : '↓'} ${Math.abs(this.metricsComparison.successRateChange)}%`,
-          changeClass: this.metricsComparison.successRateChange >= 0 ? 'positive' : 'negative'
+          detail: `最高${this.metricsComparison.leads?.max || 0} / 最低${this.metricsComparison.leads?.min || 0} / 平均${this.metricsComparison.leads?.avg || 0}`
         },
         {
           icon: '👤',
-          value: this.metricsComparison.totalPotential,
+          value: this.metricsComparison.potential?.total || 0,
           label: '总潜客量',
-          changeText: '本年累计',
-          changeClass: 'neutral'
+          detail: `最高${this.metricsComparison.potential?.max || 0} / 最低${this.metricsComparison.potential?.min || 0} / 平均${this.metricsComparison.potential?.avg || 0}`
         }
       ]
     }
@@ -536,6 +517,12 @@ export default {
     if (this.mapChart) this.mapChart.dispose()
   },
   methods: {
+    goToDealerDashboard() {
+      this.$router.push('/dashboard')
+    },
+    goToFiveForcesRadar() {
+      this.$router.push('/dashboard/radar')
+    },
     async loadAvailableYears() {
       try {
         const response = await axios.get('/api/five-forces/years')
@@ -552,6 +539,7 @@ export default {
     async loadAllData() {
       await Promise.all([
         this.loadOverviewData(),
+        this.loadRankingData(),
         this.loadHeaderKpi(),
         this.loadRegionDashboard(),
         this.loadMetricsComparison(),
@@ -598,7 +586,6 @@ export default {
           const data = response.data.data
           this.radarAvg = data.radar_avg
           this.monthlyAvg = data.monthly_avg
-          this.rankingData = data.ranking
           this.warningData = data.warning
           this.totalDealers = data.total_dealers
           this.provinceDealerCount = data.province_count
@@ -606,6 +593,16 @@ export default {
         }
       } catch (error) {
         console.error('加载概览数据失败:', error)
+      }
+    },
+    async loadRankingData() {
+      try {
+        const response = await axios.get(`/api/index/ranking?year=${this.selectedYear}&sort_by=${this.rankingSortBy}`)
+        if (response.data.success) {
+          this.rankingData = response.data.data
+        }
+      } catch (error) {
+        console.error('加载排名数据失败:', error)
       }
     },
     async loadHeaderKpi() {
@@ -1749,7 +1746,35 @@ export default {
 }
 
 .col-right-side .card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: none;
+}
+
+.col-right-side .ranking-card {
+  height: 675px;
+}
+
+.col-right-side .warning-card {
+  height: 670px;
+}
+
+.col-right-side .card .card-body {
   flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.col-right-side .ranking-card .ranking-table-wrapper {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.col-right-side .warning-card .warning-sections {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .col-map {
@@ -1803,6 +1828,39 @@ export default {
 .sub-title {
   font-size: 12px;
   color: #999;
+}
+
+.ranking-sort-select {
+  margin-left: auto;
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.ranking-sort-select:focus {
+  outline: none;
+  border-color: #1890ff;
+}
+
+.view-detail-btn {
+  margin-left: auto;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #1890ff;
+  background: #e6f7ff;
+  border: 1px solid #91d5ff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.view-detail-btn:hover {
+  color: #fff;
+  background: #1890ff;
+  border-color: #1890ff;
 }
 
 .card-body {
@@ -2032,6 +2090,12 @@ export default {
   margin-top: 2px;
 }
 
+.metric-detail {
+  font-size: 11px;
+  margin-top: 2px;
+  color: #666;
+}
+
 .metric-change.positive {
   color: #52c41a;
 }
@@ -2045,8 +2109,17 @@ export default {
 }
 
 .ranking-table-wrapper {
-  height: 100%;
+  flex: 1;
   overflow-y: auto;
+}
+
+.ranking-table-wrapper::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ranking-table-wrapper::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 2px;
 }
 
 .ranking-table {
@@ -2109,15 +2182,28 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 100%;
+  flex: 1;
   overflow-y: auto;
+}
+
+.warning-sections.scrollable {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.warning-sections.scrollable::-webkit-scrollbar {
+  width: 4px;
+}
+
+.warning-sections.scrollable::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 2px;
 }
 
 .warning-section {
   border-radius: 6px;
   padding: 10px;
-  flex: 1;
-  min-height: 80px;
+  flex-shrink: 0;
 }
 
 .warning-red {
