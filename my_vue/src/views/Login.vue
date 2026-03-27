@@ -84,8 +84,8 @@ export default {
           //console.log('导航到仪表盘前检查localStorage:', localStorage.getItem('user'))
           //this.$router.push('/dashboard')
           //避免重复跳转报错
-          if (this.$route.path !== '/dashboard') {
-            this.$router.push('/dashboard')
+          if (this.$route.path !== '/dashboard/index') {
+            this.$router.push('/dashboard/index')
           }
         }, 100)
       } catch (error) {

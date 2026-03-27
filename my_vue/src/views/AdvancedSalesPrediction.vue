@@ -1,5 +1,13 @@
 <template>
   <div class="advanced-prediction-container">
+    <div class="page-header">
+      <h1 class="page-title">高级销量预测</h1>
+      <div class="header-controls">
+        <button class="btn btn-gray" @click="$router.push('/dashboard')">
+          <i class="fas fa-arrow-left"></i> 返回
+        </button>
+      </div>
+    </div>
     <div class="content-layout">
       <div class="left-section">
         <div class="form-card">
@@ -821,6 +829,50 @@ export default {
 .advanced-prediction-container {
   width: 100%;
   overflow: hidden;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 15px 20px;
+  background: white;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-gray {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.btn-gray:hover {
+  background-color: #e0e0e0;
 }
 
 .content-layout {

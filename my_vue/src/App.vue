@@ -1,12 +1,18 @@
 <template>
   <div id="app">
     <router-view/>
+    <AIAssistant />
   </div>
 </template>
 
 <script>
+import AIAssistant from '@/components/AIAssistant.vue'
+
 export default {
-  name: 'App'
+  name: 'App',
+  components: {
+    AIAssistant
+  }
 }
 </script>
 
@@ -29,7 +35,6 @@ html, body {
   height: 100%;
 }
 
-/* 美化滚动条 */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

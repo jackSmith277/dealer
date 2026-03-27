@@ -1,0 +1,477 @@
+{
+  "transcription": {
+    "paragraphs": [
+      {
+        "paragraphId": "1774064915741500000",
+        "speakerId": "1",
+        "words": [
+          {
+            "end": 0,
+            "id": 10,
+            "sentenceId": 1,
+            "start": 0,
+            "text": "您好"
+          }
+        ]
+      }
+    ]
+  },
+  "matched": [
+    {
+      "matched": true,
+      "matchedSentenceIds": [
+        1
+      ],
+      "remarks": "销售人员使用了礼貌用语“您好”来问候客户。",
+      "title": "礼貌用语"
+    }
+  ],
+  "unmatched": [
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中没有销售人员进行自我介绍，包括经销商信息、姓名等。",
+      "title": "自我介绍包含经销商信息"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中没有销售人员确认或询问客户的称呼。",
+      "title": "合适客户信息"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中没有销售人员对五菱汽车品牌的背景进行介绍。",
+      "title": "品牌介绍"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中没有销售人员主动询问客户关注的车型或配置。",
+      "title": "询问客户关注车型或配置"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中没有提及客户是否到店看过展车或试驾过意向车型。",
+      "title": "是否到过店或试驾"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中没有询问客户是否需要水、橙汁、可乐等饮品。",
+      "title": "饮品提供"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中没有讲解目前新能源车的市场趋势以及发展形式。",
+      "title": "市场种草"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中没有介绍品牌旗下的车型。",
+      "title": "产品种草"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中没有介绍品牌的发展，品牌定位等。",
+      "title": "品牌介绍"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及任何关于客户购车关注点的信息，如续航里程、动力性能等。",
+      "title": "确认关注点"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未询问或提及客户购车的时间计划。",
+      "title": "确认购车需求"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未涉及客户购车的具体用途，如家用、商务等。",
+      "title": "确认购车用途"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未询问或提及客户的购车预算。",
+      "title": "了解购车预算"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未涉及客户购车方式的选择，如全款或贷款。",
+      "title": "询问购车方式"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及购车的用车人信息",
+      "title": "用车人"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及客户是否有旧车要置换或二手车置换的信息",
+      "title": "是否置换"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及客户目前使用的车型信息",
+      "title": "当前车型"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及销售顾问是否邀约客户进行试驾",
+      "title": "试乘试驾邀约"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及试驾前是否给客户介绍本地的试驾路线",
+      "title": "试驾路线介绍"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及销售人员邀请客户下定金或选配车辆。",
+      "title": "邀请下定选配"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及销售人员提供车辆总价或整体报价。",
+      "title": "车辆报价"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及销售人员介绍竞品加装或优惠套餐等业务。",
+      "title": "精品加装介绍"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及销售人员介绍厂商的置换补贴政策。",
+      "title": "二手车业务介绍"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及销售人员介绍厂商的保险补贴政策。",
+      "title": "保险业务介绍"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及任何关于充电装的安装或充电站的问题介绍。",
+      "title": "充电方案介绍"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中销售人员未询问客户的预计购车时间。",
+      "title": "预计购车时间"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未出现销售人员主动提及添加微信的情况。",
+      "title": "加微邀约"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及座椅布局、车内空间大小等乘坐舒适性相关的信息。",
+      "title": "乘坐舒适性"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未涉及电池安全、成本、使用维护、优势、供应商或充电时长的介绍。",
+      "title": "电池"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及方向盘控制、转向控制或方向盘手感等相关内容。",
+      "title": "方向盘"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未涉及介绍车辆充电速度快的相关信息。",
+      "title": "充电速度"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及满电跑多少公里或不同季节的续航里程等信息。",
+      "title": "续航"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未介绍该车的智能驾驶功能。",
+      "title": "智能驾驶"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及车身轮廓、车灯设计、车身材质、车漆工艺、车窗或车身颜色等外观信息。",
+      "title": "外观"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及任何关于内饰的描述，如座椅材质、内饰颜色、材质、仪表盘、扶手等。",
+      "title": "内饰"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及任何关于动力的描述，如发动机排量、百公里加速、发动机扭矩/功率等。",
+      "title": "动力"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及任何关于舒适加速的描述，如百公里加速最快是多少等。",
+      "title": "舒适加速"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及任何关于底盘调校的描述，如底盘调校兼顾舒适、操控、稳定等功能优势等。",
+      "title": "底盘调校"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及任何关于刹车平稳不晕车的描述。",
+      "title": "刹车平稳不晕车"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及高速NOA功能的介绍。",
+      "title": "高速NOA"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及记忆泊车功能的介绍。",
+      "title": "记忆泊车"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及道路居中辅助功能的介绍。",
+      "title": "道路居中辅助"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及运动模式功能的介绍。",
+      "title": "运动模式"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及盲区监测功能的介绍。",
+      "title": "盲区监测"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及并线辅助功能的介绍或讨论。",
+      "title": "并线辅助"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未涉及挡位变换的介绍或讨论。",
+      "title": "挡位变换"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及座椅或方向盘调节的介绍或讨论。",
+      "title": "座椅、方向盘调节"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未涉及音响效果的介绍或讨论。",
+      "title": "体验音响效果"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及自适应座椅动态支撑功能的介绍或讨论。",
+      "title": "自适应座椅动态支撑"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及自适应巡航功能的介绍或讨论。",
+      "title": "自适应巡航"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未出现销售人员询问车内音响音量是否合适的场景。",
+      "title": "询问音量是否合适"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中没有涉及对高清全景影像系统的介绍或提及。",
+      "title": "高清全景影像系统"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未有关于不晕车模式功能的介绍或讨论。",
+      "title": "不晕车模式"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中没有提及遥控泊车功能的介绍或讨论。",
+      "title": "遥控泊车"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及智能座舱疲劳检测功能",
+      "title": "疲劳检测"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及智能辅助驾驶红绿灯识别功能",
+      "title": "红绿灯识别"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及辅助泊车的自动泊车功能",
+      "title": "自动泊车"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及主动安全的车道偏离预警功能",
+      "title": "车道偏离预警"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及后视镜调节方法",
+      "title": "后视镜调节"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及试驾车的驾驶模式自定义功能或其优点。",
+      "title": "驾驶模式自定义"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未出现销售人员提醒乘客车内有提供纸巾和饮用水的情况。",
+      "title": "提醒车内有纸巾和饮用水"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未涉及试驾车的静音或静谧性介绍。",
+      "title": "静谧性"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及试驾车的主动安全预碰撞提醒功能。",
+      "title": "预碰撞提醒"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未介绍变道灯、警示灯的操作方法。",
+      "title": "变道灯、警示灯操作"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及城市通勤模式（OTA）的相关信息。",
+      "title": "城市通勤模式（OTA）"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及语音互动功能的相关信息。",
+      "title": "语音互动"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及标准模式的相关信息。",
+      "title": "标准模式"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未提及询问空调温度是否合适的相关信息。",
+      "title": "询问空调温度是否合适"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未出现销售人员使用辱骂或不利于汽车品牌发展的语言。",
+      "title": "不文明服务"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未出现销售人员对客户进行礼貌送别的场景。",
+      "title": "礼貌送别"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未涉及试乘试驾场景，因此未出现行车安全提醒。",
+      "title": "行车安全提醒"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中未出现销售人员提醒客户系好安全带的场景。",
+      "title": "提醒客户系好安全带"
+    },
+    {
+      "matched": false,
+      "matchedSentenceIds": [],
+      "remarks": "对话中存在有效的通话过程，未出现空白录音的情况。",
+      "title": "无效通话"
+    }
+  ],
+  "sale": {
+    "matchedSum": 1,
+    "missedSum": 73
+  },
+  "input_info": {
+    "type": "text",
+    "source": "销售:您好"
+  }
+}
