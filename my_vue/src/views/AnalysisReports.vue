@@ -6,6 +6,9 @@
         历史分析报告
       </h1>
       <p class="page-subtitle">查看和管理所有生成的AI分析报告</p>
+      <button class="back-btn" @click="goBack">
+        ← 返回
+      </button>
     </div>
 
     <!-- 加载状态 -->
@@ -396,6 +399,9 @@ export default {
     this.loadReports();
   },
   methods: {
+    goBack() {
+      this.$router.push('/dashboard');
+    },
     getBarWidth(value, allValues) {
       if (!value || !allValues || allValues.length === 0) return '0%';
       const max = Math.max(...allValues);
@@ -544,6 +550,7 @@ export default {
 
 .page-header {
   margin-bottom: 30px;
+  position: relative;
 }
 
 .page-title {
@@ -566,6 +573,24 @@ export default {
   font-size: 14px;
   color: #666;
   margin: 10px 0 0 0;
+}
+
+.back-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  padding: 8px 16px;
+  background: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.back-btn:hover {
+  background: #40a9ff;
 }
 
 /* 加载状态 */

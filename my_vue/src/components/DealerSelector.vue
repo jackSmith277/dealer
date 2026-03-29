@@ -5,7 +5,7 @@
         <select v-model="localSelectedCode" @change="handleSelectionChange" class="dealer-select">
           <option value="">请选择经销商</option>
           <option v-for="dealer in dealers" :key="dealer['经销商代码']" :value="dealer['经销商代码']">
-            {{ dealer['经销商代码'] }} - {{ dealer['省份'] || '未知地区' }}
+            {{ dealer['经销商代码'] }} - {{ dealer['省份'] }}
           </option>
         </select>
       </div>

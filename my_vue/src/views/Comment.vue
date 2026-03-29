@@ -5,11 +5,6 @@
         <h1 class="page-title">试驾评价智能分析</h1>
         <p class="page-subtitle">基于NLP情感分析与主题聚类的评价洞察平台</p>
       </div>
-      <div class="header-controls">
-        <button class="btn btn-gray" @click="$router.push('/dashboard')">
-          <i class="fas fa-arrow-left"></i> 返回
-        </button>
-      </div>
       <div class="header-stats">
         <div class="header-stat-item">
           <span class="header-stat-value">{{ totalComments }}</span>
@@ -23,6 +18,11 @@
           <span class="header-stat-value topic">{{ topicStats.length }}</span>
           <span class="header-stat-label">主题聚类</span>
         </div>
+      </div>
+      <div class="header-controls">
+        <button class="btn btn-gray" @click="$router.push('/dashboard')">
+          <i class="fas fa-arrow-left"></i> 返回
+        </button>
       </div>
     </div>
 
@@ -2518,18 +2518,19 @@ export default {
 
 .header-section {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
   padding: 20px 30px;
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  gap: 20px;
 }
 
 .header-left {
   display: flex;
   flex-direction: column;
+  margin-right: auto;
 }
 
 .page-title {
@@ -2554,6 +2555,7 @@ export default {
 .header-stats {
   display: flex;
   gap: 30px;
+  margin-left: 15px;
 }
 
 .header-stat-item {

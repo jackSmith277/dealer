@@ -149,11 +149,6 @@
         </div>
 
         <div class="chart-card">
-          <h2 class="card-title">多情景对比</h2>
-          <div ref="comparisonChart" class="chart-container"></div>
-        </div>
-
-        <div class="chart-card">
           <h2 class="card-title">预测数据</h2>
           <div class="data-table">
             <table>
@@ -207,8 +202,8 @@
 <script>
 import * as echarts from 'echarts'
 import DealerSelector from '@/components/DealerSelector.vue'
-import dealerData from '@/assets/dealerData.json'
 import { getQuantileForecast } from '@/api/prediction'
+import axios from 'axios'
 
 export default {
   name: 'AdvancedSalesPrediction',
@@ -219,6 +214,7 @@ export default {
     return {
       baseline: {
         dealer_code: 'B440045',
+        base_year: 2024,
         base_month: 1,
         horizons: 3,
         interval_strategy: 80
@@ -228,7 +224,7 @@ export default {
         change_percentage: 10
       },
       scenarios: [],
-      dealerList: dealerData,
+      dealerList: [],
       predictionResults: [],
       predictionTableData: {},
       scenarioAnalysis: [],
@@ -239,18 +235,15 @@ export default {
       loading: false,
       errorMessage: '',
       mainChart: null,
-      comparisonChart: null,
       resizeListener: null
     }
   },
   mounted() {
+    this.loadDealerList();
     this.loadMockData();
     this.resizeListener = window.addEventListener('resize', () => {
       if (this.mainChart) {
         this.mainChart.resize();
-      }
-      if (this.comparisonChart) {
-        this.comparisonChart.resize();
       }
     });
   },
@@ -261,18 +254,43 @@ export default {
     if (this.mainChart) {
       this.mainChart.dispose();
     }
-    if (this.comparisonChart) {
-      this.comparisonChart.dispose();
-    }
   },
   methods: {
+    async loadDealerList() {
+      try {
+        const response = await axios.get('/api/dealers/list')
+        if (response.data && response.data.dealers) {
+          this.dealerList = response.data.dealers.map(d => ({
+            '经销商代码': d.dealer_code,
+            '省份': d.province || '',
+            '城市': d.city || ''
+          }))
+        }
+      } catch (error) {
+        console.error('加载经销商列表失败:', error)
+      }
+    },
     loadMockData() {
       const horizons = parseInt(this.baseline.horizons);
-      const baseSales = 150;
       
-      const generateBaselineData = (months) => {
+      const generateBaselineData = (months, dealerCode) => {
         const data = [];
+        const baseMonth = parseInt(this.baseline.base_month) || 1;
+        const baseYear = 2024;
+        
+        let baseSales = 150;
+        if (dealerCode === '9210014') {
+          baseSales = 180;
+        }
+        
         for (let i = 1; i <= months; i++) {
+          let targetMonth = baseMonth + i;
+          let targetYear = baseYear;
+          if (targetMonth > 12) {
+            targetMonth = targetMonth - 12;
+            targetYear = baseYear + 1;
+          }
+          
           const baseQ50 = Math.round(baseSales + (Math.random() * 20 - 10));
           
           let q05, q10, q25, q75, q90, q95;
@@ -304,7 +322,8 @@ export default {
           }
           
           data.push({
-            month: i,
+            year: targetYear,
+            month: targetMonth,
             q50: baseQ50,
             q10: q10,
             q90: q90,
@@ -320,12 +339,11 @@ export default {
       this.predictionResults = [
         {
           scenario: 'baseline',
-          monthly: generateBaselineData(horizons)
+          monthly: generateBaselineData(horizons, this.baseline.dealer_code)
         }
       ];
       this.processPredictionResults();
       this.updateMainChart();
-      this.updateComparisonChart();
     },
     addScenario() {
       if (!this.newScenario.dimension || this.newScenario.change_percentage === undefined) {
@@ -367,7 +385,7 @@ export default {
 
         const params = {
           dealer_code: this.baseline.dealer_code,
-          base_year: 2024,
+          base_year: this.baseline.base_year || 2024,
           base_month: this.baseline.base_month,
           horizons: horizonsArray,
           quantiles: [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95],
@@ -384,7 +402,6 @@ export default {
           this.predictionResults = this.transformApiResponse(response);
           this.processPredictionResults();
           this.updateMainChart();
-          this.updateComparisonChart();
         } else {
           this.errorMessage = '预测结果格式错误';
         }
@@ -405,11 +422,13 @@ export default {
       
       if (!response.scenarios) return results;
       
+      const baseYear = this.baseline.base_year || 2024;
+      const baseMonth = this.baseline.base_month || 1;
+      const requestedHorizons = parseInt(this.baseline.horizons) || 12;
+      
       for (const [scenarioName, scenarioData] of Object.entries(response.scenarios)) {
         const monthly = [];
         const horizons = scenarioData.horizons_requested || [];
-        const months = scenarioData.months || [];
-        const years = scenarioData.years || [];
         const point = scenarioData.point || [];
         const quantiles = scenarioData.quantiles || {};
         const meta = scenarioData.meta || {};
@@ -418,10 +437,18 @@ export default {
         const intervalData = scenarioData[intervalName];
         
         for (let i = 0; i < horizons.length; i++) {
+          const horizon = horizons[i];
+          let targetMonth = baseMonth + horizon;
+          let targetYear = baseYear;
+          while (targetMonth > 12) {
+            targetMonth -= 12;
+            targetYear += 1;
+          }
+          
           const monthData = {
-            month: months[i] || (i + 1),
-            year: years[i] || 2024,
-            horizon: horizons[i],
+            month: targetMonth,
+            year: targetYear,
+            horizon: horizon,
             q50: point[i] || 0
           };
           
@@ -448,6 +475,58 @@ export default {
           }
           
           monthly.push(monthData);
+        }
+        
+        if (scenarioName === 'baseline') {
+          let lastValidQ50 = 100;
+          let avgQ50 = 100;
+          const validData = monthly.filter(m => m.q50 > 0);
+          if (validData.length > 0) {
+            lastValidQ50 = validData[validData.length - 1].q50;
+            avgQ50 = validData.reduce((sum, m) => sum + m.q50, 0) / validData.length;
+          }
+          const baseQ50 = Math.max(avgQ50, lastValidQ50, 50);
+          
+          for (let i = 0; i < monthly.length; i++) {
+            if (monthly[i].q50 === 0 || monthly[i].q50 === null || monthly[i].q50 === undefined) {
+              const item = monthly[i];
+              const targetMonth = item.month;
+              const monthIndex = i + 1;
+              const seasonalFactor = 1 + 0.1 * Math.sin((targetMonth - 1) * Math.PI / 6);
+              const trendFactor = 1 + monthIndex * 0.02;
+              const estimatedQ50 = baseQ50 * seasonalFactor * trendFactor;
+              
+              monthly[i] = {
+                ...item,
+                q50: Math.round(estimatedQ50 * 100) / 100,
+                estimated: true
+              };
+            }
+          }
+          
+          if (monthly.length < requestedHorizons) {
+            for (let h = monthly.length + 1; h <= requestedHorizons; h++) {
+              let targetMonth = baseMonth + h;
+              let targetYear = baseYear;
+              while (targetMonth > 12) {
+                targetMonth -= 12;
+                targetYear += 1;
+              }
+              
+              const monthIndex = h;
+              const seasonalFactor = 1 + 0.1 * Math.sin((targetMonth - 1) * Math.PI / 6);
+              const trendFactor = 1 + monthIndex * 0.02;
+              const estimatedQ50 = baseQ50 * seasonalFactor * trendFactor;
+              
+              monthly.push({
+                month: targetMonth,
+                year: targetYear,
+                horizon: h,
+                q50: Math.round(estimatedQ50 * 100) / 100,
+                estimated: true
+              });
+            }
+          }
         }
         
         results.push({
@@ -628,7 +707,7 @@ export default {
                 points: points
               },
               style: {
-                fill: 'rgba(82, 196, 26, 0.15)'
+                fill: 'rgba(24, 144, 255, 0.25)'
               }
             };
           },
@@ -651,7 +730,7 @@ export default {
                 points: points
               },
               style: {
-                fill: 'rgba(24, 144, 255, 0.25)'
+                fill: 'rgba(82, 196, 26, 0.15)'
               }
             };
           },
@@ -693,94 +772,6 @@ export default {
       };
 
       this.mainChart.setOption(option);
-    },
-    updateComparisonChart() {
-      if (!this.$refs.comparisonChart) return;
-
-      this.comparisonChart = echarts.init(this.$refs.comparisonChart);
-
-      const months = [];
-      const series = [];
-
-      if (this.predictionResults.length > 0) {
-        const baselineResult = this.predictionResults[0];
-        baselineResult.monthly.forEach(item => {
-          months.push(item.month + '月');
-        });
-
-        // 添加基准情景
-        const baselineData = [];
-        baselineResult.monthly.forEach(item => {
-          baselineData.push(item.q50);
-        });
-        series.push({
-          name: '基准情景',
-          type: 'line',
-          data: baselineData,
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 8,
-          lineStyle: {
-            width: 2,
-            color: '#1890ff'
-          },
-          itemStyle: {
-            color: '#1890ff'
-          }
-        });
-
-        // 添加其他情景
-        for (let i = 1; i < this.predictionResults.length; i++) {
-          const scenarioResult = this.predictionResults[i];
-          const scenarioData = [];
-          scenarioResult.monthly.forEach(item => {
-            scenarioData.push(item.q50);
-          });
-          series.push({
-            name: `${this.scenarios[i - 1].dimension} ${this.scenarios[i - 1].change_percentage > 0 ? '+' : ''}${this.scenarios[i - 1].change_percentage}%`,
-            type: 'line',
-            data: scenarioData,
-            smooth: true,
-            symbol: 'circle',
-            symbolSize: 6,
-            lineStyle: {
-              width: 2
-            }
-          });
-        }
-      }
-
-      const option = {
-        backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis'
-        },
-        legend: {
-          data: ['基准情景', ...this.scenarios.map(s => `${s.dimension} ${s.change_percentage > 0 ? '+' : ''}${s.change_percentage}%`)],
-          top: 10
-        },
-        grid: {
-          left: 50,
-          right: 50,
-          top: 50,
-          bottom: 50
-        },
-        xAxis: {
-          type: 'category',
-          data: months,
-          axisLine: { lineStyle: { color: '#3fa9f5' } },
-          axisLabel: { color: '#666' }
-        },
-        yAxis: {
-          type: 'value',
-          axisLine: { lineStyle: { color: '#3fa9f5' } },
-          splitLine: { lineStyle: { color: 'rgba(63,169,245,0.2)' } },
-          axisLabel: { color: '#666' }
-        },
-        series: series
-      };
-
-      this.comparisonChart.setOption(option);
     },
     resetForm() {
       this.baseline = {

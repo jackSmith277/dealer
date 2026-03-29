@@ -40,8 +40,6 @@ class Dealer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     dealer_name = db.Column(db.String(100), nullable=False)
-    dealer_type = db.Column(db.String(30), nullable=False)
-    brand = db.Column(db.String(50), nullable=False)
     level = db.Column(db.String(20), nullable=False)
     region = db.Column(db.String(50), nullable=False)
     contact_name = db.Column(db.String(50), nullable=False)
@@ -77,7 +75,6 @@ class AnalysisReport(db.Model):
 # 创建数据库表
 with app.app_context():
     db.create_all()
-    # 创建默认管理员账户
     admin = User.query.filter_by(username='admin').first()
     if not admin:
         admin = User(
@@ -87,6 +84,55 @@ with app.app_context():
         )
         db.session.add(admin)
         db.session.commit()
+    
+    try:
+        dealer_count = db.session.execute(db.text("SELECT COUNT(*) FROM v_dealer_info")).scalar()
+        existing_dealer_count = Dealer.query.count()
+        
+        if dealer_count > 0 and existing_dealer_count == 0:
+            print(f"开始导入 {dealer_count} 个经销商数据...")
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province, city, fed_level FROM v_dealer_info"))
+            added_count = 0
+            
+            for row in dealer_info_result:
+                dealer_code = row[0]
+                province = row[1] or ''
+                city = row[2] or ''
+                fed_level = row[3] or ''
+                
+                existing_user = User.query.filter_by(username=dealer_code).first()
+                if existing_user:
+                    continue
+                
+                user = User(
+                    username=dealer_code,
+                    password_hash='123456',
+                    role='dealer',
+                    status=1
+                )
+                db.session.add(user)
+                db.session.flush()
+                
+                region = f"{province}{city}" if province and city else (province or city or '')
+                
+                dealer = Dealer(
+                    user_id=user.id,
+                    dealer_name=dealer_code,
+                    level=fed_level,
+                    region=region,
+                    contact_name='',
+                    contact_phone='',
+                    address='',
+                    dealer_type=''
+                )
+                db.session.add(dealer)
+                added_count += 1
+            
+            db.session.commit()
+            print(f"成功导入 {added_count} 个经销商数据")
+    except Exception as e:
+        print(f"导入经销商数据失败: {str(e)}")
+        db.session.rollback()
 
 # 生成JWT令牌
 def generate_token(user):
@@ -175,8 +221,6 @@ def register():
         dealer = Dealer(
             user_id=user.id,
             dealer_name=dealer_data.get('dealer_name'),
-            dealer_type=dealer_data.get('dealer_type'),
-            brand=dealer_data.get('brand'),
             level=dealer_data.get('level'),
             region=dealer_data.get('region'),
             contact_name=dealer_data.get('contact_name'),
@@ -216,22 +260,25 @@ def get_users():
         if user.role == 'dealer':
             dealer = Dealer.query.filter_by(user_id=user.id).first()
             if dealer:
-                # 将 region 字段拆分成 province 和 city
                 province = ''
                 city = ''
                 if dealer.region:
-                    parts = dealer.region.split('/')
-                    if len(parts) >= 2:
-                        province = parts[0]
-                        city = parts[1]
+                    if '/' in dealer.region:
+                        parts = dealer.region.split('/')
+                        province = parts[0] if len(parts) > 0 else ''
+                        city = parts[1] if len(parts) > 1 else ''
                     else:
-                        province = dealer.region
+                        import re
+                        match = re.match(r'^(.*?[省自治区])(.+)$', dealer.region)
+                        if match:
+                            province = match.group(1)
+                            city = match.group(2)
+                        else:
+                            province = dealer.region
                 
                 user_data['dealer'] = {
                     'id': dealer.id,
                     'dealer_name': dealer.dealer_name,
-                    'dealer_type': dealer.dealer_type,
-                    'brand': dealer.brand,
                     'level': dealer.level,
                     'region': dealer.region,
                     'province': province,
@@ -288,8 +335,6 @@ def get_user(user_id):
                 user_data['dealer'] = {
                     'id': dealer.id,
                     'dealer_name': dealer.dealer_name,
-                    'dealer_type': dealer.dealer_type,
-                    'brand': dealer.brand,
                     'level': dealer.level,
                     'region': dealer.region,
                     'province': province,
@@ -321,13 +366,10 @@ def get_dealer_info(user_id):
     
     dealer = Dealer.query.filter_by(user_id=user_id).first()
     if not dealer:
-        # 如果经销商信息不存在，返回空数据，允许用户填写
         return jsonify({
             'id': None,
             'user_id': user_id,
             'dealer_name': '',
-            'dealer_type': '',
-            'brand': '',
             'level': '',
             'province': '',
             'city': '',
@@ -338,7 +380,6 @@ def get_dealer_info(user_id):
             'updated_at': None
         })
     
-    # 将 region 字段拆分成 province 和 city
     province = ''
     city = ''
     if dealer.region:
@@ -353,8 +394,6 @@ def get_dealer_info(user_id):
         'id': dealer.id,
         'user_id': dealer.user_id,
         'dealer_name': dealer.dealer_name,
-        'dealer_type': dealer.dealer_type,
-        'brand': dealer.brand,
         'level': dealer.level,
         'province': province,
         'city': city,
@@ -384,8 +423,6 @@ def update_dealer_info(user_id):
     dealer = Dealer.query.filter_by(user_id=user_id).first()
     
     if not dealer:
-        # 如果经销商信息不存在，创建新的经销商信息
-        # 处理 province 和 city，拼接成 region
         region = ''
         if 'province' in data and 'city' in data:
             province = data.get('province', '')
@@ -397,8 +434,6 @@ def update_dealer_info(user_id):
         dealer = Dealer(
             user_id=user_id,
             dealer_name=data.get('dealer_name', ''),
-            dealer_type=data.get('dealer_type', ''),
-            brand=data.get('brand', ''),
             level=data.get('level', ''),
             region=region,
             contact_name=data.get('contact_name', ''),
@@ -409,13 +444,8 @@ def update_dealer_info(user_id):
         db.session.commit()
         return jsonify({'message': '经销商信息创建成功'}), 201
     
-    # 更新经销商信息
     if 'dealer_name' in data:
         dealer.dealer_name = data['dealer_name']
-    if 'dealer_type' in data:
-        dealer.dealer_type = data['dealer_type']
-    if 'brand' in data:
-        dealer.brand = data['brand']
     if 'level' in data:
         dealer.level = data['level']
     
@@ -637,16 +667,14 @@ def add_dealer():
             return jsonify({'error': '请求数据不能为空'}), 400
         
         # 检查必填字段
-        required_fields = ['username', 'password', 'dealer_name', 'dealer_type', 'brand', 'level', 'contact_name', 'contact_phone', 'address']
+        required_fields = ['username', 'password', 'dealer_name', 'level', 'contact_name', 'contact_phone', 'address']
         for field in required_fields:
             if field not in data:
                 return jsonify({'error': f'{field}不能为空'}), 400
         
-        # 检查用户名是否已存在
         if User.query.filter_by(username=data['username']).first():
             return jsonify({'error': '用户名已存在'}), 400
         
-        # 处理 province 和 city，拼接成 region
         region = ''
         if 'province' in data and 'city' in data:
             province = data.get('province', '')
@@ -655,22 +683,18 @@ def add_dealer():
         else:
             region = data.get('region', '')
         
-        # 创建用户
         user = User(
             username=data['username'],
-            password_hash=data['password'],  # 暂时不加密
+            password_hash=data['password'],
             role='dealer'
         )
         
         db.session.add(user)
-        db.session.flush()  # 获取user.id
+        db.session.flush()
         
-        # 创建经销商信息
         dealer = Dealer(
             user_id=user.id,
             dealer_name=data['dealer_name'],
-            dealer_type=data['dealer_type'],
-            brand=data['brand'],
             level=data['level'],
             region=region,
             contact_name=data['contact_name'],
@@ -922,20 +946,40 @@ class MonthlyRadarScores(db.Model):
 @app.route('/api/dealers/list', methods=['GET'])
 def get_dealers_list():
     try:
+        dealers = []
+        
         dealer_info_map = {}
         try:
-            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province, city FROM v_dealer_info"))
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province, city, fed_level FROM v_dealer_info"))
             for row in dealer_info_result:
-                dealer_info_map[row[0]] = {'province': row[1], 'city': row[2]}
+                dealer_info_map[row[0]] = {'province': row[1], 'city': row[2], 'fed_level': row[3]}
         except:
             pass
         
-        dealers = []
-        for dealer_code, info in dealer_info_map.items():
+        dealers_query = db.session.execute(db.text("""
+            SELECT d.id, d.user_id, d.dealer_name, d.level, d.region, 
+                   d.contact_name, d.contact_phone, d.address, u.status
+            FROM dealers d
+            LEFT JOIN users u ON d.user_id = u.id
+            ORDER BY d.id
+        """))
+        
+        for row in dealers_query:
+            dealer_code = row[2]
+            info = dealer_info_map.get(dealer_code, {'province': '', 'city': ''})
             dealers.append({
+                'id': row[0],
+                'user_id': row[1],
                 'dealer_code': dealer_code,
-                'province': info.get('province', ''),
-                'city': info.get('city', '')
+                'dealer_name': row[2],
+                'level': row[3] or '',
+                'region': row[4] or '',
+                'province': info['province'],
+                'city': info['city'],
+                'contact_name': row[5] or '',
+                'contact_phone': row[6] or '',
+                'address': row[7] or '',
+                'status': row[8] if row[8] is not None else 1
             })
         
         return jsonify({
@@ -1126,6 +1170,8 @@ def get_radar_available_years():
 def get_index_overview():
     try:
         year = request.args.get('year', type=int, default=2024)
+        province = request.args.get('province', type=str, default='')
+        city = request.args.get('city', type=str, default='')
         
         dealer_info_map = {}
         try:
@@ -1137,6 +1183,13 @@ def get_index_overview():
         
         radar_query = MonthlyRadarScores.query.filter(MonthlyRadarScores.stat_year == year)
         radar_records = radar_query.all()
+        
+        if province:
+            radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') == province]
+        if city:
+            radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('city', '') == city or 
+                           (dealer_info_map.get(r.dealer_code, {}).get('city', '') and dealer_info_map.get(r.dealer_code, {}).get('city', '') in city) or
+                           (city and city in dealer_info_map.get(r.dealer_code, {}).get('city', ''))]
         
         avg_spread = sum(float(r.spread_force or 0) for r in radar_records) / len(radar_records) if radar_records else 0
         avg_experience = sum(float(r.experience_force or 0) for r in radar_records) / len(radar_records) if radar_records else 0
@@ -1154,6 +1207,13 @@ def get_index_overview():
         
         metrics_query = MonthlyMetrics11d.query.filter(MonthlyMetrics11d.stat_year == year)
         metrics_records = metrics_query.all()
+        
+        if province:
+            metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') == province]
+        if city:
+            metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('city', '') == city or 
+                             (dealer_info_map.get(r.dealer_code, {}).get('city', '') and dealer_info_map.get(r.dealer_code, {}).get('city', '') in city) or
+                             (city and city in dealer_info_map.get(r.dealer_code, {}).get('city', ''))]
         
         monthly_avg = {}
         for month in range(1, 13):
@@ -1181,6 +1241,7 @@ def get_index_overview():
             dealer_scores[dc] = {
                 'code': dc,
                 'province': dealer_info_map.get(dc, {}).get('province', ''),
+                'city': dealer_info_map.get(dc, {}).get('city', ''),
                 'totalScore': round(avg_score, 2)
             }
         
@@ -1192,13 +1253,27 @@ def get_index_overview():
         
         province_count = {}
         city_count = {}
+        warning_province_count = {}
+        warning_city_count = {}
         for dc, info in dealer_info_map.items():
-            province = info.get('province', '')
-            city = info.get('city', '')
-            if province:
-                province_count[province] = province_count.get(province, 0) + 1
-            if city:
-                city_count[city] = city_count.get(city, 0) + 1
+            p = info.get('province', '')
+            c = info.get('city', '')
+            if province and p != province:
+                continue
+            if city and c != city and city not in c and c not in city:
+                continue
+            if p:
+                province_count[p] = province_count.get(p, 0) + 1
+            if c:
+                city_count[c] = city_count.get(c, 0) + 1
+        
+        for d in warning_red:
+            p = d.get('province', '')
+            c = d.get('city', '')
+            if p:
+                warning_province_count[p] = warning_province_count.get(p, 0) + 1
+            if c:
+                warning_city_count[c] = warning_city_count.get(c, 0) + 1
         
         return jsonify({
             'success': True,
@@ -1212,7 +1287,9 @@ def get_index_overview():
                 },
                 'province_count': province_count,
                 'city_count': city_count,
-                'total_dealers': len(dealer_info_map)
+                'warning_province_count': warning_province_count,
+                'warning_city_count': warning_city_count,
+                'total_dealers': len(dealer_scores)
             }
         }), 200
         
@@ -1228,6 +1305,8 @@ def get_ranking():
     try:
         year = request.args.get('year', type=int, default=2024)
         sort_by = request.args.get('sort_by', type=str, default='total')
+        province = request.args.get('province', type=str, default='')
+        city = request.args.get('city', type=str, default='')
         
         dealer_info_map = {}
         try:
@@ -1239,6 +1318,13 @@ def get_ranking():
         
         radar_query = MonthlyRadarScores.query.filter(MonthlyRadarScores.stat_year == year)
         radar_records = radar_query.all()
+        
+        if province:
+            radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') == province]
+        if city:
+            radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('city', '') == city or 
+                           (dealer_info_map.get(r.dealer_code, {}).get('city', '') and dealer_info_map.get(r.dealer_code, {}).get('city', '') in city) or
+                           (city and city in dealer_info_map.get(r.dealer_code, {}).get('city', ''))]
         
         dealer_scores = {}
         for r in radar_records:
@@ -1283,6 +1369,7 @@ def get_ranking():
             ranking_data.append({
                 'code': dc,
                 'province': dealer_info_map.get(dc, {}).get('province', ''),
+                'city': dealer_info_map.get(dc, {}).get('city', ''),
                 'score': round(score_map.get(sort_by, avg_total), 2)
             })
         
@@ -1450,6 +1537,7 @@ def get_header_kpi():
                 'totalDealers': total_dealers,
                 'avgScore': avg_score,
                 'warningCount': warning_count,
+                'warningRatio': round(warning_count / total_dealers * 100, 1) if total_dealers > 0 else 0,
                 'topProvince': top_province,
                 'topProvinceScore': round(top_province_score, 2),
                 'activeDealers': active_dealers,

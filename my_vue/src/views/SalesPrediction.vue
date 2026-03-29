@@ -129,7 +129,7 @@ import {
 } from '@/api/prediction'
 import { mockData } from '@/api/mock'
 import DealerSelector from '@/components/DealerSelector.vue'
-import dealerData from '@/assets/dealerData.json'
+import axios from 'axios'
 
 export default {
   name: 'SalesPrediction',
@@ -146,7 +146,7 @@ export default {
         base_month: 10
       },
       dealerCodes: [],
-      dealerList: dealerData,
+      dealerList: [],
       percentageOptions: Array.from({length: 59}, (_, i) => (i + 1) * 5),
       predictionResult: null,
       salesChanges: [],
@@ -160,8 +160,8 @@ export default {
   },
   mounted() {
     this.$nextTick(async () => {
+      await this.loadDealerList();
       this.initSalesChart();
-      // 获取原始销量数据，确保页面加载时能显示所有月份的原始销量
       await this.fetchOriginalSalesData();
     });
   },
@@ -172,7 +172,20 @@ export default {
     }
   },
   methods: {
-    // 跳转到历史记录页面
+    async loadDealerList() {
+      try {
+        const response = await axios.get('/api/dealers/list')
+        if (response.data && response.data.dealers) {
+          this.dealerList = response.data.dealers.map(d => ({
+            '经销商代码': d.dealer_code,
+            '省份': d.province || '',
+            '城市': d.city || ''
+          }))
+        }
+      } catch (error) {
+        console.error('加载经销商列表失败:', error)
+      }
+    },
     goToHistory() {
       this.$router.push('/dashboard/history')
     },
