@@ -202,6 +202,10 @@
               <span>{{ showTimeControl ? '时间轴' : '时空分析' }}</span>
             </button>
           </div>
+          <div class="map-credits">
+            <span>审图号：GS(2025)5996号</span>
+            <span>数据来源：阿里云 DataV数据可视化平台</span>
+          </div>
         </div>
         
         <div class="map-legend">
@@ -4869,6 +4873,21 @@ export default {
 /* 地图切换按钮 */
 .map-container {
   position: relative;
+}
+
+.map-credits {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 11px;
+  color: #999;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 .time-toggle-button {

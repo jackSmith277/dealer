@@ -21,25 +21,11 @@
         </div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-icon kpi-icon-green">⭐</div>
-        <div class="kpi-content">
-          <div class="kpi-value">{{ headerKpi.avgScore }}</div>
-          <div class="kpi-label">平均评分</div>
-        </div>
-      </div>
-      <div class="kpi-card">
         <div class="kpi-icon kpi-icon-red">⚠️</div>
         <div class="kpi-content">
           <div class="kpi-value">{{ headerKpi.warningCount }}</div>
           <div class="kpi-label">预警门店</div>
-        </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-icon-purple">🏆</div>
-        <div class="kpi-content">
-          <div class="kpi-value">{{ headerKpi.topProvince || '-' }}</div>
-          <div class="kpi-label">TOP省份</div>
-          <div class="kpi-sub">{{ headerKpi.topProvinceScore }}分</div>
+          <div class="kpi-sub">占比 {{ headerKpi.warningRatio }}%</div>
         </div>
       </div>
       <div class="kpi-card">
@@ -48,6 +34,21 @@
           <div class="kpi-value">{{ headerKpi.activeDealers }}</div>
           <div class="kpi-label">活跃门店</div>
           <div class="kpi-sub">占比 {{ headerKpi.activeRatio }}%</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-green">⭐</div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ headerKpi.avgScore }}</div>
+          <div class="kpi-label">平均评分</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-purple">🏆</div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ headerKpi.topProvince || '-' }}</div>
+          <div class="kpi-label">TOP省份</div>
+          <div class="kpi-sub">{{ headerKpi.topProvinceScore }}分</div>
         </div>
       </div>
     </div>
@@ -74,6 +75,10 @@
             </div>
             <div class="card-body map-body">
               <div ref="chinaMap" class="map-container"></div>
+              <div class="map-credits">
+                <span>审图号：GS(2025)5996号</span>
+                <span>数据来源：阿里云 DataV数据可视化平台</span>
+              </div>
             </div>
           </div>
           <div class="region-section">
@@ -367,6 +372,8 @@ export default {
       rankingData: [],
       rankingSortBy: 'total',
       warningData: { red: 0, orange: 0, green: 0 },
+      warningProvinceCount: {},
+      warningCityCount: {},
       totalDealers: 0,
       provinceDealerCount: {},
       cityDealerCount: {},
@@ -581,7 +588,14 @@ export default {
     },
     async loadOverviewData() {
       try {
-        const response = await axios.get(`/api/index/overview?year=${this.selectedYear}`)
+        let url = `/api/index/overview?year=${this.selectedYear}`
+        if (this.currentProvince) {
+          url += `&province=${encodeURIComponent(this.currentProvince)}`
+        }
+        if (this.currentCity) {
+          url += `&city=${encodeURIComponent(this.currentCity)}`
+        }
+        const response = await axios.get(url)
         if (response.data.success) {
           const data = response.data.data
           this.radarAvg = data.radar_avg
@@ -590,6 +604,8 @@ export default {
           this.totalDealers = data.total_dealers
           this.provinceDealerCount = data.province_count
           this.cityDealerCount = data.city_count || {}
+          this.warningProvinceCount = data.warning_province_count || {}
+          this.warningCityCount = data.warning_city_count || {}
         }
       } catch (error) {
         console.error('加载概览数据失败:', error)
@@ -597,7 +613,14 @@ export default {
     },
     async loadRankingData() {
       try {
-        const response = await axios.get(`/api/index/ranking?year=${this.selectedYear}&sort_by=${this.rankingSortBy}`)
+        let url = `/api/index/ranking?year=${this.selectedYear}&sort_by=${this.rankingSortBy}`
+        if (this.currentProvince) {
+          url += `&province=${encodeURIComponent(this.currentProvince)}`
+        }
+        if (this.currentCity) {
+          url += `&city=${encodeURIComponent(this.currentCity)}`
+        }
+        const response = await axios.get(url)
         if (response.data.success) {
           this.rankingData = response.data.data
         }
@@ -710,7 +733,8 @@ export default {
           },
           textStyle: {
             color: '#666'
-          }
+          },
+          seriesIndex: 0
         },
         geo: {
           map: 'china',
@@ -1073,6 +1097,9 @@ export default {
     },
     renderMap() {
       if (this.mapLevel === 'country') {
+        if (this.chinaGeoJson) {
+          echarts.registerMap('china', this.chinaGeoJson)
+        }
         this.renderCountryMap()
       } else if (this.mapLevel === 'province') {
         this.renderProvinceMap()
@@ -1087,11 +1114,62 @@ export default {
       
       const maxValue = Math.max(...Object.values(storeCount), 10)
       
+      const provinceCoords = {
+        '北京市': [116.4, 39.9],
+        '天津市': [117.2, 39.1],
+        '河北省': [114.5, 38.0],
+        '山西省': [112.5, 37.9],
+        '内蒙古自治区': [111.7, 40.8],
+        '辽宁省': [123.4, 41.8],
+        '吉林省': [125.3, 43.9],
+        '黑龙江省': [126.6, 45.8],
+        '上海市': [121.5, 31.2],
+        '江苏省': [118.8, 32.1],
+        '浙江省': [120.2, 30.3],
+        '安徽省': [117.3, 31.9],
+        '福建省': [119.3, 26.1],
+        '江西省': [115.9, 28.7],
+        '山东省': [117.0, 36.7],
+        '河南省': [113.7, 34.8],
+        '湖北省': [114.3, 30.6],
+        '湖南省': [113.0, 28.2],
+        '广东省': [113.3, 23.1],
+        '广西壮族自治区': [108.3, 22.8],
+        '海南省': [110.3, 20.0],
+        '重庆市': [106.5, 29.6],
+        '四川省': [104.1, 30.7],
+        '贵州省': [106.7, 26.6],
+        '云南省': [102.7, 25.0],
+        '西藏自治区': [91.1, 29.6],
+        '陕西省': [109.0, 34.3],
+        '甘肃省': [103.8, 36.1],
+        '青海省': [101.8, 36.6],
+        '宁夏回族自治区': [106.3, 38.5],
+        '新疆维吾尔自治区': [87.6, 43.8],
+        '台湾省': [121.5, 25.0],
+        '香港特别行政区': [114.2, 22.3],
+        '澳门特别行政区': [113.5, 22.2]
+      }
+      
+      const warningScatterData = []
+      for (const [province, count] of Object.entries(this.warningProvinceCount)) {
+        const coords = provinceCoords[province]
+        if (coords && count > 0) {
+          warningScatterData.push({
+            name: province,
+            value: [...coords, count]
+          })
+        }
+      }
+      
       const option = {
         backgroundColor: 'transparent',
         tooltip: {
           trigger: 'item',
           formatter: function(params) {
+            if (params.seriesName === '预警门店') {
+              return `${params.name}<br/>预警门店：${params.value[2]}家`
+            }
             if (params.value) {
               return `${params.name}<br/>门店数量：${params.value}家<br/><span style="color:#999;font-size:11px;">点击查看详情</span>`
             }
@@ -1110,7 +1188,8 @@ export default {
           },
           textStyle: {
             color: '#666'
-          }
+          },
+          seriesIndex: 0
         },
         geo: {
           map: 'china',
@@ -1144,6 +1223,25 @@ export default {
             map: 'china',
             geoIndex: 0,
             data: data
+          },
+          {
+            name: '预警门店',
+            type: 'effectScatter',
+            coordinateSystem: 'geo',
+            data: warningScatterData,
+            symbolSize: 8,
+            showEffectOn: 'render',
+            rippleEffect: {
+              brushType: 'stroke',
+              scale: 2
+            },
+            visualMap: false,
+            itemStyle: {
+              color: '#ff4d4f',
+              shadowBlur: 10,
+              shadowColor: '#ff4d4f'
+            },
+            zlevel: 10
           }
         ]
       }
@@ -1162,11 +1260,43 @@ export default {
         const cityData = this.getCityDataForProvince(this.currentProvince)
         const maxValue = Math.max(...cityData.map(d => d.value), 10)
         
+        const cityCoords = {}
+        if (response.data && response.data.features) {
+          response.data.features.forEach(feature => {
+            const name = feature.properties.name
+            const center = feature.properties.center || feature.properties.adcenter
+            if (name && center) {
+              cityCoords[name] = center
+            }
+          })
+        }
+        
+        const warningCityScatterData = []
+        for (const [city, count] of Object.entries(this.warningCityCount)) {
+          let matchedCity = ''
+          for (const cityName of Object.keys(cityCoords)) {
+            if (cityName.includes(city) || city.includes(cityName.replace('市', ''))) {
+              matchedCity = cityName
+              break
+            }
+          }
+          const coords = cityCoords[matchedCity] || cityCoords[city] || cityCoords[city + '市']
+          if (coords && count > 0) {
+            warningCityScatterData.push({
+              name: matchedCity || city,
+              value: [...coords, count]
+            })
+          }
+        }
+        
         const option = {
           backgroundColor: 'transparent',
           tooltip: {
             trigger: 'item',
             formatter: function(params) {
+              if (params.seriesName === '预警门店') {
+                return `${params.name}<br/>预警门店：${params.value[2]}家`
+              }
               if (params.value) {
                 return `${params.name}<br/>门店数量：${params.value}家`
               }
@@ -1185,7 +1315,8 @@ export default {
             },
             textStyle: {
               color: '#666'
-            }
+            },
+            seriesIndex: 0
           },
           geo: {
             map: 'province',
@@ -1228,6 +1359,25 @@ export default {
               map: 'province',
               geoIndex: 0,
               data: cityData
+            },
+            {
+              name: '预警门店',
+              type: 'effectScatter',
+              coordinateSystem: 'geo',
+              data: warningCityScatterData,
+              symbolSize: 8,
+              showEffectOn: 'render',
+              rippleEffect: {
+                brushType: 'stroke',
+                scale: 2
+              },
+              visualMap: false,
+              itemStyle: {
+                color: '#ff4d4f',
+                shadowBlur: 10,
+                shadowColor: '#ff4d4f'
+              },
+              zlevel: 10
             }
           ]
         }
@@ -1275,6 +1425,8 @@ export default {
             }
             
             await this.renderProvinceMap()
+            await this.loadOverviewData()
+            await this.loadRankingData()
             await this.loadAreaChartData()
             this.bindProvinceMapEvents()
           }
@@ -1302,6 +1454,8 @@ export default {
                 this.currentCity = targetCity
               }
               this.highlightCity(this.currentCity)
+              await this.loadOverviewData()
+              await this.loadRankingData()
               await this.loadAreaChartData()
             }
           }
@@ -1324,25 +1478,29 @@ export default {
         })
       }
     },
-    goBackLevel() {
+    async goBackLevel() {
       if (this.mapStack.length > 0) {
         const prev = this.mapStack.pop()
         this.mapLevel = prev.level
         this.currentProvince = prev.province
         this.currentCity = ''
         this.selectedRegion = ''
+        await this.loadOverviewData()
+        await this.loadRankingData()
+        await this.loadAreaChartData()
         this.renderMap()
-        this.loadAreaChartData()
       }
     },
-    goToCountry() {
+    async goToCountry() {
       this.mapLevel = 'country'
       this.currentProvince = ''
       this.currentCity = ''
       this.mapStack = []
       this.selectedRegion = ''
+      await this.loadOverviewData()
+      await this.loadRankingData()
+      await this.loadAreaChartData()
       this.renderMap()
-      this.loadAreaChartData()
     },
     getProvinceAdcode(provinceName) {
       const adcodeMap = {
@@ -1904,6 +2062,25 @@ export default {
   width: 100%;
   height: 100%;
   min-height: 600px;
+}
+
+.map-credits {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 11px;
+  color: #999;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.map-body {
+  position: relative;
 }
 
 .region-list {

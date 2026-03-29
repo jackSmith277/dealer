@@ -17,7 +17,6 @@
               <th>变化百分比</th>
               <th>预测月份</th>
               <th>预测结果</th>
-              <th>综合得分</th>
               <th>创建时间</th>
               <th>操作</th>
             </tr>
@@ -30,7 +29,6 @@
               <td>{{ history.change_percentage }}%</td>
               <td>{{ history.target_month }}月</td>
               <td>{{ history.predicted_sales }}</td>
-              <td>{{ history.comprehensive_score || 0 }}</td>
               <td>{{ formatLocalTime(history.created_at) }}</td>
               <td>
                 <button @click="viewHistoryDetail(history)" class="view-btn">查看详情</button>
@@ -82,10 +80,6 @@
                 <span class="value">{{ selectedHistory.predicted_sales }}</span>
               </div>
               <div class="info-item">
-                <span class="label">综合得分:</span>
-                <span class="value">{{ selectedHistory.comprehensive_score || 0 }}</span>
-              </div>
-              <div class="info-item">
                 <span class="label">创建时间:</span>
                 <span class="value">{{ formatLocalTime(selectedHistory.created_at) }}</span>
               </div>
@@ -98,45 +92,6 @@
               <h4>销量对比</h4>
               <div ref="salesChart" class="chart" style="width: 100%; height: 400px;"></div>
             </div>
-            <div class="chart-container">
-              <h4>五力分析</h4>
-              <div ref="radarChart" class="chart" style="width: 100%; height: 400px;"></div>
-            </div>
-          </div>
-          
-          <!-- 五力数据表格 -->
-          <div class="five-forces-table">
-            <h4>五力数据</h4>
-            <table class="forces-table">
-              <thead>
-                <tr>
-                  <th>能力维度</th>
-                  <th>得分</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>传播获客力</td>
-                  <td>{{ selectedHistory.propagation_force || 0 }}</td>
-                </tr>
-                <tr>
-                  <td>体验力</td>
-                  <td>{{ selectedHistory.experience_force || 0 }}</td>
-                </tr>
-                <tr>
-                  <td>转化力</td>
-                  <td>{{ selectedHistory.conversion_force || 0 }}</td>
-                </tr>
-                <tr>
-                  <td>服务力</td>
-                  <td>{{ selectedHistory.service_force || 0 }}</td>
-                </tr>
-                <tr>
-                  <td>经营力</td>
-                  <td>{{ selectedHistory.operation_force || 0 }}</td>
-                </tr>
-              </tbody>
-            </table>
           </div>
         </div>
       </div>
@@ -156,7 +111,6 @@ export default {
       selectedHistory: {},
       showDetailDialog: false,
       salesChart: null,
-      radarChart: null,
       loading: false,
       originalSalesData: []
     }
@@ -213,7 +167,6 @@ export default {
       
       this.$nextTick(() => {
         this.renderSalesChart()
-        this.renderRadarChart()
       })
     },
     
@@ -225,10 +178,6 @@ export default {
       if (this.salesChart) {
         this.salesChart.dispose()
         this.salesChart = null
-      }
-      if (this.radarChart) {
-        this.radarChart.dispose()
-        this.radarChart = null
       }
     },
     
@@ -328,61 +277,10 @@ export default {
       window.addEventListener('resize', this.handleResize)
     },
     
-    // 渲染五力雷达图
-    renderRadarChart() {
-      if (!this.$refs.radarChart) return
-      
-      this.radarChart = echarts.init(this.$refs.radarChart)
-      
-      const option = {
-        tooltip: {},
-        legend: {
-          data: ['五力得分'],
-          right: 10,
-          top: 10
-        },
-        radar: {
-          indicator: [
-            { name: '传播获客力', max: 20 },
-            { name: '体验力', max: 20 },
-            { name: '转化力', max: 40 },
-            { name: '服务力', max: 10 },
-            { name: '经营力', max: 10 }
-          ]
-        },
-        series: [
-          {
-            name: '五力得分',
-            type: 'radar',
-            data: [
-              {
-                value: [
-                  this.selectedHistory.propagation_force || 0,
-                  this.selectedHistory.experience_force || 0,
-                  this.selectedHistory.conversion_force || 0,
-                  this.selectedHistory.service_force || 0,
-                  this.selectedHistory.operation_force || 0
-                ],
-                name: '五力得分',
-                areaStyle: {
-                  opacity: 0.3
-                }
-              }
-            ]
-          }
-        ]
-      }
-      
-      this.radarChart.setOption(option)
-    },
-    
     // 处理窗口 resize 事件
     handleResize() {
       if (this.salesChart) {
         this.salesChart.resize()
-      }
-      if (this.radarChart) {
-        this.radarChart.resize()
       }
     }
   },
@@ -392,9 +290,6 @@ export default {
     // 销毁图表实例
     if (this.salesChart) {
       this.salesChart.dispose()
-    }
-    if (this.radarChart) {
-      this.radarChart.dispose()
     }
   }
 }
@@ -605,9 +500,6 @@ export default {
 }
 
 .charts-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
   margin-bottom: 30px;
 }
 
@@ -615,6 +507,7 @@ export default {
   background-color: #fafafa;
   padding: 20px;
   border-radius: 8px;
+  width: 100%;
 }
 
 .forces-table {

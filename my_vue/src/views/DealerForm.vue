@@ -75,33 +75,6 @@
                   </div>
                   
                   <div class="form-group">
-                    <label for="dealer_type" class="form-label">
-                      <span class="label-text">经销商类型</span>
-                      <span class="required">*</span>
-                    </label>
-                    <CustomSelect 
-                      v-model="formData.dealer_type" 
-                      :options="dealerTypeOptions"
-                      placeholder="请选择类型"
-                    />
-                  </div>
-                  
-                  <div class="form-group">
-                    <label for="brand" class="form-label">
-                      <span class="label-text">主营品牌</span>
-                      <span class="required">*</span>
-                    </label>
-                    <input 
-                      type="text" 
-                      id="brand" 
-                      v-model="formData.brand" 
-                      class="form-input"
-                      placeholder="请输入主营品牌"
-                      required
-                    >
-                  </div>
-                  
-                  <div class="form-group">
                     <label for="level" class="form-label">
                       <span class="label-text">经销商等级</span>
                       <span class="required">*</span>
@@ -283,8 +256,6 @@ export default {
         username: '',
         password: '',
         dealer_name: '',
-        dealer_type: '',
-        brand: '',
         level: '',
         region: { province: '', city: '' },
         contact_name: '',
@@ -292,11 +263,6 @@ export default {
         address: '',
         status: '1'
       },
-      dealerTypeOptions: [
-        { value: '4S店', label: '4S店' },
-        { value: '二级网点', label: '二级网点' },
-        { value: '授权经销商', label: '授权经销商' }
-      ],
       levelOptions: [
         { value: 'A级', label: 'A级' },
         { value: 'B级', label: 'B级' },
@@ -351,8 +317,6 @@ export default {
           username: user.username,
           password: '',
           dealer_name: dealer.dealer_name,
-          dealer_type: dealer.dealer_type,
-          brand: dealer.brand,
           level: dealer.level,
           region: {
             province: dealer.province || '',
@@ -388,11 +352,8 @@ export default {
         
         const dealerData = {
           dealer_name: this.formData.dealer_name,
-          dealer_type: this.formData.dealer_type,
-          brand: this.formData.brand,
           level: this.formData.level,
-          province: this.formData.region.province,
-          city: this.formData.region.city,
+          region: this.formData.region.province + this.formData.region.city,
           contact_name: this.formData.contact_name,
           contact_phone: this.formData.contact_phone,
           address: this.formData.address

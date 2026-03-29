@@ -3,8 +3,8 @@
     <div class="admin-dealers-header">
       <h1>经销商管理</h1>
       <div class="header-actions">
-        <button class="back-btn" @click="$router.push('/dashboard')">
-          ← 返回仪表盘
+        <button class="back-btn" @click="$router.push('/dashboard/index')">
+          ← 返回首页
         </button>
         <button class="add-btn" @click="$router.push('/admin/dealers/add')">
           + 添加经销商
@@ -20,7 +20,6 @@
             type="text" 
             v-model="searchQuery" 
             placeholder="搜索经销商名称或联系人..."
-            @input="handleSearch"
           >
           <button class="search-btn">🔍</button>
         </div>
@@ -28,21 +27,12 @@
         <div class="filter-options">
           <RegionCascader 
             v-model="filters.region"
-            @update:modelValue="handleFilter"
           />
           
           <CustomSelect 
             v-model="filters.level" 
             :options="levelOptions"
             placeholder="所有等级"
-            @update:modelValue="handleFilter"
-          />
-          
-          <CustomSelect 
-            v-model="filters.type" 
-            :options="typeOptions"
-            placeholder="所有类型"
-            @update:modelValue="handleFilter"
           />
         </div>
       </div>
@@ -79,8 +69,6 @@
               <tr>
                 <th>ID</th>
                 <th>经销商名称</th>
-                <th>类型</th>
-                <th>品牌</th>
                 <th>等级</th>
                 <th>地区</th>
                 <th>联系人</th>
@@ -93,8 +81,6 @@
               <tr v-for="dealer in filteredDealers" :key="dealer.id">
                 <td>{{ dealer.id }}</td>
                 <td>{{ dealer.dealer_name }}</td>
-                <td>{{ dealer.dealer_type }}</td>
-                <td>{{ dealer.brand }}</td>
                 <td>{{ dealer.level }}</td>
                 <td>{{ dealer.region }}</td>
                 <td>{{ dealer.contact_name }}</td>
@@ -133,14 +119,14 @@
       </div>
       
       <!-- 分页 -->
-      <div class="pagination" v-if="!loading && !error && dealers.length > 0">
-        <button class="page-btn" @click="prevPage" :disabled="currentPage === 1">
+      <div class="pagination" v-if="!loading && !error && allFilteredDealers.length > 0">
+        <button class="page-btn" @click.stop.prevent="prevPage" :disabled="currentPage === 1">
           上一页
         </button>
         <span class="page-info">
-          第 {{ currentPage }} / {{ totalPages }} 页
+          第 {{ currentPage }} / {{ totalPages }} 页 (共 {{ allFilteredDealers.length }} 条)
         </span>
-        <button class="page-btn" @click="nextPage" :disabled="currentPage === totalPages">
+        <button class="page-btn" @click.stop.prevent="nextPage" :disabled="currentPage >= totalPages">
           下一页
         </button>
       </div>
@@ -171,16 +157,6 @@
               <div class="detail-item">
                 <label>经销商名称</label>
                 <span class="detail-value">{{ viewDealerData.dealer_name }}</span>
-              </div>
-              <div class="detail-item">
-                <label>经销商类型</label>
-                <span class="detail-value detail-badge" :class="'type-' + viewDealerData.dealer_type">
-                  {{ viewDealerData.dealer_type }}
-                </span>
-              </div>
-              <div class="detail-item">
-                <label>主营品牌</label>
-                <span class="detail-value">{{ viewDealerData.brand }}</span>
               </div>
               <div class="detail-item">
                 <label>经销商等级</label>
@@ -255,8 +231,7 @@ export default {
       searchQuery: '',
       filters: {
         region: { province: '', city: '' },
-        level: '',
-        type: ''
+        level: ''
       },
       loading: true,
       error: '',
@@ -266,15 +241,12 @@ export default {
       viewDealerData: {},
       levelOptions: [
         { value: '', label: '所有等级' },
-        { value: 'A级', label: 'A级' },
-        { value: 'B级', label: 'B级' },
-        { value: 'C级', label: 'C级' }
-      ],
-      typeOptions: [
-        { value: '', label: '所有类型' },
-        { value: '4S店', label: '4S店' },
-        { value: '二级网点', label: '二级网点' },
-        { value: '授权经销商', label: '授权经销商' }
+        { value: 'A+', label: 'A+' },
+        { value: 'A', label: 'A' },
+        { value: 'B+', label: 'B+' },
+        { value: 'B', label: 'B' },
+        { value: 'C+', label: 'C+' },
+        { value: 'C', label: 'C' }
       ]
     }
   },
@@ -309,11 +281,6 @@ export default {
         result = result.filter(dealer => dealer.level === this.filters.level)
       }
       
-      // 类型过滤
-      if (this.filters.type) {
-        result = result.filter(dealer => dealer.dealer_type === this.filters.type)
-      }
-      
       return result
     },
     filteredDealers() {
@@ -332,7 +299,14 @@ export default {
       return this.dealers.filter(dealer => dealer.status === 0).length
     },
     totalPages() {
-      return Math.ceil(this.allFilteredDealers.length / this.pageSize)
+      const pages = Math.ceil(this.allFilteredDealers.length / this.pageSize)
+      console.log('totalPages computed:', pages, 'allFilteredDealers.length:', this.allFilteredDealers.length, 'pageSize:', this.pageSize)
+      return pages
+    }
+  },
+  watch: {
+    currentPage(newVal) {
+      console.log('currentPage changed to:', newVal)
     }
   },
   mounted() {
@@ -344,45 +318,38 @@ export default {
       this.error = ''
       
       try {
-        const token = this.$store.state.token
-        const response = await axios.get('http://localhost:5000/api/users', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        })
+        const response = await axios.get('http://localhost:5000/api/dealers/list')
         
-        // 过滤出经销商用户
-        this.dealers = response.data
-          .filter(user => user.role === 'dealer' && user.dealer)
-          .map(user => ({
-            id: user.id, // 用户ID
-            dealer_id: user.dealer.id, // 经销商ID
-            status: user.status,
-            dealer_name: user.dealer.dealer_name || '未设置',
-            dealer_type: user.dealer.dealer_type || '未设置',
-            brand: user.dealer.brand || '未设置',
-            level: user.dealer.level || '未设置',
-            region: user.dealer.region || '未设置',
-            province: user.dealer.province || '',
-            city: user.dealer.city || '',
-            contact_name: user.dealer.contact_name || '未设置',
-            contact_phone: user.dealer.contact_phone || '未设置',
-            address: user.dealer.address || '未设置'
+        if (response.data && response.data.dealers) {
+          this.dealers = response.data.dealers.map(dealer => ({
+            id: dealer.id,
+            user_id: dealer.user_id,
+            dealer_name: dealer.dealer_name || dealer.dealer_code,
+            level: dealer.level || dealer.fed_level || '未设置',
+            region: dealer.region || '未设置',
+            province: dealer.province || '',
+            city: dealer.city || '',
+            contact_name: dealer.contact_name || '',
+            contact_phone: dealer.contact_phone || '',
+            status: dealer.status || 1
           }))
+        }
         
         console.log('加载的经销商数据:', this.dealers)
       } catch (err) {
-        this.error = err.response?.data?.error || '加载经销商列表失败'
+        this.error = err.response?.data?.message || '加载经销商列表失败'
       } finally {
         this.loading = false
       }
     },
     
     handleSearch() {
+      console.log('handleSearch called, resetting currentPage to 1')
       this.currentPage = 1
     },
     
     handleFilter() {
+      console.log('handleFilter called, resetting currentPage to 1')
       this.currentPage = 1
     },
     
@@ -392,7 +359,7 @@ export default {
     },
     
     editDealer(dealer) {
-      this.$router.push(`/admin/dealers/edit/${dealer.id}`)
+      this.$router.push(`/admin/dealers/edit/${dealer.user_id}`)
     },
     
     async toggleDealerStatus(dealer) {
@@ -405,7 +372,7 @@ export default {
       
       try {
         const token = this.$store.state.token
-        await axios.put(`http://localhost:5000/api/users/${dealer.id}`, {
+        await axios.put(`http://localhost:5000/api/users/${dealer.user_id}`, {
           status: newStatus
         }, {
           headers: {
@@ -413,7 +380,6 @@ export default {
           }
         })
         
-        // 更新本地数据
         dealer.status = newStatus
         alert(`经销商${statusText}成功`)
       } catch (err) {
@@ -428,7 +394,7 @@ export default {
       
       try {
         const token = this.$store.state.token
-        await axios.delete(`http://localhost:5000/api/users/${dealer.id}`, {
+        await axios.delete(`http://localhost:5000/api/users/${dealer.user_id}`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -443,14 +409,18 @@ export default {
     },
     
     prevPage() {
+      console.log('prevPage called, currentPage:', this.currentPage, 'totalPages:', this.totalPages)
       if (this.currentPage > 1) {
         this.currentPage--
+        console.log('currentPage changed to:', this.currentPage)
       }
     },
     
     nextPage() {
+      console.log('nextPage called, currentPage:', this.currentPage, 'totalPages:', this.totalPages)
       if (this.currentPage < this.totalPages) {
         this.currentPage++
+        console.log('currentPage changed to:', this.currentPage)
       }
     }
   }
