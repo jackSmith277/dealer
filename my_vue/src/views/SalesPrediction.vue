@@ -242,7 +242,7 @@ export default {
         console.log(response)
         
 
-        if (response.message) {
+        if (response.message && response.message !== 'ok') {
           const error = new Error(response.message)
           error.response = { data: { message: response.message } }
           throw error
