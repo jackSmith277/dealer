@@ -95,7 +95,7 @@ export default {
       
       try {
         // 调用后端API进行注册
-        await axios.post('http://localhost:5000/api/register', {
+        await axios.post('http://localhost:5002/api/register', {
           username: this.registerForm.username,
           password: this.registerForm.password,
           role: this.registerForm.role

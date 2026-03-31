@@ -64,7 +64,7 @@ export default {
       
       try {
         // 调用后端API进行登录验证
-        const response = await axios.post('http://localhost:5000/api/login', {
+        const response = await axios.post('http://localhost:5002/api/login', {
           username: this.loginForm.username,
           password: this.loginForm.password
         })

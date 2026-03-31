@@ -23,7 +23,7 @@ const API_CONFIG = {
     supportMultimodal: false
 };
 const EXCEL_BACKEND_CONFIG = {
-    baseUrl: 'http://127.0.0.1:8001',
+    baseUrl: 'http://127.0.0.1:5002',
     uploadEndpoint: '/api/excel-report'
 };
 const CRAWL_BACKEND_CONFIG = {

@@ -418,7 +418,7 @@ export default {
         const username = user.username;
 
         // 构建查询URL - 根据用户名筛选
-        let url = 'http://localhost:5000/api/analysis-reports';
+        let url = 'http://localhost:5002/api/analysis-reports';
         if (user.role !== 'admin') {
           // 普通用户只能看到自己的报告
           url += `?username=${username}`;
@@ -457,7 +457,7 @@ export default {
       }
 
       try {
-        const response = await fetch(`http://localhost:5000/api/analysis-reports/${report.id}`, {
+        const response = await fetch(`http://localhost:5002/api/analysis-reports/${report.id}`, {
           method: 'DELETE'
         });
 

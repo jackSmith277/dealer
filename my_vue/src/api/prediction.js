@@ -8,7 +8,8 @@ import axios from 'axios'
  * @param {number} months - 月份数量（默认10个月）
  * @returns {Promise} 返回销量数据数组
  */
-const ASSPIS_BASE_URL = 'http://localhost:5001'
+const BASE_URL = 'http://localhost:5002'
+const ASSPIS_BASE_URL = BASE_URL
 
 export function getOriginalSalesData(dealerCode, months = 10) {
   return axios({
@@ -75,7 +76,7 @@ export function getQuantileForecast(params) {
  */
 export function getPredictionHistory() {
   return axios({
-    url: 'http://localhost:5000/api/prediction/history',
+    url: `${BASE_URL}/api/prediction/history`,
     method: 'get'
   }).then(response => {
     console.log('获取历史记录响应:', response.data)
@@ -88,7 +89,7 @@ export function getPredictionHistory() {
 
 export function getPredictionHistoryDetail(id) {
   return axios({
-    url: `http://localhost:5000/api/prediction/history/${id}`,
+    url: `${BASE_URL}/api/prediction/history/${id}`,
     method: 'get'
   }).then(response => {
     console.log('获取历史记录详情响应:', response.data)
@@ -101,7 +102,7 @@ export function getPredictionHistoryDetail(id) {
 
 export function savePredictionHistory(data) {
   return axios({
-    url: 'http://localhost:5000/api/prediction/history',
+    url: `${BASE_URL}/api/prediction/history`,
     method: 'post',
     headers: {
       'Content-Type': 'application/json'
