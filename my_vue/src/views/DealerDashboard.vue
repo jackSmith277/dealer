@@ -591,7 +591,7 @@ export default {
     },
     async loadAvailableYears() {
       try {
-        const response = await axios.get('http://localhost:5002/api/dashboard/years')
+        const response = await axios.get('/api/dashboard/years')
         if (response.data.success) {
           this.availableYears = response.data.data
           if (this.availableYears.length > 0) {
@@ -608,7 +608,7 @@ export default {
       this.loading = true
       this.error = null
       try {
-        const response = await axios.get('http://localhost:5002/api/dashboard/metrics', {
+        const response = await axios.get('/api/dashboard/metrics', {
           params: { year: this.selectedYear }
         })
         if (response.data.success) {

@@ -71,13 +71,6 @@
             </li>
             <li 
               class="sub-menu-item"
-              :class="{ active: $route.path === '/dashboard/store-ranking' }"
-              @click="$router.push('/dashboard/store-ranking')"
-            >
-              <span class="sub-menu-title">门店排行对比</span>
-            </li>
-            <li 
-              class="sub-menu-item"
               :class="{ active: $route.path === '/dashboard/policy' }"
               @click="$router.push('/dashboard/policy')"
             >
