@@ -23,7 +23,7 @@ const API_CONFIG = {
     supportMultimodal: false
 };
 const EXCEL_BACKEND_CONFIG = {
-    baseUrl: '',
+    baseUrl: 'http://127.0.0.1:8000',
     uploadEndpoint: '/api/excel-report'
 };
 const CRAWL_BACKEND_CONFIG = {
@@ -31,7 +31,7 @@ const CRAWL_BACKEND_CONFIG = {
 };
 // 服务洞察后端配置 - 新增
 const INSIGHT_BACKEND_CONFIG = {
-    baseUrl: '',
+    baseUrl: 'http://127.0.0.1:5000',
     analyzeEndpoint: '/api/insight-analyze',
     reportEndpoint: '/api/insight-report'
 };
@@ -48,39 +48,6 @@ const FILE_CONFIG = {
 const DEBUG_MODE = true;
 let messages = [];
 let searchIndex = {};
-
-const StorageUtil = {
-    get: function (keys) {
-        return new Promise((resolve) => {
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                chrome.storage.local.get(keys, resolve);
-            } else {
-                const result = {};
-                keys.forEach(key => {
-                    const value = localStorage.getItem(key);
-                    try {
-                        result[key] = value ? JSON.parse(value) : null;
-                    } catch {
-                        result[key] = value;
-                    }
-                });
-                resolve(result);
-            }
-        });
-    },
-    set: function (data) {
-        return new Promise((resolve) => {
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                chrome.storage.local.set(data, resolve);
-            } else {
-                Object.keys(data).forEach(key => {
-                    localStorage.setItem(key, JSON.stringify(data[key]));
-                });
-                resolve();
-            }
-        });
-    }
-};
 let domElements = {};
 let currentAttachments = [];
 let selectedExcelFile = null;
@@ -197,7 +164,7 @@ async function addAttachments(files) {
 async function parseDocumentFile(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = async function (event) {
+        reader.onload = async function(event) {
             try {
                 const arrayBuffer = event.target.result;
 
@@ -242,10 +209,10 @@ function renderFilePreview() {
     container.classList.add('active');
     container.innerHTML = currentAttachments.map(att => `
         <div class="file-preview-item" data-id="${att.id}">
-            ${att.type === 'image'
-            ? `<img src="${att.content}" alt="${att.name}">`
-            : `<div class="file-icon" style="font-size: 24px; margin-right: 10px;">${getFileIcon(att.mimeType)}</div>`
-        }
+            ${att.type === 'image' 
+                ? `<img src="${att.content}" alt="${att.name}">`
+                : `<div class="file-icon" style="font-size: 24px; margin-right: 10px;">${getFileIcon(att.mimeType)}</div>`
+            }
             <div class="file-info">
                 <div class="file-name">${att.name}</div>
                 <div class="file-size">${formatFileSize(att.size)}</div>
@@ -951,7 +918,7 @@ function switchTab(tabName) {
     }
 }
 
-window.onload = async function () {
+window.onload = async function() {
     domElements = getDOMElements();
 
     if (!domElements.chatContainer) {
@@ -1025,7 +992,9 @@ window.onload = async function () {
 
     // 加载配置
     try {
-        const result = await StorageUtil.get(['aiChatConfig', 'knowledgeBase', 'excelBackendConfig', 'insightBackendConfig']);
+        const result = await new Promise((resolve) => {
+            chrome.storage.local.get(['aiChatConfig', 'knowledgeBase', 'excelBackendConfig', 'insightBackendConfig'], resolve);
+        });
 
         if (result.aiChatConfig) {
             Object.assign(API_CONFIG, result.aiChatConfig);
@@ -1259,15 +1228,13 @@ function addMessage(content, role, isStreaming = false, attachments = []) {
 
 function saveConfigToStorage() {
     buildSearchIndex();
-    StorageUtil.set({
+    chrome.storage.local.set({
         aiChatConfig: API_CONFIG,
         knowledgeBase: API_CONFIG.knowledgeBase,
         excelBackendConfig: EXCEL_BACKEND_CONFIG,
         insightBackendConfig: INSIGHT_BACKEND_CONFIG
-    }).then(() => {
+    }, () => {
         if (DEBUG_MODE) console.log('💾 配置已保存');
-    }).catch(err => {
-        console.error('💾 配置保存失败:', err);
     });
 }
 
@@ -1477,7 +1444,7 @@ async function parseWordDocument(file) {
 
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = function (event) {
+        reader.onload = function(event) {
             const arrayBuffer = event.target.result;
             mammoth.extractRawText({ arrayBuffer: arrayBuffer })
                 .then(result => {

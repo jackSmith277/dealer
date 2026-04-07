@@ -17,7 +17,7 @@ params_short = {
 }
 
 print("\n=== 短期预测 (h=1,2,3) ===")
-r = requests.post('/forecast/quantiles', json=params_short)
+r = requests.post('http://localhost:5001/forecast/quantiles', json=params_short)
 if r.status_code == 200:
     data = r.json()
     print(f"scenarios keys: {list(data.get('scenarios', {}).keys())}")
@@ -44,7 +44,7 @@ params_mid = {
 }
 
 print("\n\n=== 中期预测 (h=1-6) ===")
-r2 = requests.post('/forecast/quantiles', json=params_mid)
+r2 = requests.post('http://localhost:5001/forecast/quantiles', json=params_mid)
 if r2.status_code == 200:
     data2 = r2.json()
     for name, scenario in data2.get('scenarios', {}).items():

@@ -309,7 +309,7 @@ export default {
       try {
         const token = this.$store.state.token
         const response = await axios.get(
-          `/api/dealers/${this.user.id}`,
+          `http://localhost:5002/api/dealers/${this.user.id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`
@@ -360,7 +360,7 @@ export default {
         
         // 先更新经销商信息
         const response = await axios.put(
-          `/api/dealers/${this.user.id}`,
+          `http://localhost:5002/api/dealers/${this.user.id}`,
           dealerData,
           {
             headers: {
@@ -374,7 +374,7 @@ export default {
         // 如果填写了密码，更新密码
         if (this.password) {
           await axios.put(
-            `/api/users/${this.user.id}`,
+            `http://localhost:5002/api/users/${this.user.id}`,
             { password: this.password },
             {
               headers: {
