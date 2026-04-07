@@ -203,8 +203,8 @@
             </button>
           </div>
           <div class="map-credits">
-            <span>审图号：GS(2025)5996号</span>
-            <span>数据来源：阿里云 DataV数据可视化平台</span>
+            <span>审图号：GS（2024）0650号</span>
+            <span>数据来源：国家地理信息公共服务平台</span>
           </div>
         </div>
         
@@ -1572,7 +1572,7 @@ export default {
     
     async loadMapData() {
       try {
-        const response = await axios.get('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
+        const response = await axios.get('/map/100000_full.json')
         echarts.registerMap('china', response.data)
         this.renderMap()
       } catch (error) {
@@ -1653,7 +1653,10 @@ export default {
         tooltip: {
           trigger: 'item',
           formatter: (params)=> {
-            return `${params.name}<br/>政策数量：${params.value}项`
+            if (params.value !== undefined && params.value !== null && !isNaN(params.value)) {
+              return `${params.name}<br/>政策数量：${params.value}项`
+            }
+            return params.name
           }
         },
         visualMap: {
