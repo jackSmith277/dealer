@@ -6,8 +6,8 @@ import os
 # -----------------------------
 # 配置区：按需改这里即可
 # -----------------------------
-FORECAST_URL = "http://127.0.0.1:5000/forecast/quantiles"
-ORIGINAL_URL = "http://127.0.0.1:5000/sales/original"   # 你服务里已存在且被访问过 :contentReference[oaicite:2]{index=2}
+FORECAST_URL = "/forecast/quantiles"
+ORIGINAL_URL = "/sales/original"
 
 DEALER_CODE = "B450099"
 

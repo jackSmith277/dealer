@@ -12,7 +12,7 @@ params = {
     "month_for_radar": 10
 }
 
-r = requests.post('http://localhost:5001/sales/predict', json=params)
+r = requests.post('/sales/predict', json=params)
 print(f"POST /sales/predict: {r.status_code}")
 
 if r.status_code == 200:

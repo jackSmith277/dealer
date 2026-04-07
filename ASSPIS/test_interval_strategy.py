@@ -15,7 +15,7 @@ params_80 = {
 }
 
 print("\n=== 80% 区间策略 (calib_alpha=0.2) ===")
-r = requests.post('http://localhost:5001/forecast/quantiles', json=params_80)
+r = requests.post('/forecast/quantiles', json=params_80)
 if r.status_code == 200:
     data = r.json()
     for name, scenario in data.get('scenarios', {}).items():
@@ -42,7 +42,7 @@ params_90 = {
 }
 
 print("\n\n=== 90% 区间策略 (calib_alpha=0.1) ===")
-r2 = requests.post('http://localhost:5001/forecast/quantiles', json=params_90)
+r2 = requests.post('/forecast/quantiles', json=params_90)
 if r2.status_code == 200:
     data2 = r2.json()
     for name, scenario in data2.get('scenarios', {}).items():
