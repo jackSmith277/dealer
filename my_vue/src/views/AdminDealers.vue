@@ -318,7 +318,7 @@ export default {
       this.error = ''
       
       try {
-        const response = await axios.get('/api/dealers/list')
+        const response = await axios.get('http://localhost:5002/api/dealers/list')
         
         if (response.data && response.data.dealers) {
           this.dealers = response.data.dealers.map(dealer => ({
@@ -372,7 +372,7 @@ export default {
       
       try {
         const token = this.$store.state.token
-        await axios.put(`/api/users/${dealer.user_id}`, {
+        await axios.put(`http://localhost:5002/api/users/${dealer.user_id}`, {
           status: newStatus
         }, {
           headers: {
@@ -394,7 +394,7 @@ export default {
       
       try {
         const token = this.$store.state.token
-        await axios.delete(`/api/users/${dealer.user_id}`, {
+        await axios.delete(`http://localhost:5002/api/users/${dealer.user_id}`, {
           headers: {
             Authorization: `Bearer ${token}`
           }

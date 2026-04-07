@@ -15,7 +15,7 @@ params = {
     ]
 }
 
-r = requests.post('/forecast/quantiles', json=params)
+r = requests.post('http://localhost:5001/forecast/quantiles', json=params)
 print(f"POST /forecast/quantiles: {r.status_code}")
 
 if r.status_code == 200:

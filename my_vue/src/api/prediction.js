@@ -8,8 +8,8 @@ import axios from 'axios'
  * @param {number} months - 月份数量（默认10个月）
  * @returns {Promise} 返回销量数据数组
  */
-const BASE_URL = ''
-const ASSPIS_BASE_URL = '/api'
+const BASE_URL = 'http://localhost:5002'
+const ASSPIS_BASE_URL = BASE_URL
 
 export function getOriginalSalesData(dealerCode, months = 10) {
   return axios({

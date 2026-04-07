@@ -83,8 +83,8 @@
             <div class="card-body map-body">
               <div ref="chinaMap" class="map-container"></div>
               <div class="map-credits">
-                <span>审图号：GS（2024）0650号</span>
-                <span>数据来源：国家地理信息公共服务平台</span>
+                <span>审图号：GS(2025)5996号</span>
+                <span>数据来源：阿里云 DataV数据可视化平台</span>
               </div>
             </div>
           </div>
@@ -385,7 +385,6 @@ export default {
       pieChart: null,
       mapChart: null,
       trendChart: null,
-      resizeObserver: null,
       selectedYear: 2024,
       availableYears: [2024, 2023, 2022],
       radarAvg: {},
@@ -537,30 +536,9 @@ export default {
   mounted() {
     this.loadAvailableYears()
     this.loadAllData()
-    
-    this.resizeObserver = new ResizeObserver(() => {
-      this.handleResize()
-    })
-    
-    const chartContainers = [
-      this.$refs.chinaMap,
-      this.$refs.lineChart,
-      this.$refs.radarChart,
-      this.$refs.pieChart
-    ].filter(el => el)
-    
-    chartContainers.forEach(el => {
-      this.resizeObserver.observe(el)
-    })
-    
     window.addEventListener('resize', this.handleResize)
   },
   beforeDestroy() {
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect()
-      this.resizeObserver = null
-    }
-    
     window.removeEventListener('resize', this.handleResize)
     if (this.radarChart) this.radarChart.dispose()
     if (this.lineChart) this.lineChart.dispose()
@@ -1155,7 +1133,7 @@ export default {
     async initMap() {
       this.mapChart = echarts.init(this.$refs.chinaMap)
       try {
-        const response = await axios.get('/map/100000_full.json')
+        const response = await axios.get('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json')
         echarts.registerMap('china', response.data)
         this.chinaGeoJson = response.data
         this.renderMap()
@@ -1182,18 +1160,9 @@ export default {
     },
     renderCountryMap() {
       const storeCount = this.getProvinceStoreCount()
-      const allProvinces = [
-        '北京市', '天津市', '河北省', '山西省', '内蒙古自治区',
-        '辽宁省', '吉林省', '黑龙江省', '上海市', '江苏省',
-        '浙江省', '安徽省', '福建省', '江西省', '山东省',
-        '河南省', '湖北省', '湖南省', '广东省', '广西壮族自治区',
-        '海南省', '重庆市', '四川省', '贵州省', '云南省',
-        '西藏自治区', '陕西省', '甘肃省', '青海省', '宁夏回族自治区',
-        '新疆维吾尔自治区', '台湾省', '香港特别行政区', '澳门特别行政区'
-      ]
-      const data = allProvinces.map(province => ({
+      const data = Object.keys(storeCount).map(province => ({
         name: province,
-        value: storeCount[province] || 0
+        value: storeCount[province]
       }))
       
       const maxValue = Math.max(...Object.values(storeCount), 10)
@@ -1254,13 +1223,10 @@ export default {
             if (params.seriesName === '预警门店') {
               return `${params.name}<br/>预警门店：${params.value[2]}家`
             }
-            if (params.value !== undefined && params.value !== null && !isNaN(params.value)) {
-              if (params.value > 0) {
-                return `${params.name}<br/>门店数量：${params.value}家<br/><span style="color:#999;font-size:11px;">点击查看详情</span>`
-              }
-              return `${params.name}<br/>暂无门店`
+            if (params.value) {
+              return `${params.name}<br/>门店数量：${params.value}家<br/><span style="color:#999;font-size:11px;">点击查看详情</span>`
             }
-            return params.name
+            return `${params.name}<br/>暂无门店`
           }
         },
         visualMap: {
@@ -1339,13 +1305,15 @@ export default {
       const provinceAdcode = this.getProvinceAdcode(this.currentProvince)
       
       try {
-        const response = await axios.get(`/map/${provinceAdcode}_full.json`)
+        const response = await axios.get(`https://geo.datav.aliyun.com/areas_v3/bound/${provinceAdcode}_full.json`)
         echarts.registerMap('province', response.data)
         
         const provinceCount = this.provinceDealerCount[this.currentProvince] || 0
         
+        const cityData = this.getCityDataForProvince(this.currentProvince)
+        const maxValue = Math.max(...cityData.map(d => d.value), 10)
+        
         const cityCoords = {}
-        const cityData = []
         if (response.data && response.data.features) {
           response.data.features.forEach(feature => {
             const name = feature.properties.name
@@ -1353,32 +1321,23 @@ export default {
             if (name && center) {
               cityCoords[name] = center
             }
-            if (name) {
-              const count = this.cityDealerCount[name] || 0
-              cityData.push({
-                name: name,
-                value: count
-              })
-            }
           })
         }
         
-        const maxValue = Math.max(...cityData.map(d => d.value), 10)
-        
         const warningCityScatterData = []
         for (const [city, count] of Object.entries(this.warningCityCount)) {
-          if (count <= 0) continue
-          let matchedCity = null
+          let matchedCity = ''
           for (const cityName of Object.keys(cityCoords)) {
-            if (cityName === city || cityName.includes(city) || city.includes(cityName)) {
+            if (cityName.includes(city) || city.includes(cityName.replace('市', ''))) {
               matchedCity = cityName
               break
             }
           }
-          if (matchedCity) {
+          const coords = cityCoords[matchedCity] || cityCoords[city] || cityCoords[city + '市']
+          if (coords && count > 0) {
             warningCityScatterData.push({
-              name: matchedCity,
-              value: [...cityCoords[matchedCity], count]
+              name: matchedCity || city,
+              value: [...coords, count]
             })
           }
         }
@@ -1391,13 +1350,10 @@ export default {
               if (params.seriesName === '预警门店') {
                 return `${params.name}<br/>预警门店：${params.value[2]}家`
               }
-              if (params.value !== undefined && params.value !== null && !isNaN(params.value)) {
-                if (params.value > 0) {
-                  return `${params.name}<br/>门店数量：${params.value}家`
-                }
-                return `${params.name}<br/>暂无门店`
+              if (params.value) {
+                return `${params.name}<br/>门店数量：${params.value}家`
               }
-              return params.name
+              return `${params.name}<br/>暂无门店`
             }
           },
           visualMap: {
@@ -1497,10 +1453,12 @@ export default {
       const cities = provinceCities[provinceName] || []
       for (const city of cities) {
         const count = this.cityDealerCount[city] || 0
-        cityData.push({
-          name: city,
-          value: count
-        })
+        if (count > 0) {
+          cityData.push({
+            name: city,
+            value: count
+          })
+        }
       }
       return cityData
     },

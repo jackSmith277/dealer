@@ -49,8 +49,8 @@ OUT_CONFIG_JSON = _out("eval_config.json")
 # =============================
 # 配置区：按需改这里
 # =============================
-FORECAST_URL = os.getenv("FORECAST_URL", "/forecast/quantiles")
-ORIGINAL_URL = os.getenv("ORIGINAL_URL", "/sales/original")
+FORECAST_URL = os.getenv("FORECAST_URL", "http://127.0.0.1:5000/forecast/quantiles")
+ORIGINAL_URL = os.getenv("ORIGINAL_URL", "http://127.0.0.1:5000/sales/original")
 
 # 从审计脚本生成的 complete_dealers.json 读经销商名单
 COMPLETE_DEALERS_JSON = os.getenv("COMPLETE_DEALERS_JSON", "complete_dealers.json")

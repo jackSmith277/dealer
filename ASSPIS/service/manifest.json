@@ -1,8 +1,8 @@
 {
   "model_version": "bundle_20260314_133423",
   "created_at": "2026-03-14 13:34:44",
-  "point_bundle_path": "bundles/point_bundle.joblib",
-  "quantile_bundle_path": "bundles/quantile_bundle.joblib",
+  "point_bundle_path": "D:\\dealer\\dealer\\ASSPIS\\service\\bundles\\point_bundle.joblib",
+  "quantile_bundle_path": "D:\\dealer\\dealer\\ASSPIS\\service\\bundles\\quantile_bundle.joblib",
   "feature_version": "point_features_v2",
   "config_summary": {
     "MODEL_STAGE": "phase3_0_frozen_baseline",
