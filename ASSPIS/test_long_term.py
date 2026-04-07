@@ -13,7 +13,7 @@ params = {
     "scenarios": [{"name": "baseline"}]
 }
 
-r = requests.post('http://localhost:5001/forecast/quantiles', json=params)
+r = requests.post('/forecast/quantiles', json=params)
 if r.status_code == 200:
     data = r.json()
     for name, scenario in data.get('scenarios', {}).items():

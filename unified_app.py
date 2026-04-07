@@ -28,9 +28,9 @@ from passlib.hash import pbkdf2_sha256
 
 load_dotenv()
 
-ASSPIS_DIR = Path(__file__).resolve().parent / "ASSPIS"
-BACKEND_DIR = Path(__file__).resolve().parent / "backend"
-AIPLUGIN_DIR = Path(__file__).resolve().parent / "aiplugin" / "插件" / "汽车服务"
+ASSPIS_DIR = Path(__file__).parent / "ASSPIS"
+BACKEND_DIR = Path(__file__).parent / "back"
+AIPLUGIN_DIR = Path(__file__).parent / "aiplugin" / "插件" / "汽车服务"
 
 sys.path.insert(0, str(ASSPIS_DIR))
 sys.path.insert(0, str(BACKEND_DIR))
@@ -52,14 +52,17 @@ from wordcloud_service import wordcloud_generator
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:123456@localhost:3306/dealer_management'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    'DATABASE_URL', 
+    f"mysql+pymysql://{os.getenv('DB_USER', 'root')}:{os.getenv('DB_PASSWORD', '123456')}@{os.getenv('DB_HOST', 'localhost')}:{os.getenv('DB_PORT', '3306')}/{os.getenv('DB_NAME', 'dealer_management')}"
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 CORS(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).parent.resolve()
 ASSPIS_BASE_DIR = ASSPIS_DIR
 
 FILE_PATHS = [
@@ -103,7 +106,7 @@ DIMENSIONS = [
 AIPLUGIN_SOURCE_DIR = AIPLUGIN_DIR
 SCRAPER_PATH = AIPLUGIN_SOURCE_DIR / "新爬取.py"
 ANALYZER_PATH = AIPLUGIN_SOURCE_DIR / "评论分析.py"
-AIPLUGIN_RUNTIME_DIR = Path(__file__).resolve().parent / "aiplugin_runtime"
+AIPLUGIN_RUNTIME_DIR = Path(os.getenv('AIPLUGIN_RUNTIME_DIR', str(Path(__file__).parent / "aiplugin_runtime")))
 
 app_state: dict[str, Any] = {
     "dealers_raw": {},
@@ -203,6 +206,51 @@ class MonthlyRadarScores(db.Model):
     conversion_force = db.Column(db.Numeric(18, 4), nullable=True)
     service_force = db.Column(db.Numeric(18, 4), nullable=True)
     operation_force = db.Column(db.Numeric(18, 4), nullable=True)
+
+
+class TestDriveComment(db.Model):
+    __tablename__ = 'test_drive_comments'
+    __table_args__ = {'extend_existing': True}
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    dealer_code = db.Column(db.String(50), nullable=True)
+    dealer_name = db.Column(db.String(100), nullable=True)
+    car_model = db.Column(db.String(100), nullable=True)
+    service_advisor = db.Column(db.String(50), nullable=True)
+    comment_content = db.Column(db.Text, nullable=True)
+    appeal_status = db.Column(db.String(50), nullable=True)
+    modify_status = db.Column(db.String(50), nullable=True)
+    comment_status = db.Column(db.String(50), nullable=True)
+    overall_score = db.Column(db.Numeric(5, 2), nullable=True)
+    comment_time = db.Column(db.DateTime, nullable=True)
+    work_order_no = db.Column(db.String(100), nullable=True)
+    invitation_time = db.Column(db.DateTime, nullable=True)
+    region = db.Column(db.String(50), nullable=True)
+    province = db.Column(db.String(50), nullable=True)
+    city = db.Column(db.String(50), nullable=True)
+    appeal_reason = db.Column(db.Text, nullable=True)
+    headquarters_reply = db.Column(db.Text, nullable=True)
+    appeal_audit_time = db.Column(db.DateTime, nullable=True)
+    process_score = db.Column(db.Text, nullable=True)
+    process_score_tags = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class ConsumptionPolicy(db.Model):
+    __tablename__ = 'consumption_policies'
+    __table_args__ = {'extend_existing': True}
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    policy_name = db.Column(db.String(255), nullable=False)
+    province = db.Column(db.String(50), nullable=True)
+    city = db.Column(db.String(50), nullable=True)
+    district = db.Column(db.String(50), nullable=True)
+    policy_category = db.Column(db.String(100), nullable=True)
+    start_date = db.Column(db.String(50), nullable=True)
+    end_date = db.Column(db.String(50), nullable=True)
+    policy_content = db.Column(db.Text, nullable=True)
+    source_link = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 with app.app_context():
@@ -1694,71 +1742,62 @@ def delete_analysis_report(id):
 @app.route('/api/policies', methods=['GET'])
 def get_policies():
     try:
-        excel_path = os.path.join(os.path.dirname(__file__), 'backend', '地方促消费政策列表-202410-未整理.xlsx')
-        
-        if not os.path.exists(excel_path):
-            return jsonify({'error': '政策数据文件不存在'}), 404
-        
-        df = pd.read_excel(excel_path)
+        policies_query = ConsumptionPolicy.query.all()
         
         policies = []
-        for _, row in df.iterrows():
-            policy = {}
-            for col in df.columns:
-                policy[col] = str(row[col]) if pd.notna(row[col]) else ''
-            policies.append(policy)
+        for policy in policies_query:
+            policy_data = {
+                '政策名称': policy.policy_name,
+                '省/直辖市/自治区': policy.province or '',
+                '地级市/自治州': policy.city or '',
+                '区/县/自治县/县级市': policy.district or '',
+                '政策分类': policy.policy_category or '',
+                '执行时间': policy.start_date or '',
+                '结束时间': policy.end_date or '',
+                '政策主要内容': policy.policy_content or '',
+                '原文链接': policy.source_link or ''
+            }
+            policies.append(policy_data)
         
         return jsonify(policies), 200
     except Exception as e:
         print(f'获取政策数据失败: {str(e)}')
+        traceback.print_exc()
         return jsonify({'error': f'获取失败: {str(e)}'}), 500
 
 
 @app.route('/api/comments', methods=['GET'])
 def get_comments():
     try:
-        csv_path = os.path.join(os.path.dirname(__file__), 'backend', '试驾评价.csv')
-        
-        df = None
-        encodings = ['gbk', 'utf-8', 'gb2312', 'gb18030', 'utf-8-sig']
-        last_error = None
-        
-        for encoding in encodings:
-            try:
-                df = pd.read_csv(csv_path, encoding=encoding)
-                print(f'成功使用 {encoding} 编码读取CSV文件')
-                break
-            except Exception as enc_err:
-                last_error = enc_err
-                continue
-        
-        if df is None:
-            print(f'所有编码方式都失败，最后错误: {str(last_error)}')
-            return jsonify({'error': f'读取CSV文件失败: {str(last_error)}'}), 500
+        comments_query = TestDriveComment.query.filter(
+            TestDriveComment.comment_content.isnot(None),
+            TestDriveComment.comment_content != ''
+        ).all()
         
         comments = []
-        if '评价内容' in df.columns and '综合得分' in df.columns:
-            for idx, row in df.iterrows():
-                content = row.get('评价内容')
-                score = row.get('综合得分')
-                
-                if pd.notna(content) and str(content).strip():
-                    score_value = float(score) if pd.notna(score) else 3.0
-                    
-                    if score_value > 3:
-                        sentiment = 'positive'
-                    elif score_value < 3:
-                        sentiment = 'negative'
-                    else:
-                        sentiment = 'neutral'
-                    
-                    comments.append({
-                        'content': str(content).strip(),
-                        'score': score_value,
-                        'sentiment': sentiment
-                    })
+        for comment in comments_query:
+            score_value = float(comment.overall_score) if comment.overall_score else 3.0
+            
+            if score_value > 3:
+                sentiment = 'positive'
+            elif score_value < 3:
+                sentiment = 'negative'
+            else:
+                sentiment = 'neutral'
+            
+            comments.append({
+                'content': str(comment.comment_content).strip(),
+                'score': score_value,
+                'sentiment': sentiment,
+                'dealer_code': comment.dealer_code or '',
+                'dealer_name': comment.dealer_name or '',
+                'car_model': comment.car_model or '',
+                'province': comment.province or '',
+                'city': comment.city or '',
+                'comment_time': comment.comment_time.strftime('%Y-%m-%d %H:%M:%S') if comment.comment_time else ''
+            })
         
-        print(f'成功读取 {len(comments)} 条评价')
+        print(f'成功从数据库读取 {len(comments)} 条评价')
         return jsonify(comments), 200
     except Exception as e:
         print(f'获取试驾评价失败: {str(e)}')
@@ -1811,7 +1850,7 @@ def generate_wordcloud():
         return jsonify({'success': False, 'message': f'生成失败: {str(e)}'}), 500
 
 
-@app.get("/sales/original")
+@app.get("/api/sales/original")
 def api_sales_original():
     ok, msg = _ensure_ready(require_quantile=False)
     if not ok:
@@ -1837,7 +1876,7 @@ def api_sales_original():
     })
 
 
-@app.post("/sales/predict")
+@app.post("/api/sales/predict")
 def api_sales_predict():
     ok, msg = _ensure_ready(require_quantile=False)
     if not ok:
@@ -1923,7 +1962,7 @@ def api_sales_predict():
     })
 
 
-@app.post("/sales/predict/quantile")
+@app.post("/api/sales/predict/quantile")
 def api_sales_predict_quantile():
     ok, msg = _ensure_ready(require_quantile=True)
     if not ok:
@@ -1970,7 +2009,7 @@ def api_sales_predict_quantile():
         return jsonify({"message": f"分位数预测失败: {e}"}), 500
 
 
-@app.post("/forecast/quantiles")
+@app.post("/api/forecast/quantiles")
 def api_forecast_quantiles():
     ok, msg = _ensure_ready(require_quantile=True)
     if not ok:
@@ -2068,7 +2107,7 @@ def api_forecast_quantiles():
     return jsonify(convert_numpy(result))
 
 
-@app.get("/dealers")
+@app.get("/api/dealers")
 def api_dealers():
     ok, msg = _ensure_ready(require_quantile=False)
     if not ok:
@@ -2076,7 +2115,7 @@ def api_dealers():
     return jsonify({"dealers": _get_dealer_codes()})
 
 
-@app.get("/dealers/<dealer_code>")
+@app.get("/api/dealers/<dealer_code>")
 def api_dealer_detail(dealer_code: str):
     ok, msg = _ensure_ready(require_quantile=False)
     if not ok:
@@ -2092,7 +2131,7 @@ def api_dealer_detail(dealer_code: str):
     })
 
 
-@app.get("/years")
+@app.get("/api/years")
 def api_years():
     ok, msg = _ensure_ready(require_quantile=False)
     if not ok:
@@ -2100,12 +2139,12 @@ def api_years():
     return jsonify({"years": _infer_all_years(_get_dealers_raw())})
 
 
-@app.get("/dimensions")
+@app.get("/api/dimensions")
 def api_dimensions():
     return jsonify({"dimensions": list(DIMENSIONS)})
 
 
-@app.get("/meta")
+@app.get("/api/meta")
 def api_meta():
     ok, msg = _ensure_ready(require_quantile=False)
     if not ok:
@@ -2113,7 +2152,7 @@ def api_meta():
     return jsonify(_bundle_meta())
 
 
-@app.get("/radar")
+@app.get("/api/radar")
 def api_radar():
     ok, msg = _ensure_ready(require_quantile=False)
     if not ok:
@@ -2133,7 +2172,7 @@ def api_radar():
         return jsonify({"message": f"雷达图生成失败: {e}"}), 500
 
 
-@app.get("/wordcloud")
+@app.get("/api/wordcloud")
 def api_wordcloud():
     ok, msg = _ensure_ready(require_quantile=False)
     if not ok:
@@ -2292,6 +2331,16 @@ def api_download_file(filename):
     return send_from_directory(safe_path.parent, safe_path.name, as_attachment=True)
 
 
+AIPLUGIN_STATIC_DIR = Path(__file__).parent / "aiplugin" / "插件"
+
+@app.route("/ai-plugin/<path:filename>", methods=["GET"])
+def ai_plugin_static(filename):
+    safe_path = AIPLUGIN_STATIC_DIR / filename
+    if not safe_path.exists():
+        return jsonify({"ok": False, "error": "文件不存在"}), 404
+    return send_from_directory(str(AIPLUGIN_STATIC_DIR), filename)
+
+
 INSIGHT_API_KEY = os.getenv("DASHSCOPE_API_KEY", "sk-764a502f6eef4b7999800d65212d282f").strip()
 INSIGHT_BASE_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
 INSIGHT_MODEL = 'tingwu-automotive-service-insights'
@@ -2299,6 +2348,12 @@ INSIGHT_APP_ID = "tw_bEFSoD4kIq1w"
 INSIGHT_MAX_POLL_ATTEMPTS = 30
 INSIGHT_POLL_INTERVAL = 5
 INSIGHT_OUTPUT_DIR = AIPLUGIN_RUNTIME_DIR / "insight_reports"
+
+# 阿里云 OSS 配置（直接配置，不使用环境变量）
+OSS_BUCKET = "my-audio-qc-20260314"
+OSS_ENDPOINT = "https://oss-cn-hangzhou.aliyuncs.com"
+OSS_ACCESS_KEY_ID = "LTAI5t8ksfxnQp1M2bRAGaKh"
+OSS_ACCESS_KEY_SECRET = "51jcEZ18haeWHDmMKbMzmSj5vTuKHP"
 
 
 def is_audio_file(file_path):
@@ -2327,6 +2382,49 @@ def download_json_from_oss(oss_url):
     except Exception as e:
         print(f"❌ 下载失败：{e}")
         return None
+
+
+def upload_to_oss(local_file_path, oss_bucket, oss_endpoint, oss_access_key_id, oss_access_key_secret, oss_file_key=None):
+    try:
+        import oss2
+        auth = oss2.Auth(oss_access_key_id, oss_access_key_secret)
+        bucket = oss2.Bucket(auth, oss_endpoint, oss_bucket)
+        if oss_file_key is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = os.path.basename(local_file_path)
+            oss_file_key = f"tingwu_audio/{timestamp}_{filename}"
+        bucket.put_object_from_file(oss_file_key, local_file_path)
+        print(f"✅ 文件已上传至 OSS: {oss_file_key}")
+        url = bucket.sign_url('GET', oss_file_key, 7 * 24 * 3600)
+        return url
+    except ImportError:
+        print("⚠️ 未安装 oss2 库，请使用：pip install oss2")
+        return None
+    except Exception as e:
+        print(f"❌ OSS 上传失败：{e}")
+        return None
+
+
+def get_audio_url(input_source, input_type):
+    if input_type == "text":
+        return None
+    if input_type == "url":
+        return input_source.strip()
+    if input_type == "file":
+        if not os.path.isfile(input_source):
+            print(f"❌ 文件不存在：{input_source}")
+            return None
+        if not all([OSS_BUCKET, OSS_ENDPOINT, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET]):
+            print("❌ 未配置 OSS，请在代码中设置 OSS_BUCKET, OSS_ENDPOINT, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET")
+            return None
+        return upload_to_oss(
+            local_file_path=input_source,
+            oss_bucket=OSS_BUCKET,
+            oss_endpoint=OSS_ENDPOINT,
+            oss_access_key_id=OSS_ACCESS_KEY_ID,
+            oss_access_key_secret=OSS_ACCESS_KEY_SECRET
+        )
+    return None
 
 
 def poll_task_result(api_key, base_url, data_id, model):
@@ -2495,8 +2593,16 @@ def analyze_insight_internal(input_source, input_type="auto"):
         }
         input_info = {"type": "text", "source": text_content[:100] + "..." if len(text_content) > 100 else text_content}
     else:
-        print(f"⚠️ 音频输入模式需要OSS配置，暂不支持")
-        return None
+        print(f"🎵 使用音频输入模式 ({detected_type})")
+        audio_url = get_audio_url(input_source, detected_type)
+        if not audio_url:
+            return {"error": "无法获取音频文件URL，请检查OSS配置。需要设置环境变量：OSS_BUCKET, OSS_ENDPOINT, OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET"}
+        task_input = {
+            "appId": INSIGHT_APP_ID,
+            "fileUrl": audio_url,
+            "task": "createTask"
+        }
+        input_info = {"type": detected_type, "source": input_source}
 
     create_resp = TingWu.call(
         model=INSIGHT_MODEL,
@@ -2598,6 +2704,8 @@ def api_insight_analyze():
             return jsonify({'ok': False, 'error': '不支持的输入类型'}), 400
 
         if result:
+            if result.get('error'):
+                return jsonify({'ok': False, 'error': result['error']}), 400
             report_content = ""
             if os.path.exists(result['report_md']):
                 with open(result['report_md'], 'r', encoding='utf-8') as f:
@@ -3433,4 +3541,4 @@ if __name__ == "__main__":
     freeze_support()
     init_app()
     print(f"统一后端服务启动，端口: 5002")
-    app.run(host="0.0.0.0", port=5002, debug=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=5002, debug=False, use_reloader=False)

@@ -1,7 +1,7 @@
 <template>
   <div class="top-navbar">
     <div class="navbar-left">
-      <h1 class="system-title">经销商管理系统</h1>
+      <h1 class="system-title">基于大数据的单店经营决策与销量预测系统</h1>
     </div>
     
     <div class="navbar-right">

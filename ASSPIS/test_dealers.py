@@ -1,7 +1,7 @@
 import requests
 
 print("获取经销商列表...")
-r = requests.get('http://localhost:5001/dealers')
+r = requests.get('/dealers')
 if r.status_code == 200:
     data = r.json()
     dealers = data.get('dealers', [])
