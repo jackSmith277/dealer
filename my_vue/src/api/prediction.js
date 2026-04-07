@@ -75,9 +75,11 @@ export function getQuantileForecast(params) {
  * @returns {Promise} 返回历史记录数组
  */
 export function getPredictionHistory() {
+  const token = localStorage.getItem('token')
   return axios({
     url: `${BASE_URL}/api/prediction/history`,
-    method: 'get'
+    method: 'get',
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
   }).then(response => {
     console.log('获取历史记录响应:', response.data)
     return response.data

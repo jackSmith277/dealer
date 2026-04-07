@@ -122,6 +122,7 @@
 
 <script>
 import * as echarts from 'echarts'
+import { mapGetters } from 'vuex'
 import { 
   getOriginalSalesData, 
   getPredictionResult,
@@ -139,7 +140,7 @@ export default {
   data() {
     return {
       formData: {
-        dealer_code: '9210006',
+        dealer_code: '',
         dimension: 'customer_flow',
         change_percentage: 10,
         base_year: 2024,
@@ -158,6 +159,9 @@ export default {
       resizeListener: null
     }
   },
+  computed: {
+    ...mapGetters(['dealerCode', 'isDealer', 'isAdmin'])
+  },
   mounted() {
     this.$nextTick(async () => {
       await this.loadDealerList();
@@ -166,7 +170,6 @@ export default {
     });
   },
   beforeDestroy() {
-    // 清理事件监听器
     if (this.resizeListener) {
       window.removeEventListener('resize', this.resizeListener)
     }
@@ -181,6 +184,11 @@ export default {
             '省份': d.province || '',
             '城市': d.city || ''
           }))
+          if (this.isDealer && this.dealerCode) {
+            this.formData.dealer_code = this.dealerCode
+          } else if (this.dealerList.length > 0) {
+            this.formData.dealer_code = this.dealerList[0]['经销商代码']
+          }
         }
       } catch (error) {
         console.error('加载经销商列表失败:', error)
@@ -190,12 +198,8 @@ export default {
       this.$router.push('/dashboard/history')
     },
     
-    // 初始化数据
     async initData() {
-      // 不再获取经销商列表，直接使用固定的经销商列表
-      // 获取原始销量数据
       await this.fetchOriginalSalesData()
-      // 五力数据将通过预测结果获取
     },
 
     // 获取原始销量数据

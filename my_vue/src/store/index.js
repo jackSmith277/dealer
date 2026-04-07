@@ -11,7 +11,10 @@ export default new Vuex.Store({
   getters: {
     isLoggedIn: state => !!state.token,
     currentUser: state => state.user,
-    currentRole: state => state.user ? state.user.role : null
+    currentRole: state => state.user ? state.user.role : null,
+    dealerCode: state => state.user ? state.user.dealerCode : null,
+    isAdmin: state => state.user ? state.user.role === 'admin' : false,
+    isDealer: state => state.user ? state.user.role === 'dealer' : false
   },
   mutations: {
     setUser(state, user) {
