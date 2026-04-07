@@ -5,7 +5,6 @@ import DealerDashboard from '../views/DealerDashboard.vue'
 import FiveForcesRadar from '../views/FiveForcesRadar.vue'
 import SalesPrediction from '../views/SalesPrediction.vue'
 import AdvancedSalesPrediction from '../views/AdvancedSalesPrediction.vue'
-import StoreRanking from '../views/StoreRanking.vue'
 import HistoryRecords from '../views/HistoryRecords.vue'
 import AnalysisReports from '../views/AnalysisReports.vue'
 import Login from '../views/Login.vue'
@@ -64,11 +63,6 @@ const routes = [
         component: AdvancedSalesPrediction
       },
       {
-        path: 'store-ranking',
-        name: 'storeRanking',
-        component: StoreRanking
-      },
-      {
         path: 'history',
         name: 'history',
         component: HistoryRecords
@@ -118,7 +112,13 @@ const routes = [
 const router = new VueRouter({
   mode: 'history',
   base: process.env.BASE_URL,
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    }
+    return { x: 0, y: 0 }
+  }
 })
 
 // 路由守卫
@@ -141,14 +141,14 @@ router.beforeEach((to, from, next) => {
     next('/login')
     return
   }
-  
+
   // 需要管理员权限的路由
   if (requiresAdmin && user.role !== 'admin') {
     alert('您没有权限访问此页面')
     next('/dashboard')
     return
   }
-  
+
   next()
 })
 

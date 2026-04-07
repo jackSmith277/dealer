@@ -299,7 +299,7 @@ export default {
       
       try {
         const token = this.$store.state.token
-        const response = await axios.get(`http://localhost:5002/api/users/${this.dealerId}`, {
+        const response = await axios.get(`/api/users/${this.dealerId}`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -364,7 +364,7 @@ export default {
           // 先更新用户状态
           if (this.formData.password) {
             // 如果修改了密码
-            await axios.put(`http://localhost:5002/api/users/${this.dealerId}`, {
+            await axios.put(`/api/users/${this.dealerId}`, {
               password: this.formData.password,
               status: this.formData.status
             }, {
@@ -374,7 +374,7 @@ export default {
             })
           } else if (this.formData.status !== undefined) {
             // 只更新状态
-            await axios.put(`http://localhost:5002/api/users/${this.dealerId}`, {
+            await axios.put(`/api/users/${this.dealerId}`, {
               status: this.formData.status
             }, {
               headers: {
@@ -384,14 +384,14 @@ export default {
           }
           
           // 更新经销商信息
-          await axios.put(`http://localhost:5002/api/dealers/${this.dealerId}`, dealerData, {
+          await axios.put(`/api/dealers/${this.dealerId}`, dealerData, {
             headers: {
               Authorization: `Bearer ${token}`
             }
           })
         } else {
           // 添加经销商
-          await axios.post('http://localhost:5002/api/dealers', {
+          await axios.post('/api/dealers', {
             username: this.formData.username,
             password: this.formData.password,
             ...dealerData

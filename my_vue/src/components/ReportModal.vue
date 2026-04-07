@@ -278,7 +278,7 @@ export default {
         console.log('保存分析报告到数据库:', reportData);
 
         // 发送保存请求
-        const response = await fetch('http://localhost:5002/api/analysis-reports', {
+        const response = await fetch('/api/analysis-reports', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

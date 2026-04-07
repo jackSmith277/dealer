@@ -9,9 +9,7 @@
     "sidePanel"
   ],
   "host_permissions": [
-    "http://127.0.0.1:8000/",
-    "https://aihubmix.com/",
-    "http://127.0.0.1:5000/"
+    "<all_urls>"
   ],
   "side_panel": {
     "default_path": "sidepanel.html"
