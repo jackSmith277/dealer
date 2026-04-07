@@ -1,18 +1,14 @@
 <template>
   <div class="layout-container">
-    <!-- 顶部导航栏 -->
     <TopNavbar />
     
     <div class="main-content">
-      <!-- 左侧菜单 -->
       <SideMenu ref="sideMenu" @menu-toggle="handleMenuToggle" />
       
-      <!-- 右侧内容区 -->
-      <div class="right-content">
+      <div class="right-content" ref="rightContent">
         <router-view />
       </div>
       
-      <!-- 菜单展开按钮 -->
       <div v-if="menuHidden" class="menu-toggle-btn" @click="toggleSideMenu">
         ☰
       </div>
@@ -44,10 +40,19 @@ export default {
     },
     handleMenuToggle(isHidden) {
       this.menuHidden = isHidden
+    },
+    scrollToTop() {
+      if (this.$refs.rightContent) {
+        this.$refs.rightContent.scrollTop = 0
+      }
+    }
+  },
+  watch: {
+    $route() {
+      this.scrollToTop()
     }
   },
   mounted() {
-    // 初始化时检查菜单状态
     if (this.$refs.sideMenu) {
       this.menuHidden = this.$refs.sideMenu.isHidden
     }
