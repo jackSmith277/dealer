@@ -201,6 +201,7 @@
 
 <script>
 import * as echarts from 'echarts'
+import { mapGetters } from 'vuex'
 import DealerSelector from '@/components/DealerSelector.vue'
 import { getQuantileForecast } from '@/api/prediction'
 import axios from 'axios'
@@ -213,7 +214,7 @@ export default {
   data() {
     return {
       baseline: {
-        dealer_code: 'B440045',
+        dealer_code: '',
         base_year: 2024,
         base_month: 1,
         horizons: 3,
@@ -237,6 +238,9 @@ export default {
       mainChart: null,
       resizeListener: null
     }
+  },
+  computed: {
+    ...mapGetters(['dealerCode', 'isDealer', 'isAdmin'])
   },
   mounted() {
     this.loadDealerList();
@@ -265,6 +269,11 @@ export default {
             '省份': d.province || '',
             '城市': d.city || ''
           }))
+          if (this.isDealer && this.dealerCode) {
+            this.baseline.dealer_code = this.dealerCode
+          } else if (this.dealerList.length > 0) {
+            this.baseline.dealer_code = this.dealerList[0]['经销商代码']
+          }
         }
       } catch (error) {
         console.error('加载经销商列表失败:', error)

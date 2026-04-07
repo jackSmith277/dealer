@@ -1011,12 +1011,14 @@ def login():
         return jsonify({'error': '密码错误'}), 401
     
     token = generate_token(user)
+    dealer_code = user.username if user.role == 'dealer' else None
     return jsonify({
         'token': token,
         'user': {
             'id': user.id,
             'username': user.username,
-            'role': user.role
+            'role': user.role,
+            'dealerCode': dealer_code
         }
     })
 
@@ -1479,7 +1481,18 @@ def get_dealers_list():
 @app.route('/api/prediction/history', methods=['GET'])
 def get_prediction_history():
     try:
-        histories = PredictionHistory.query.order_by(PredictionHistory.created_at.desc()).all()
+        token = request.headers.get('Authorization')
+        current_user = None
+        if token and token.startswith('Bearer '):
+            token = token[7:]
+            current_user = verify_token(token)
+        
+        query = PredictionHistory.query
+        if current_user and current_user.get('role') == 'dealer':
+            dealer_code = current_user.get('username')
+            query = query.filter_by(dealer_code=dealer_code)
+        
+        histories = query.order_by(PredictionHistory.created_at.desc()).all()
         
         history_list = []
         for history in histories:
@@ -2809,6 +2822,96 @@ def get_radar_available_years():
         }), 200
     except Exception as e:
         print(f'获取雷达可用年份失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+
+@app.route('/api/dealer/yearly-data', methods=['GET'])
+def get_dealer_yearly_data():
+    try:
+        dealer_code = request.args.get('dealer_code', type=str, default='')
+        year = request.args.get('year', type=int, default=2024)
+        
+        if not dealer_code:
+            return jsonify({'success': False, 'message': '缺少经销商代码'}), 400
+        
+        dealer_info = {}
+        try:
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province, city, fed_level FROM v_dealer_info WHERE dealer_code = :code"), {'code': dealer_code})
+            row = dealer_info_result.fetchone()
+            if row:
+                dealer_info = {'province': row[1], 'city': row[2], 'fed_level': row[3]}
+        except:
+            pass
+        
+        radar_records = MonthlyRadarScores.query.filter(
+            MonthlyRadarScores.dealer_code == dealer_code,
+            MonthlyRadarScores.stat_year == year
+        ).all()
+        
+        if not radar_records:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'dealer_code': dealer_code,
+                    'province': dealer_info.get('province', ''),
+                    'avg_score': 0,
+                    'radar_avg': {},
+                    'monthly_avg': {}
+                }
+            }), 200
+        
+        spread_forces = [float(r.spread_force or 0) for r in radar_records]
+        experience_forces = [float(r.experience_force or 0) for r in radar_records]
+        conversion_forces = [float(r.conversion_force or 0) for r in radar_records]
+        service_forces = [float(r.service_force or 0) for r in radar_records]
+        operation_forces = [float(r.operation_force or 0) for r in radar_records]
+        
+        radar_avg = {
+            '传播获客力': round(sum(spread_forces) / len(spread_forces), 2) if spread_forces else 0,
+            '体验力': round(sum(experience_forces) / len(experience_forces), 2) if experience_forces else 0,
+            '转化力': round(sum(conversion_forces) / len(conversion_forces), 2) if conversion_forces else 0,
+            '服务力': round(sum(service_forces) / len(service_forces), 2) if service_forces else 0,
+            '经营力': round(sum(operation_forces) / len(operation_forces), 2) if operation_forces else 0
+        }
+        
+        total_scores = []
+        for r in radar_records:
+            total = float(r.spread_force or 0) * 0.2 + float(r.experience_force or 0) * 0.2 + \
+                    float(r.conversion_force or 0) * 0.4 + float(r.service_force or 0) * 0.1 + \
+                    float(r.operation_force or 0) * 0.1
+            total_scores.append(total)
+        avg_score = round(sum(total_scores) / len(total_scores), 2) if total_scores else 0
+        
+        metrics_records = MonthlyMetrics11d.query.filter(
+            MonthlyMetrics11d.dealer_code == dealer_code,
+            MonthlyMetrics11d.stat_year == year
+        ).order_by(MonthlyMetrics11d.stat_month).all()
+        
+        monthly_avg = {}
+        for r in metrics_records:
+            month = r.stat_month
+            monthly_avg[month] = {
+                '销量': round(float(r.sales or 0), 2),
+                '客流量': round(float(r.customer_flow or 0), 2),
+                '线索量': round(float(r.leads or 0), 2),
+                '潜客量': round(float(r.potential_customers or 0), 2)
+            }
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'dealer_code': dealer_code,
+                'province': dealer_info.get('province', ''),
+                'city': dealer_info.get('city', ''),
+                'avg_score': avg_score,
+                'radar_avg': radar_avg,
+                'monthly_avg': monthly_avg
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f'获取经销商年度数据失败: {str(e)}')
+        traceback.print_exc()
         return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
 
 

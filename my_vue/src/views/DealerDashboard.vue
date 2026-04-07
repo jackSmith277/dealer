@@ -346,6 +346,7 @@
 <script>
 import * as echarts from 'echarts'
 import axios from 'axios'
+import { mapGetters } from 'vuex'
 import DealerSelector from '@/components/DealerSelector'
 import ReportModal from '@/components/ReportModal.vue'
 import { extractCardData } from '@/DS/dataExtractor.js'
@@ -409,6 +410,7 @@ export default {
     }
   },
   computed: {
+    ...mapGetters(['dealerCode', 'isDealer', 'isAdmin']),
     months() {
       if (this.selectedYear === 2024) {
         return ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月']
@@ -612,7 +614,16 @@ export default {
         if (response.data.success) {
           this.dealers = response.data.data
           if (this.dealers.length > 0 && !this.selectedCode) {
-            this.selectedCode = this.dealers[0]['经销商代码']
+            if (this.isDealer && this.dealerCode) {
+              const dealerExists = this.dealers.find(d => d['经销商代码'] === this.dealerCode)
+              if (dealerExists) {
+                this.selectedCode = this.dealerCode
+              } else {
+                this.selectedCode = this.dealers[0]['经销商代码']
+              }
+            } else {
+              this.selectedCode = this.dealers[0]['经销商代码']
+            }
           }
           this.$nextTick(() => {
             this.renderCharts()

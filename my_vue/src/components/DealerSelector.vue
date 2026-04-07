@@ -2,14 +2,14 @@
   <div class="dealer-selector">
     <div class="selector-group">
       <div class="selector-row">
-        <select v-model="localSelectedCode" @change="handleSelectionChange" class="dealer-select">
+        <select v-model="localSelectedCode" @change="handleSelectionChange" class="dealer-select" :disabled="isDealerUser">
           <option value="">请选择经销商</option>
-          <option v-for="dealer in dealers" :key="dealer['经销商代码']" :value="dealer['经销商代码']">
+          <option v-for="dealer in filteredDealers" :key="dealer['经销商代码']" :value="dealer['经销商代码']">
             {{ dealer['经销商代码'] }} - {{ dealer['省份'] }}
           </option>
         </select>
       </div>
-      <div class="manual-input-row">
+      <div class="manual-input-row" v-if="!isDealerUser">
         <input
           v-model="inputCode"
           placeholder="手动输入经销商代码"
@@ -34,6 +34,8 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
+
 export default {
   name: 'DealerSelector',
   model: {
@@ -62,6 +64,16 @@ export default {
     }
   },
   computed: {
+    ...mapGetters(['dealerCode', 'isDealer']),
+    isDealerUser() {
+      return this.isDealer
+    },
+    filteredDealers() {
+      if (this.isDealer && this.dealerCode) {
+        return this.dealers.filter(d => d['经销商代码'] === this.dealerCode)
+      }
+      return this.dealers
+    },
     currentDealer() {
       return this.dealers.find((d) => d['经销商代码'] === this.localSelectedCode) || {}
     }
@@ -71,6 +83,17 @@ export default {
       handler(newVal) {
         this.localSelectedCode = newVal
         this.updateMatchedProvince(newVal)
+      },
+      immediate: true
+    },
+    dealerCode: {
+      handler(newVal) {
+        if (this.isDealer && newVal && !this.localSelectedCode) {
+          this.localSelectedCode = newVal
+          this.$emit('update:selectedCode', newVal)
+          this.inputCode = newVal
+          this.updateMatchedProvince(newVal)
+        }
       },
       immediate: true
     }

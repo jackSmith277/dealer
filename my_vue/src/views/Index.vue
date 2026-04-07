@@ -13,14 +13,14 @@
     </header>
 
     <div class="kpi-cards">
-      <div class="kpi-card">
+      <div class="kpi-card" v-if="!isDealer">
         <div class="kpi-icon kpi-icon-blue">📊</div>
         <div class="kpi-content">
           <div class="kpi-value">{{ headerKpi.totalDealers }}</div>
           <div class="kpi-label">门店总数</div>
         </div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" v-if="!isDealer">
         <div class="kpi-icon kpi-icon-red">⚠️</div>
         <div class="kpi-content">
           <div class="kpi-value">{{ headerKpi.warningCount }}</div>
@@ -28,7 +28,7 @@
           <div class="kpi-sub">占比 {{ headerKpi.warningRatio }}%</div>
         </div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" v-if="!isDealer">
         <div class="kpi-icon kpi-icon-cyan">✅</div>
         <div class="kpi-content">
           <div class="kpi-value">{{ headerKpi.activeDealers }}</div>
@@ -40,10 +40,17 @@
         <div class="kpi-icon kpi-icon-green">⭐</div>
         <div class="kpi-content">
           <div class="kpi-value">{{ headerKpi.avgScore }}</div>
-          <div class="kpi-label">平均评分</div>
+          <div class="kpi-label">{{ isDealer ? '年度平均评分' : '平均评分' }}</div>
         </div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" v-if="isDealer && dealerYearlyData">
+        <div class="kpi-icon kpi-icon-blue">📍</div>
+        <div class="kpi-content">
+          <div class="kpi-value">{{ dealerYearlyData.province || '-' }}</div>
+          <div class="kpi-label">所在省份</div>
+        </div>
+      </div>
+      <div class="kpi-card" v-if="!isDealer">
         <div class="kpi-icon kpi-icon-purple">🏆</div>
         <div class="kpi-content">
           <div class="kpi-value">{{ headerKpi.topProvince || '-' }}</div>
@@ -54,7 +61,7 @@
     </div>
 
     <main class="dashboard-main">
-      <div class="row row-map-region">
+      <div class="row row-map-region" v-if="!isDealer">
         <div class="combined-card">
           <div class="map-section">
             <div class="card-header">
@@ -123,7 +130,7 @@
         </div>
       </div>
 
-      <div class="row row-metrics">
+      <div class="row row-metrics" v-if="!isDealer">
         <div class="col-metric" v-for="metric in metricsCards" :key="metric.label">
           <div class="metric-card">
             <div class="metric-icon">{{ metric.icon }}</div>
@@ -137,22 +144,34 @@
       </div>
 
       <div class="row row-charts">
-        <div class="col-left-main">
+        <div class="col-left-main" :class="{ 'dealer-view': isDealer }">
           <div class="row-left-top">
-            <div class="col-line-full">
+            <div class="col-line-full" :class="{ 'dealer-line': isDealer }">
               <div class="card line-card">
                 <div class="card-header">
                   <h3>月度趋势图</h3>
-                  <span class="sub-title">{{ chartAreaTitle }}各项指标均值</span>
-                  <button class="view-detail-btn" @click="goToDealerDashboard">查看单店</button>
+                  <span class="sub-title">{{ isDealer ? '本店' : chartAreaTitle }}各项指标均值</span>
+                  <button class="view-detail-btn" @click="goToDealerDashboard">查看详情</button>
                 </div>
                 <div class="card-body">
                   <div ref="lineChart" class="chart-container"></div>
                 </div>
               </div>
             </div>
+            <div class="col-radar dealer-radar" v-if="isDealer">
+              <div class="card radar-card">
+                <div class="card-header">
+                  <h3>五力雷达图</h3>
+                  <span class="sub-title">本店五力评分均值</span>
+                  <button class="view-detail-btn" @click="goToFiveForcesRadar">查看详情</button>
+                </div>
+                <div class="card-body">
+                  <div ref="radarChart" class="chart-container"></div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="row-left-bottom">
+          <div class="row-left-bottom" v-if="!isDealer">
             <div class="col-radar">
               <div class="card radar-card">
                 <div class="card-header">
@@ -178,7 +197,7 @@
             </div>
           </div>
         </div>
-        <div class="col-right-side">
+        <div class="col-right-side" v-if="!isDealer">
           <div class="card ranking-card">
             <div class="card-header">
               <h3>门店排名</h3>
@@ -347,6 +366,7 @@
 <script>
 import * as echarts from 'echarts'
 import axios from 'axios'
+import { mapGetters } from 'vuex'
 
 const PROVINCE_REGION_MAP = {
   '辽宁省': '东北',
@@ -411,10 +431,12 @@ export default {
         successRateChange: 0,
         totalPotential: 0
       },
-      insights: []
+      insights: [],
+      dealerYearlyData: null
     }
   },
   computed: {
+    ...mapGetters(['dealerCode', 'isDealer', 'isAdmin']),
     rankingSortByLabel() {
       const labels = {
         'total': '综合评分',
@@ -544,20 +566,51 @@ export default {
       }
     },
     async loadAllData() {
-      await Promise.all([
-        this.loadOverviewData(),
-        this.loadRankingData(),
-        this.loadHeaderKpi(),
-        this.loadRegionDashboard(),
-        this.loadMetricsComparison(),
-        this.loadInsights()
-      ])
-      this.$nextTick(() => {
-        this.initRadarChart()
-        this.initLineChart()
-        this.initPieChart()
-        this.initMap()
-      })
+      if (this.isDealer && this.dealerCode) {
+        await this.loadDealerYearlyData()
+        this.$nextTick(() => {
+          this.initRadarChart()
+          this.initLineChart()
+        })
+      } else {
+        await Promise.all([
+          this.loadOverviewData(),
+          this.loadRankingData(),
+          this.loadHeaderKpi(),
+          this.loadRegionDashboard(),
+          this.loadMetricsComparison(),
+          this.loadInsights()
+        ])
+        this.$nextTick(() => {
+          this.initRadarChart()
+          this.initLineChart()
+          this.initPieChart()
+          this.initMap()
+        })
+      }
+    },
+    async loadDealerYearlyData() {
+      try {
+        const response = await axios.get(`/api/dealer/yearly-data?dealer_code=${this.dealerCode}&year=${this.selectedYear}`)
+        if (response.data.success) {
+          const data = response.data.data
+          this.dealerYearlyData = data
+          this.radarAvg = data.radar_avg || {}
+          this.monthlyAvg = data.monthly_avg || {}
+          this.headerKpi = {
+            totalDealers: 1,
+            avgScore: data.avg_score || 0,
+            warningCount: data.avg_score < 3 ? 1 : 0,
+            warningRatio: data.avg_score < 3 ? 100 : 0,
+            topProvince: data.province || '-',
+            topProvinceScore: data.avg_score || 0,
+            activeDealers: data.avg_score >= 3 ? 1 : 0,
+            activeRatio: data.avg_score >= 3 ? 100 : 0
+          }
+        }
+      } catch (error) {
+        console.error('加载经销商年度数据失败:', error)
+      }
     },
     async loadAreaChartData() {
       try {
@@ -1877,6 +1930,11 @@ export default {
   min-height: 280px;
 }
 
+.col-left-main.dealer-view .row-left-top {
+  display: flex;
+  gap: 16px;
+}
+
 .col-line-full {
   width: 100%;
 }
@@ -1894,6 +1952,26 @@ export default {
 
 .col-pie {
   width: 50%;
+}
+
+.col-left-main.dealer-view {
+  width: 100%;
+}
+
+.col-line-full.dealer-line {
+  width: 55%;
+}
+
+.dealer-radar {
+  width: 42%;
+}
+
+.dealer-radar .chart-container {
+  height: 280px;
+}
+
+.dealer-line .chart-container {
+  height: 280px;
 }
 
 .col-right-side {

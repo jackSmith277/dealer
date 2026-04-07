@@ -216,6 +216,7 @@
 <script>
 import * as echarts from 'echarts'
 import axios from 'axios'
+import { mapGetters } from 'vuex'
 import DealerSelector from '@/components/DealerSelector.vue'
 
 const forces = [
@@ -297,6 +298,7 @@ export default {
     }
   },
   computed: {
+    ...mapGetters(['dealerCode', 'isDealer', 'isAdmin']),
     forces() {
       return forces
     },
@@ -437,7 +439,16 @@ export default {
             '经营力': d.operation_force || 0
           }))
           if (this.dealers.length > 0 && !this.selectedCode) {
-            this.selectedCode = this.dealers[0]['经销商代码']
+            if (this.isDealer && this.dealerCode) {
+              const dealerExists = this.dealers.find(d => d['经销商代码'] === this.dealerCode)
+              if (dealerExists) {
+                this.selectedCode = this.dealerCode
+              } else {
+                this.selectedCode = this.dealers[0]['经销商代码']
+              }
+            } else {
+              this.selectedCode = this.dealers[0]['经销商代码']
+            }
           }
           this.$nextTick(() => {
             this.initCharts()
