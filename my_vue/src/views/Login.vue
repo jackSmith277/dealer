@@ -4,6 +4,13 @@
       <h2>系统登录</h2>
       <form @submit.prevent="handleLogin">
         <div class="form-group">
+          <label for="role">角色</label>
+          <select id="role" v-model="loginForm.role" class="role-select">
+            <option value="admin">管理员</option>
+            <option value="dealer">经销商</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label for="username">用户名</label>
           <input type="text" id="username" v-model="loginForm.username" required>
         </div>
@@ -45,10 +52,31 @@ export default {
     return {
       loginForm: {
         username: '',
-        password: ''
+        password: '',
+        role: 'admin'
       },
       error: '',
       showPassword: false
+    }
+  },
+  watch: {
+    'loginForm.role'(newRole) {
+      if (newRole === 'admin') {
+        this.loginForm.username = 'admin'
+        this.loginForm.password = 'admin123'
+      } else {
+        this.loginForm.username = '9210006'
+        this.loginForm.password = 'dealer123'
+      }
+    }
+  },
+  created() {
+    if (this.loginForm.role === 'admin') {
+      this.loginForm.username = 'admin'
+      this.loginForm.password = 'admin123'
+    } else {
+      this.loginForm.username = '9210006'
+      this.loginForm.password = 'dealer123'
     }
   },
   methods: {
@@ -139,6 +167,21 @@ export default {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 16px;
+}
+
+.role-select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.role-select:focus {
+  outline: none;
+  border-color: #409EFF;
 }
 
 .password-input-container {

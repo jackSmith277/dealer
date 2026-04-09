@@ -1349,7 +1349,35 @@ export default {
         if (response.data && response.data.features) {
           response.data.features.forEach(feature => {
             const name = feature.properties.name
-            const center = feature.properties.center || feature.properties.adcenter
+            let center = feature.properties.center || feature.properties.adcenter
+            
+            if (!center && feature.geometry && feature.geometry.coordinates) {
+              let allCoords = []
+              if (feature.geometry.type === 'MultiPolygon') {
+                feature.geometry.coordinates.forEach(polygon => {
+                  if (Array.isArray(polygon[0])) {
+                    polygon[0].forEach(coord => {
+                      if (Array.isArray(coord) && coord.length >= 2) {
+                        allCoords.push(coord)
+                      }
+                    })
+                  }
+                })
+              } else if (feature.geometry.type === 'Polygon') {
+                feature.geometry.coordinates[0].forEach(coord => {
+                  if (Array.isArray(coord) && coord.length >= 2) {
+                    allCoords.push(coord)
+                  }
+                })
+              }
+              
+              if (allCoords.length > 0) {
+                const avgLng = allCoords.reduce((sum, c) => sum + c[0], 0) / allCoords.length
+                const avgLat = allCoords.reduce((sum, c) => sum + c[1], 0) / allCoords.length
+                center = [avgLng, avgLat]
+              }
+            }
+            
             if (name && center) {
               cityCoords[name] = center
             }
@@ -1365,6 +1393,11 @@ export default {
         
         const maxValue = Math.max(...cityData.map(d => d.value), 10)
         
+        console.log('=== 省级地图调试 ===')
+        console.log('当前省份:', this.currentProvince)
+        console.log('warningCityCount:', this.warningCityCount)
+        console.log('cityCoords keys:', Object.keys(cityCoords))
+        
         const warningCityScatterData = []
         for (const [city, count] of Object.entries(this.warningCityCount)) {
           if (count <= 0) continue
@@ -1376,12 +1409,16 @@ export default {
             }
           }
           if (matchedCity) {
+            console.log(`匹配成功: ${city} -> ${matchedCity}, 预警数: ${count}`)
             warningCityScatterData.push({
               name: matchedCity,
               value: [...cityCoords[matchedCity], count]
             })
+          } else {
+            console.log(`匹配失败: ${city}, 预警数: ${count}`)
           }
         }
+        console.log('warningCityScatterData:', warningCityScatterData)
         
         const option = {
           backgroundColor: 'transparent',
@@ -1519,8 +1556,8 @@ export default {
               this.selectedRegion = region
             }
             
-            await this.renderProvinceMap()
             await this.loadOverviewData()
+            await this.renderProvinceMap()
             await this.loadRankingData()
             await this.loadAreaChartData()
             this.bindProvinceMapEvents()
@@ -1568,7 +1605,16 @@ export default {
             areaColor: item.name === cityName ? '#faad14' : undefined
           }
         }))
+        
+        const cityCount = cityName ? (this.cityDealerCount[cityName] || 0) : 0
+        const title = cityName 
+          ? `${this.currentProvince}\n${cityName}有${cityCount}家门店`
+          : `${this.currentProvince}\n共${this.provinceDealerCount[this.currentProvince] || 0}家经销商`
+        
         this.mapChart.setOption({
+          title: {
+            text: title
+          },
           series: [{ data }]
         })
       }

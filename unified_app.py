@@ -3121,14 +3121,14 @@ def get_index_overview():
         city_count = {}
         warning_province_count = {}
         warning_city_count = {}
-        for dc, info in dealer_info_map.items():
+        for dc, info in dealer_scores.items():
             p = info.get('province', '')
             c = info.get('city', '')
             if p:
                 province_count[p] = province_count.get(p, 0) + 1
             if c:
                 city_count[c] = city_count.get(c, 0) + 1
-            if dc in dealer_scores and dealer_scores[dc]['totalScore'] < 3:
+            if info['totalScore'] < 3:
                 if p:
                     warning_province_count[p] = warning_province_count.get(p, 0) + 1
                 if c:
