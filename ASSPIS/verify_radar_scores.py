@@ -1,9 +1,16 @@
 """验证 monthly_radar_scores 表数据"""
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from db_config import get_database_uri
+
 from models import db, MonthlyRadarScores
 from flask import Flask
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:123456@localhost:3306/dealer_management'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', get_database_uri())
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
