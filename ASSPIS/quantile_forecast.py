@@ -1,18 +1,13 @@
 # quantile_forecast.py
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
-
 import numpy as np
 import xgboost as xgb
 from sklearn.ensemble import GradientBoostingRegressor
-
-# 复用你现有的特征工程与 log1p 目标变换
 from pathlib import Path
 import json
 import time
-
 import joblib
 
 from model import (
@@ -30,14 +25,10 @@ from model import (
     load_point_bundle,
 )
 
-# -----------------------------
-# Utilities (year-month aware)
-# -----------------------------
 def _is_ym_key(k) -> bool:
     return isinstance(k, tuple) and len(k) == 2 and isinstance(k[0], int) and isinstance(k[1], int)
 
 def _infer_latest_year_from_maps(dealer_data, fallback: int = 2024) -> int:
-    # 优先看 sales，其次看各特征
     candidates = []
     for f in (
         "sales", "potential_customers", "test_drives", "leads", "customer_flow",
@@ -53,10 +44,8 @@ def _infer_latest_year_from_maps(dealer_data, fallback: int = 2024) -> int:
 def _months_for_year(mp: dict, year: int) -> set[int]:
     if not mp:
         return set()
-    # 新结构：key=(year,month)
     if any(_is_ym_key(k) for k in mp.keys()):
         return {int(m) for (y, m) in mp.keys() if int(y) == int(year)}
-    # 旧结构：key=month
     return {int(m) for m in mp.keys() if isinstance(m, (int, np.integer))}
 
 def _map_at(mp: dict, year: int, month: int):
@@ -84,7 +73,6 @@ def _base_sales_from_map(sales_map: dict, year: int, month: int) -> Optional[flo
     if v is not None:
         return float(v)
 
-    # 找同一年更早月份
     months = sorted(_months_for_year(sales_map, year))
     prev = [m for m in months if int(m) < int(month)]
     if prev:
@@ -111,9 +99,6 @@ def _latest_month_with_features(dealer_data, year: int) -> Optional[int]:
         common &= _months_for_year(mp, year)
     return max(common) if common else None
 
-# -----------------------------
-# Fit helper
-# -----------------------------
 def _fit_one_quantile_model(X: np.ndarray, y: np.ndarray, tau: float, xgb_params: Dict[str, Any]):
     params = dict(xgb_params)
 
@@ -133,9 +118,6 @@ def _fit_one_quantile_model(X: np.ndarray, y: np.ndarray, tau: float, xgb_params
         gbr.fit(X, y)
         return gbr, "sk_gbr_quantile"
 
-# -----------------------------
-# Forecaster (Architecture A)
-# -----------------------------
 @dataclass
 class QuantileForecaster:
     default_quantiles: List[float] = field(default_factory=lambda: [0.1, 0.5, 0.9])
@@ -145,7 +127,7 @@ class QuantileForecaster:
     min_calib_samples: int = 30
     min_train_samples: int = 10
 
-    # 修正：限制 ratio_prev 仅在 h=2 使用，h>=3 回归 direct_log1p
+    # 限制 ratio_prev 仅在 h=2 使用，h>=3 回归 direct_log1p
     direct_log1p_horizons: List[int] = field(default_factory=lambda: [1] + list(range(3, 13)))
     direct_raw_horizons: List[int] = field(default_factory=list)
     ratio_base_horizons: List[int] = field(default_factory=list)
@@ -153,11 +135,12 @@ class QuantileForecaster:
 
     ratio_eps: float = 1e-6
     ratio_clip_min: float = 0.0
-    ratio_clip_max: float = 3.0  # 修正：大幅收紧单期最大增长倍数
+    ratio_clip_max: float = 3.0
 
     min_samples_per_horizon: int = 20
     random_state: int = 42
     debug: bool = False
+    max_supported_horizon: int = 9
 
     xgb_params_overrides: Dict[int, Dict[str, Any]] = field(default_factory=dict)
 
@@ -172,9 +155,6 @@ class QuantileForecaster:
 
     is_fitted: bool = False
 
-    # -----------------------------
-    # Strategy helpers
-    # -----------------------------
     def _strategy(self, h: int) -> str:
         h = int(h)
         if h in set(self.ratio_prev_horizons):
@@ -284,9 +264,6 @@ class QuantileForecaster:
 
         return train_mask, calib_mask
 
-    # -----------------------------
-    # Fit
-    # -----------------------------
     def fit(
         self,
         dealers: Dict[str, Any],
@@ -314,7 +291,7 @@ class QuantileForecaster:
         q_high = 1.0 - self.calib_alpha / 2.0
         quantiles = sorted(set([float(q) for q in quantiles] + [q_low, q_high, 0.05, 0.95]))
 
-        # 选择训练年份（默认用数据里最大的 year）
+        #选择训练年份
         if train_year is None:
             ys = []
             for _, d in dealers.items():
@@ -323,7 +300,7 @@ class QuantileForecaster:
         train_year = int(train_year)
         self.trained_year = train_year
 
-        # 计算该 year 的 max_target_month（只看该年 sales）
+        #计算该year的max_target_month
         max_target_month = 0
         for _, d in dealers.items():
             sales_map = getattr(d, "sales", {}) or {}
@@ -341,10 +318,11 @@ class QuantileForecaster:
             raise ValueError(f"销量月份太少（year={train_year}），无法训练分位数预测模型。")
 
         max_h_trainable = max_target_month - 1
+        max_h_allowed = min(int(max_h_trainable), int(self.max_supported_horizon))
         if horizons is None:
-            horizons = list(range(1, max_h_trainable + 1))
+            horizons = list(range(1, max_h_allowed + 1))
         else:
-            horizons = [int(h) for h in horizons if 1 <= int(h) <= max_h_trainable]
+            horizons = [int(h) for h in horizons if 1 <= int(h) <= max_h_allowed]
 
         self.models.clear()
         self.model_kind.clear()
@@ -429,28 +407,17 @@ class QuantileForecaster:
                 self.model_kind[h][float(tau)] = kind
 
             if do_cqr:
-                # 【新增修复】：在这里生成校准集数据，解决 X_cal, y_cal, denom_cal 未定义报错
                 X_cal = scaler.transform(X_raw[calib_mask])
                 y_cal = y_raw[calib_mask]
                 denom_cal = denom_arr[calib_mask] if st.startswith("ratio") else None
 
-                # 寻找中位数的预测值，抛弃边缘分位数
                 tau_median = 0.5 if 0.5 in self.models[h] else quantiles[len(quantiles) // 2]
                 m_median = self.models[h][float(tau_median)]
                 pred_median_raw = self._from_model_pred(m_median.predict(X_cal), h, denom=denom_cal)
                 pred_median_raw = _clamp_nonneg(pred_median_raw)
-
                 denom_cal_safe = np.maximum(y_cal, 1.0)
-
-                # 【核心重构：基于点预测的绝对百分比误差 APE】
-                # 计算预测中位数与真实值的相对偏差比例
                 r_ape = np.abs(pred_median_raw - y_cal) / denom_cal_safe
-
-                # 提取能覆盖 (1-alpha) 概率的百分比误差（例如 80% 置信度下的最大误差率）
                 qhat_pct = _safe_quantile(r_ape, 1.0 - self.calib_alpha)
-
-                # 强限制：行业内单店优秀 MAPE 在 15-25% 之间。
-                # 即使模型极度不准，也不允许单侧区间偏差超过 45% (0.45)，防止极端脏数据带崩全局
                 self.cqr_qhat[h] = float(min(max(qhat_pct, 0.05), 0.45))
             else:
                 self.cqr_qhat[h] = 0.0
@@ -470,9 +437,6 @@ class QuantileForecaster:
     def supported_horizons(self) -> List[int]:
         return sorted(self.models.keys())
 
-    # -----------------------------
-    # Predict
-    # -----------------------------
     def predict(
             self,
             dealer_data,
@@ -484,7 +448,6 @@ class QuantileForecaster:
             overrides: Optional[dict] = None,
             feature_context: Optional[FeatureContext] = None,
             runtime_config: Optional[dict | RuntimeConfig] = None,
-            calib_alpha: Optional[float] = None,
     ) -> Dict[str, Any]:
         if not self.is_fitted:
             raise RuntimeError("QuantileForecaster 未训练。")
@@ -500,10 +463,9 @@ class QuantileForecaster:
         if quantiles is None:
             quantiles = list(self.default_quantiles)
 
-        effective_calib_alpha = calib_alpha if calib_alpha is not None else self.calib_alpha
-
-        q_low = effective_calib_alpha / 2.0
-        q_high = 1.0 - effective_calib_alpha / 2.0
+        # 确保包含 CQR 校准所需的边界分位数
+        q_low = self.calib_alpha / 2.0
+        q_high = 1.0 - self.calib_alpha / 2.0
         all_q_candidates = sorted(set([float(q) for q in quantiles] + [q_low, q_high, 0.05, 0.95]))
         trained_q = self.models.get(horizons[0] if horizons else 1, {}).keys()
         if trained_q:
@@ -518,7 +480,8 @@ class QuantileForecaster:
         X = np.asarray([feats], dtype=float)
         Xs = scaler.transform(X)
 
-        interval_pct = int((1.0 - effective_calib_alpha) * 100)
+        # 动态命名校准区间
+        interval_pct = int((1.0 - self.calib_alpha) * 100)
         calibrated_interval_key = f"calibrated_interval_{interval_pct}"
 
         out = {
@@ -534,9 +497,10 @@ class QuantileForecaster:
             calibrated_interval_key: {"lower": [], "upper": []},
             "meta": {
                 "strategy_by_horizon": {},
-                "cqr_alpha": float(effective_calib_alpha),
+                "cqr_alpha": float(self.calib_alpha),
                 "trained_year": int(self.trained_year),
                 "trained_max_target_month": int(self.trained_max_target_month),
+                "max_supported_horizon": int(self.max_supported_horizon),
                 "interval_name": calibrated_interval_key
             },
         }
@@ -585,7 +549,6 @@ class QuantileForecaster:
 
                 elif st == "ratio_prev":
                     if prev_pred_by_q is not None and prev_h is not None and (h - prev_h) == 1:
-                        # 修正：所有分位数统一使用中位数预测作为分母，降维打击尾部爆炸
                         denom_val = float(prev_pred_by_q[i_median])
                     else:
                         denom_val = float(base_sales) if base_sales is not None else 0.0
@@ -594,15 +557,14 @@ class QuantileForecaster:
                 yhat_raw = self._from_model_pred(yhat_model, h, denom=denom_vec)
                 preds_raw[i] = float(yhat_raw[0])
 
-            # === 上下文定位：在 predict 函数的 for h in compute_h: 循环中 ===
             preds_raw = _clamp_nonneg(preds_raw)
-            # 保证分位数单调不降（防止分位数交叉错乱）
+            # 保证分位数单调不降
             preds_mono = np.maximum.accumulate(preds_raw)
 
             if h in requested_set:
                 out["horizons_supported"].append(h)
 
-                # 解决跨年月份溢出 Bug
+                # 解决跨年月份溢出Bug
                 total_months = int(base_year) * 12 + int(base_month) - 1 + int(h)
                 pred_year = total_months // 12
                 pred_month = total_months % 12 + 1
@@ -617,18 +579,11 @@ class QuantileForecaster:
                 else:
                     out["point"].append(float(preds_mono[len(preds_mono) // 2]))
 
-                # 【清理并重构区间计算逻辑，避免多余代码】
-                # 完全抛弃 XGBoost 边缘分位数发散结果，以中位数为绝对锚点
                 median_val = float(preds_mono[i_median])
 
                 # 提取校准集中学习到的经验百分比误差
                 qhat_pct = float(self.cqr_qhat.get(h, 0.25))  # 若无则默认给 25% 的容错率
-
-                # 【动态时间惩罚系数】
-                # 摒弃原有的倒数缩减，采用符合物理常识的放大：预测越远，不确定性越大
-                # h=1(1.0), h=2(1.1), h=3(1.2) ...
                 scale = 1.0 + 0.1 * (h - 1)
-
                 # 计算绝对台数容错带
                 margin = median_val * qhat_pct * scale
 
@@ -636,7 +591,7 @@ class QuantileForecaster:
                 lower_bound = median_val - margin
                 upper_bound = median_val + margin
 
-                # 【业务常识物理限制兜底】
+                # 业务常识物理限制兜底
                 # 下限物理限制：极其悲观的情况下，单月销量也不应低于预测中位数的 40% (保障基本盘)
                 # 除非预测值本来就很低(小于5.0)，这时候允许下限到0
                 lower_cap = median_val * 0.4
@@ -653,7 +608,6 @@ class QuantileForecaster:
             prev_h = h
 
         return out
-        # === 紧接着直接 return out，上面的替换结束 ===
 
     def default_base_month(self, dealer_data, year: Optional[int] = None) -> Optional[int]:
         if year is None:
@@ -697,7 +651,6 @@ class QuantileModelBundle:
             "config_summary": dict(self.config_summary or {}),
         }
 
-
 def _safe_json_default(obj):
     if isinstance(obj, (np.integer,)):
         return int(obj)
@@ -707,12 +660,10 @@ def _safe_json_default(obj):
         return obj.tolist()
     return str(obj)
 
-
 def _resolve_point_bundle(point_bundle: PointModelBundle | str | Path) -> PointModelBundle:
     if isinstance(point_bundle, PointModelBundle):
         return point_bundle
     return load_point_bundle(point_bundle)
-
 
 def fit(
     dealers: Dict[str, Any],
@@ -781,7 +732,6 @@ def fit(
         config_summary=runtime_config.to_dict() if hasattr(runtime_config, "to_dict") else dict(runtime_config or {}),
     )
 
-
 def save_quantile_bundle(bundle: QuantileModelBundle, path: str | Path) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -792,7 +742,6 @@ def save_quantile_bundle(bundle: QuantileModelBundle, path: str | Path) -> Path:
         encoding="utf-8",
     )
     return path
-
 
 def load_quantile_bundle(path: str | Path) -> QuantileModelBundle:
     obj = joblib.load(Path(path))
@@ -828,7 +777,6 @@ def load_quantile_bundle(path: str | Path) -> QuantileModelBundle:
         )
     raise TypeError(f"无法识别的 quantile bundle 类型: {type(obj)!r}")
 
-
 def predict_with_bundle(
     bundle_or_path: QuantileModelBundle | str | Path,
     dealer_data,
@@ -841,6 +789,8 @@ def predict_with_bundle(
     calib_alpha: Optional[float] = None,
 ) -> Dict[str, Any]:
     bundle = bundle_or_path if isinstance(bundle_or_path, QuantileModelBundle) else load_quantile_bundle(bundle_or_path)
+    if calib_alpha is not None:
+        bundle.forecaster.calib_alpha = float(calib_alpha)
     return bundle.forecaster.predict(
         dealer_data=dealer_data,
         scaler=bundle.scaler,
@@ -851,9 +801,7 @@ def predict_with_bundle(
         overrides=overrides,
         feature_context=bundle.feature_context,
         runtime_config=bundle.feature_context.config,
-        calib_alpha=calib_alpha,
     )
-
 
 def predict_for_dealer(
     bundle_or_path: QuantileModelBundle | str | Path,
@@ -886,7 +834,6 @@ def predict_for_dealer(
     out["point_model_version"] = bundle.point_model_version
     out["feature_version"] = bundle.feature_version
     return out
-
 
 def predict_t1_what_if_quantiles(
     bundle_or_path: QuantileModelBundle | str | Path,

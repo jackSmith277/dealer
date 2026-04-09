@@ -4,11 +4,11 @@
   "roll_min_train_periods": 22,
   "roll_gap": 0,
   "n_folds": 12,
-  "wmape_mean": 33.428020021465805,
-  "wmape_std": 5.624533256006503,
-  "wmape_dec_mean": 30.013369909513028,
+  "wmape_mean": 33.04061276963819,
+  "wmape_std": 5.578536052999565,
+  "wmape_dec_mean": 29.08370835241158,
   "wmape_dec_std": 0.0,
-  "wmape_peak_mean": 27.852809564972983,
-  "wmape_peak_std": 2.1605603445400448,
-  "optimal_trees": 1050
+  "wmape_peak_mean": 28.62110273404644,
+  "wmape_peak_std": 0.4626056183651439,
+  "optimal_trees": 2900
 }

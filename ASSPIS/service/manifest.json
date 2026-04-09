@@ -1,8 +1,8 @@
 {
-  "model_version": "bundle_20260314_133423",
-  "created_at": "2026-03-14 13:34:44",
-  "point_bundle_path": "bundles/point_bundle.joblib",
-  "quantile_bundle_path": "bundles/quantile_bundle.joblib",
+  "model_version": "prod_q1_9_20260409_003024",
+  "created_at": "2026-04-09 00:31:34",
+  "point_bundle_path": "D:\\dealer\\dealer\\ASSPIS\\service\\bundles\\point_bundle.joblib",
+  "quantile_bundle_path": "D:\\dealer\\dealer\\ASSPIS\\service\\bundles\\quantile_bundle.joblib",
   "feature_version": "point_features_v2",
   "config_summary": {
     "MODEL_STAGE": "phase3_0_frozen_baseline",
@@ -38,7 +38,7 @@
     "PHASE32_LOSS_L1": true,
     "PHASE32_USE_WEIGHT": true,
     "PHASE34_DISABLE_EARLY_STOP": true,
-    "PHASE34_BASE_TREES": 650,
+    "PHASE34_BASE_TREES": 2900,
     "PHASE34_TREES_GRID": "450,650,900,1150",
     "OPTUNA_N_TRIALS": 300,
     "TRADE_OFF_WEIGHT": 1.0,
@@ -314,63 +314,63 @@
   "search_policy_summary": {
     "policy": "wmape_composite",
     "tradeoff_lambda": 1.0,
-    "random_iters": 30,
-    "optuna_trials": 30,
-    "fixed_n_estimators": null
+    "random_iters": 80,
+    "optuna_trials": 100,
+    "fixed_n_estimators": 2900
   },
   "selected_candidate_summary": {
-    "tag": "random_024",
-    "source": "random",
+    "tag": "optuna_078",
+    "source": "optuna",
     "xgb_params": {
       "objective": "reg:absoluteerror",
       "eval_metric": "mae",
       "random_state": 42,
       "n_jobs": -1,
       "tree_method": "hist",
-      "learning_rate": 0.025042452714363762,
-      "n_estimators": 850,
-      "max_depth": 4,
-      "min_child_weight": 7,
-      "subsample": 0.7632630077595446,
-      "colsample_bytree": 0.741368835327228,
-      "reg_lambda": 0.04528676634287067,
-      "reg_alpha": 0.7421937229714413,
-      "gamma": 2.731854451932266
+      "learning_rate": 0.1353463149112721,
+      "n_estimators": 2900,
+      "max_depth": 3,
+      "min_child_weight": 4,
+      "subsample": 0.9841458289243261,
+      "colsample_bytree": 0.6446993323973644,
+      "reg_lambda": 6.822172388876352,
+      "reg_alpha": 0.06544371038930302,
+      "gamma": 1.8959391953521427
     },
     "selector_score": {
-      "score": 32.49468443436186,
+      "score": 32.376391692419816,
       "score_components": {
-        "wmape_weighted": 32.30019816984116,
-        "peak_std_11_12": 0.1944862645206965,
-        "dec_mean": 28.77296603624987
+        "wmape_weighted": 32.33265775931725,
+        "peak_std_11_12": 0.043733933102567846,
+        "dec_mean": 29.118994054199813
       },
       "tradeoff_lambda": 1.0
     },
     "derived_metrics": {
       "n_folds": 12,
       "wmape_overall": {
-        "mean": 32.64838999020946,
-        "std": 5.054727509511654
+        "mean": 32.69002239650368,
+        "std": 5.763442605395449
       },
-      "wmape_weighted": 32.30019816984116,
+      "wmape_weighted": 32.33265775931725,
       "wmape_peak_11_12": {
-        "mean": 28.910488592740094,
-        "std": 0.1944862645206965
+        "mean": 29.149918614864596,
+        "std": 0.043733933102567846
       },
       "wmape_dec": {
-        "mean": 28.77296603624987,
+        "mean": 29.118994054199813,
         "std": 0.0
       },
-      "bad_rate_wmape_ge_40": 0.08333333333333333
+      "bad_rate_wmape_ge_40": 0.16666666666666666
     }
   },
   "quantile_info": {
     "status": "ok",
     "mode": "fit+save_quantile_bundle",
     "bundle_meta": {
-      "model_version": "quantile_20260314_133444",
-      "point_model_version": "bundle_20260314_133423",
-      "trained_at": "2026-03-14 13:34:44",
+      "model_version": "quantile_20260409_003134",
+      "point_model_version": "prod_q1_9_20260409_003024",
+      "trained_at": "2026-04-09 00:31:34",
       "feature_version": "point_features_v2",
       "feature_names": [
         "potential_customers",
@@ -465,7 +465,10 @@
         3,
         4,
         5,
-        6
+        6,
+        7,
+        8,
+        9
       ],
       "quantiles": [
         0.05,
@@ -527,6 +530,30 @@
           "strategy": "direct_log1p",
           "qhat": 0.45,
           "train_year": 2024
+        },
+        "7": {
+          "n_total": 528,
+          "n_train": 423,
+          "n_calib": 105,
+          "strategy": "direct_log1p",
+          "qhat": 0.45,
+          "train_year": 2024
+        },
+        "8": {
+          "n_total": 352,
+          "n_train": 282,
+          "n_calib": 70,
+          "strategy": "direct_log1p",
+          "qhat": 0.45,
+          "train_year": 2024
+        },
+        "9": {
+          "n_total": 176,
+          "n_train": 141,
+          "n_calib": 35,
+          "strategy": "direct_log1p",
+          "qhat": 0.45,
+          "train_year": 2024
         }
       },
       "config_summary": {
@@ -563,7 +590,7 @@
         "PHASE32_LOSS_L1": true,
         "PHASE32_USE_WEIGHT": true,
         "PHASE34_DISABLE_EARLY_STOP": true,
-        "PHASE34_BASE_TREES": 650,
+        "PHASE34_BASE_TREES": 2900,
         "PHASE34_TREES_GRID": "450,650,900,1150",
         "OPTUNA_N_TRIALS": 300,
         "TRADE_OFF_WEIGHT": 1.0,

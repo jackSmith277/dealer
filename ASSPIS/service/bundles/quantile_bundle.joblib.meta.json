@@ -1,7 +1,7 @@
 {
-  "model_version": "quantile_20260314_133444",
-  "point_model_version": "bundle_20260314_133423",
-  "trained_at": "2026-03-14 13:34:44",
+  "model_version": "quantile_20260409_003134",
+  "point_model_version": "prod_q1_9_20260409_003024",
+  "trained_at": "2026-04-09 00:31:34",
   "feature_version": "point_features_v2",
   "feature_names": [
     "potential_customers",
@@ -96,7 +96,10 @@
     3,
     4,
     5,
-    6
+    6,
+    7,
+    8,
+    9
   ],
   "quantiles": [
     0.05,
@@ -158,6 +161,30 @@
       "strategy": "direct_log1p",
       "qhat": 0.45,
       "train_year": 2024
+    },
+    "7": {
+      "n_total": 528,
+      "n_train": 423,
+      "n_calib": 105,
+      "strategy": "direct_log1p",
+      "qhat": 0.45,
+      "train_year": 2024
+    },
+    "8": {
+      "n_total": 352,
+      "n_train": 282,
+      "n_calib": 70,
+      "strategy": "direct_log1p",
+      "qhat": 0.45,
+      "train_year": 2024
+    },
+    "9": {
+      "n_total": 176,
+      "n_train": 141,
+      "n_calib": 35,
+      "strategy": "direct_log1p",
+      "qhat": 0.45,
+      "train_year": 2024
     }
   },
   "config_summary": {
@@ -194,7 +221,7 @@
     "PHASE32_LOSS_L1": true,
     "PHASE32_USE_WEIGHT": true,
     "PHASE34_DISABLE_EARLY_STOP": true,
-    "PHASE34_BASE_TREES": 650,
+    "PHASE34_BASE_TREES": 2900,
     "PHASE34_TREES_GRID": "450,650,900,1150",
     "OPTUNA_N_TRIALS": 300,
     "TRADE_OFF_WEIGHT": 1.0,
