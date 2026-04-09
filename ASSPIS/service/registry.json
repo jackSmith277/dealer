@@ -1,6 +1,6 @@
 {
-  "active_point_bundle": "D:\\dealer\\dealer\\ASSPIS\\service\\bundles\\point_bundle.joblib",
-  "active_quantile_bundle": "D:\\dealer\\dealer\\ASSPIS\\service\\bundles\\quantile_bundle.joblib",
+  "active_point_bundle": "bundles/point_bundle.joblib",
+  "active_quantile_bundle": "bundles/quantile_bundle.joblib",
   "active_model_version": "prod_q1_9_20260409_003024",
   "activated_at": "2026-04-09 00:31:34"
 }

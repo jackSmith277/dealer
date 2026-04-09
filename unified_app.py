@@ -28,6 +28,11 @@ from passlib.hash import pbkdf2_sha256
 
 load_dotenv()
 
+BASE_DIR = Path(__file__).parent.resolve()
+sys.path.insert(0, str(BASE_DIR))
+
+from db_config import get_database_uri
+
 ASSPIS_DIR = Path(__file__).parent / "ASSPIS"
 BACKEND_DIR = Path(__file__).parent / "back"
 AIPLUGIN_DIR = Path(__file__).parent / "aiplugin" / "插件" / "汽车服务"
@@ -52,10 +57,7 @@ from wordcloud_service import wordcloud_generator
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-    'DATABASE_URL', 
-    f"mysql+pymysql://{os.getenv('DB_USER', 'root')}:{os.getenv('DB_PASSWORD', '123456')}@{os.getenv('DB_HOST', 'localhost')}:{os.getenv('DB_PORT', '3306')}/{os.getenv('DB_NAME', 'dealer_management')}"
-)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', get_database_uri())
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 CORS(app)
