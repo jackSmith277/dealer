@@ -33,7 +33,7 @@
               <select id="horizons" name="horizons" v-model="baseline.horizons" required>
                 <option value="3">短期 (1-3月)</option>
                 <option value="6">中期 (3-6月)</option>
-                <option value="12">远期 (6-12月)</option>
+                <option value="9">远期 (6-9月)</option>
                 <option value="custom">自定义</option>
               </select>
             </div>
@@ -260,7 +260,6 @@ export default {
   },
   mounted() {
     this.loadDealerList();
-    this.loadMockData();
     this.resizeListener = window.addEventListener('resize', () => {
       if (this.mainChart) {
         this.mainChart.resize();
@@ -294,92 +293,6 @@ export default {
       } catch (error) {
         console.error('加载经销商列表失败:', error)
       }
-    },
-    loadMockData() {
-      let horizons = 0;
-      let startHorizon = 1;
-      
-      if (this.baseline.horizons === 'custom') {
-        const startMonth = parseInt(this.baseline.custom_start_month) || 1;
-        const endMonth = parseInt(this.baseline.custom_end_month) || 3;
-        horizons = endMonth - startMonth + 1;
-        startHorizon = startMonth;
-      } else {
-        horizons = parseInt(this.baseline.horizons);
-        startHorizon = 1;
-      }
-      
-      const generateBaselineData = (months, dealerCode, startIdx) => {
-        const data = [];
-        const baseMonth = parseInt(this.baseline.base_month) || 1;
-        const baseYear = 2024;
-        
-        let baseSales = 150;
-        if (dealerCode === '9210014') {
-          baseSales = 180;
-        }
-        
-        for (let i = 0; i < months; i++) {
-          let targetMonth = baseMonth + startIdx + i;
-          let targetYear = baseYear;
-          if (targetMonth > 12) {
-            targetMonth = targetMonth - 12;
-            targetYear = baseYear + 1;
-          }
-          
-          const baseQ50 = Math.round(baseSales + (Math.random() * 20 - 10));
-          
-          let q05, q10, q25, q75, q90, q95;
-          
-          if (months <= 3) {
-            const interval = baseQ50 * 0.1;
-            q05 = Math.round(baseQ50 - interval * 1.5);
-            q10 = Math.round(baseQ50 - interval);
-            q25 = Math.round(baseQ50 - interval * 0.5);
-            q75 = Math.round(baseQ50 + interval * 0.5);
-            q90 = Math.round(baseQ50 + interval);
-            q95 = Math.round(baseQ50 + interval * 1.5);
-          } else if (months <= 6) {
-            const interval = baseQ50 * 0.15;
-            q05 = Math.round(baseQ50 - interval * 1.5);
-            q10 = Math.round(baseQ50 - interval);
-            q25 = Math.round(baseQ50 - interval * 0.5);
-            q75 = Math.round(baseQ50 + interval * 0.5);
-            q90 = Math.round(baseQ50 + interval);
-            q95 = Math.round(baseQ50 + interval * 1.5);
-          } else {
-            const interval = baseQ50 * 0.25;
-            q05 = Math.round(baseQ50 - interval * 1.5);
-            q10 = Math.round(baseQ50 - interval);
-            q25 = Math.round(baseQ50 - interval * 0.5);
-            q75 = Math.round(baseQ50 + interval * 0.5);
-            q90 = Math.round(baseQ50 + interval);
-            q95 = Math.round(baseQ50 + interval * 1.5);
-          }
-          
-          data.push({
-            year: targetYear,
-            month: targetMonth,
-            q50: baseQ50,
-            q10: q10,
-            q90: q90,
-            q05: q05,
-            q95: q95,
-            q25: q25,
-            q75: q75
-          });
-        }
-        return data;
-      };
-      
-      this.predictionResults = [
-        {
-          scenario: 'baseline',
-          monthly: generateBaselineData(horizons, this.baseline.dealer_code, startHorizon)
-        }
-      ];
-      this.processPredictionResults();
-      this.updateMainChart();
     },
     addScenario() {
       if (!this.newScenario.dimension || this.newScenario.change_percentage === undefined) {
@@ -478,14 +391,14 @@ export default {
       
       const baseYear = this.baseline.base_year || 2024;
       const baseMonth = this.baseline.base_month || 1;
-      let requestedHorizons = 12;
+      let requestedHorizons = 9;
       
       if (this.baseline.horizons === 'custom') {
         const startMonth = parseInt(this.baseline.custom_start_month) || 1;
         const endMonth = parseInt(this.baseline.custom_end_month) || 3;
         requestedHorizons = endMonth - startMonth + 1;
       } else {
-        requestedHorizons = parseInt(this.baseline.horizons) || 12;
+        requestedHorizons = parseInt(this.baseline.horizons) || 9;
       }
       
       for (const [scenarioName, scenarioData] of Object.entries(response.scenarios)) {
@@ -537,58 +450,6 @@ export default {
           }
           
           monthly.push(monthData);
-        }
-        
-        if (scenarioName === 'baseline') {
-          let lastValidQ50 = 100;
-          let avgQ50 = 100;
-          const validData = monthly.filter(m => m.q50 > 0);
-          if (validData.length > 0) {
-            lastValidQ50 = validData[validData.length - 1].q50;
-            avgQ50 = validData.reduce((sum, m) => sum + m.q50, 0) / validData.length;
-          }
-          const baseQ50 = Math.max(avgQ50, lastValidQ50, 50);
-          
-          for (let i = 0; i < monthly.length; i++) {
-            if (monthly[i].q50 === 0 || monthly[i].q50 === null || monthly[i].q50 === undefined) {
-              const item = monthly[i];
-              const targetMonth = item.month;
-              const monthIndex = i + 1;
-              const seasonalFactor = 1 + 0.1 * Math.sin((targetMonth - 1) * Math.PI / 6);
-              const trendFactor = 1 + monthIndex * 0.02;
-              const estimatedQ50 = baseQ50 * seasonalFactor * trendFactor;
-              
-              monthly[i] = {
-                ...item,
-                q50: Math.round(estimatedQ50 * 100) / 100,
-                estimated: true
-              };
-            }
-          }
-          
-          if (monthly.length < requestedHorizons) {
-            for (let h = monthly.length + 1; h <= requestedHorizons; h++) {
-              let targetMonth = baseMonth + h;
-              let targetYear = baseYear;
-              while (targetMonth > 12) {
-                targetMonth -= 12;
-                targetYear += 1;
-              }
-              
-              const monthIndex = h;
-              const seasonalFactor = 1 + 0.1 * Math.sin((targetMonth - 1) * Math.PI / 6);
-              const trendFactor = 1 + monthIndex * 0.02;
-              const estimatedQ50 = baseQ50 * seasonalFactor * trendFactor;
-              
-              monthly.push({
-                month: targetMonth,
-                year: targetYear,
-                horizon: h,
-                q50: Math.round(estimatedQ50 * 100) / 100,
-                estimated: true
-              });
-            }
-          }
         }
         
         results.push({
@@ -773,7 +634,7 @@ export default {
               }
             };
           },
-          data: months.slice(0, 3).map((month, index) => [index, baselineInterval90Upper[index], baselineInterval90Lower[index]])
+          data: months.map((month, index) => [index, baselineInterval90Upper[index], baselineInterval90Lower[index]])
         },
         {
           name: '80%置信区间',

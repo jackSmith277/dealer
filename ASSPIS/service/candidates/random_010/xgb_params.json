@@ -4,13 +4,13 @@
   "random_state": 42,
   "n_jobs": -1,
   "tree_method": "hist",
-  "learning_rate": 0.1139446928142964,
-  "n_estimators": 300,
-  "max_depth": 6,
-  "min_child_weight": 7,
-  "subsample": 0.604588051108205,
-  "colsample_bytree": 0.7409365456380832,
-  "reg_lambda": 0.09330458663217257,
-  "reg_alpha": 0.11665991545696941,
-  "gamma": 2.885205430988723
+  "learning_rate": 0.07926036941873048,
+  "n_estimators": 2900,
+  "max_depth": 7,
+  "min_child_weight": 11,
+  "subsample": 0.705686937303616,
+  "colsample_bytree": 0.8028653799931488,
+  "reg_lambda": 9.245031280273396,
+  "reg_alpha": 0.006450063437064175,
+  "gamma": 1.2842410069107477
 }

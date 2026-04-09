@@ -142,7 +142,7 @@
         <h2 class="tith2">经销商选择</h2>
         <div class="aleftboxtbott_cont">
           <DealerSelector 
-            :dealers="dealers" 
+            :dealers="dealerList" 
             v-model="selectedCode"
             :errorMessage="errorMessage"
             @apply-manual="applyManualDealer"
@@ -378,6 +378,7 @@ export default {
   data() {
     return {
       dealers: [],
+      dealerList: [],
       selectedCode: '',
       selectedYear: 2024,
       availableYears: [],
@@ -513,6 +514,7 @@ export default {
     },
   },
   mounted() {
+    this.loadDealerList()
     this.loadAvailableYears()
     this.$nextTick(() => {
       this.initCharts()
@@ -589,6 +591,20 @@ export default {
     goToComment() {
       this.$router.push('/dashboard/comment')
     },
+    async loadDealerList() {
+      try {
+        const response = await axios.get('/api/dealers/list')
+        if (response.data && response.data.dealers) {
+          this.dealerList = response.data.dealers.map(d => ({
+            '经销商代码': d.dealer_code,
+            '省份': d.province || '',
+            '城市': d.city || ''
+          }))
+        }
+      } catch (error) {
+        console.error('加载经销商列表失败:', error)
+      }
+    },
     async loadAvailableYears() {
       try {
         const response = await axios.get('/api/dashboard/years')
@@ -657,12 +673,12 @@ export default {
       let target = null
       // 优先按代码精确匹配
       if (code) {
-        target = this.dealers.find((d) => String(d['经销商代码']) === code)
+        target = this.dealerList.find((d) => String(d['经销商代码']) === code)
       }
       // 若无结果且填了省份，则按省份模糊匹配第一条
       if (!target && province) {
         const lower = province.toLowerCase()
-        target = this.dealers.find((d) => String(d['省份'] || '').toLowerCase().includes(lower))
+        target = this.dealerList.find((d) => String(d['省份'] || '').toLowerCase().includes(lower))
       }
 
       if (!target) {

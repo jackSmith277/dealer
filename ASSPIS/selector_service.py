@@ -1,39 +1,18 @@
 # selector_service.py
-# ------------------------------------------------------------
-# 离线选模与上线包生成服务（由原 eval_phase2 / eval5.5 脚本重构）
-#
-# 目标：
-# 1) 保留 baseline / Random / Optuna 的离线决策流程
-# 2) 不再依赖“服务启动即重跑评估”，而是显式作为离线模型生产器执行
-# 3) 统一生成：
-#    - point bundle
-#    - quantile bundle（若 quantile_forecast.py 可用）
-#    - manifest
-#    - registry
-#    - candidate reports
-# 4) 同时保留 CLI 入口，便于你现阶段继续手动运行
-# ------------------------------------------------------------
 from __future__ import annotations
-
 import argparse
 import csv
 import importlib
 import json
 import os
-import sys
 import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from statistics import mean
 from typing import Any
-
 import numpy as np
 import pandas as pd
 
-
-# -------------------------
-# 预设：沿用你当前实验脚本中的 preset 逻辑
-# -------------------------
 _PRESETS: dict[str, dict[str, str]] = {
     "p2_8_r0": {"PHASE28_SAFE_DIVIDE": "0", "PHASE28_LOG_RATIO": "0", "PHASE28_MISSING_FLAG": "0"},
     "p2_8_r1": {"PHASE28_SAFE_DIVIDE": "1", "PHASE28_LOG_RATIO": "0", "PHASE28_MISSING_FLAG": "0"},
@@ -69,7 +48,6 @@ _PRESETS: dict[str, dict[str, str]] = {
     },
 }
 
-
 def _apply_preset(preset: str | None):
     if not preset:
         return
@@ -79,7 +57,6 @@ def _apply_preset(preset: str | None):
     for k, v in _PRESETS[preset].items():
         os.environ[k] = str(v)
 
-
 def _env_snapshot(prefixes: tuple[str, ...] = ("TRAIN_", "ROLL_", "PHASE", "CLIP_")) -> dict[str, str]:
     out: dict[str, str] = {}
     for k, v in os.environ.items():
@@ -87,12 +64,10 @@ def _env_snapshot(prefixes: tuple[str, ...] = ("TRAIN_", "ROLL_", "PHASE", "CLIP
             out[k] = v
     return dict(sorted(out.items(), key=lambda kv: kv[0]))
 
-
 def _write_json(path: Path, obj: Any):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2, default=str)
-
 
 def _write_csv(path: Path, rows: list[dict]):
     if not rows:
@@ -110,7 +85,6 @@ def _write_csv(path: Path, rows: list[dict]):
         for r in rows:
             w.writerow(r)
 
-
 def _percentile(xs: list[float], q: float) -> float:
     if not xs:
         return float("nan")
@@ -123,7 +97,6 @@ def _percentile(xs: list[float], q: float) -> float:
     if f == c:
         return float(xs[f])
     return float(xs[f] * (c - k) + xs[c] * (k - f))
-
 
 def _discover_excel_files(cwd: Path) -> list[str]:
     candidates = [cwd / "data", cwd / "dataset", cwd / "datasets", cwd]
@@ -141,7 +114,6 @@ def _discover_excel_files(cwd: Path) -> list[str]:
     uniq = {f.resolve(): f for f in files}
     out = sorted(uniq.values(), key=lambda p: p.stat().st_mtime, reverse=True)
     return [str(p) for p in out]
-
 
 def _agg_wmape_by_month(rows: list[dict], key: str = "wmape") -> list[dict]:
     buckets: dict[int, list[dict]] = {}
@@ -166,7 +138,6 @@ def _agg_wmape_by_month(rows: list[dict], key: str = "wmape") -> list[dict]:
             "n_folds": int(len(vals)),
         })
     return out
-
 
 def _derived_metrics(rows: list[dict]) -> dict[str, Any]:
     def _safe(vals: list[float]) -> dict[str, float]:
@@ -199,7 +170,6 @@ def _derived_metrics(rows: list[dict]) -> dict[str, Any]:
         "bad_rate_wmape_ge_40": float(sum(1 for v in wm if v == v and v >= 40.0) / max(1, sum(1 for v in wm if v == v))),
     }
 
-
 def _selector_score(derived: dict[str, Any], tradeoff_lambda: float = 1.0) -> dict[str, Any]:
     wmape_weighted = float(derived.get("wmape_weighted", float("nan")))
     peak_std = float(((derived.get("wmape_peak_11_12", {}) or {}).get("std", float("nan"))))
@@ -218,7 +188,6 @@ def _selector_score(derived: dict[str, Any], tradeoff_lambda: float = 1.0) -> di
         },
         "tradeoff_lambda": float(tradeoff_lambda),
     }
-
 
 @dataclass
 class SelectorConfig:
@@ -262,7 +231,7 @@ class SelectorConfig:
             skip_random=bool(args.skip_random),
             skip_optuna=bool(args.skip_optuna),
             model_version_prefix=str(args.model_version_prefix),
-            quantile_horizons=[int(x) for x in str(args.quantile_horizons).split(",") if str(x).strip()] if args.quantile_horizons else [1, 2, 3, 4, 5, 6],
+            quantile_horizons=[int(x) for x in str(args.quantile_horizons).split(",") if str(x).strip()] if args.quantile_horizons else [1, 2, 3, 4, 5, 6, 7, 8, 9],
             quantiles=[float(x) for x in str(args.quantiles).split(",") if str(x).strip()] if args.quantiles else [0.05, 0.10, 0.30, 0.50, 0.70, 0.90, 0.95],
         )
 
@@ -291,16 +260,13 @@ class CandidateResult:
             "xgb_params": json.dumps(self.xgb_params, ensure_ascii=False),
         }
 
-
 def _import_model_module():
     import model  # noqa
     return model
 
-
 def prepare_selector_data(dealers, runtime_config: "RuntimeConfig | dict | None" = None):
     model = _import_model_module()
     return model.prepare_training_data(dealers, config=runtime_config)
-
 
 def evaluate_candidate(prep, xgb_params: dict, runtime_config=None, tag: str = "candidate") -> CandidateResult:
     model = _import_model_module()
@@ -322,7 +288,6 @@ def evaluate_candidate(prep, xgb_params: dict, runtime_config=None, tag: str = "
         derived_metrics=derived,
         selector_score=score,
     )
-
 
 def run_baseline(prep, runtime_config=None, selector_config: SelectorConfig | None = None) -> CandidateResult:
     model = _import_model_module()
@@ -348,7 +313,6 @@ def run_baseline(prep, runtime_config=None, selector_config: SelectorConfig | No
         derived_metrics=derived,
         selector_score=score,
     )
-
 
 def run_random_search(prep, runtime_config=None, selector_config: SelectorConfig | None = None) -> list[CandidateResult]:
     if selector_config is None:
@@ -400,7 +364,6 @@ def run_random_search(prep, runtime_config=None, selector_config: SelectorConfig
         )
     results.sort(key=lambda x: (float(x.selector_score.get("score", float("inf"))), float(x.derived_metrics.get("wmape_weighted", float("inf")))))
     return results
-
 
 def run_optuna_search(prep, runtime_config=None, selector_config: SelectorConfig | None = None) -> list[CandidateResult]:
     if selector_config is None:
@@ -460,7 +423,6 @@ def run_optuna_search(prep, runtime_config=None, selector_config: SelectorConfig
     trials.sort(key=lambda x: (float(x.selector_score.get("score", float("inf"))), float(x.derived_metrics.get("wmape_weighted", float("inf")))))
     return trials
 
-
 def select_recommended_candidate(results: list[CandidateResult], policy: str = "wmape_composite") -> CandidateResult:
     if not results:
         raise ValueError("没有可供选择的候选结果。")
@@ -473,7 +435,6 @@ def select_recommended_candidate(results: list[CandidateResult], policy: str = "
         return (score, wmape, peak_std, dec_mean)
 
     return sorted(results, key=sort_key)[0]
-
 
 def _ensure_runtime_config(selector_config: SelectorConfig):
     """
@@ -496,7 +457,6 @@ def _ensure_runtime_config(selector_config: SelectorConfig):
     model.apply_runtime_config(runtime_config)
     return model, runtime_config
 
-
 def _export_candidate_reports(candidate: CandidateResult, out_dir: Path):
     candidate_dir = out_dir / "candidates" / candidate.tag
     candidate_dir.mkdir(parents=True, exist_ok=True)
@@ -506,7 +466,6 @@ def _export_candidate_reports(candidate: CandidateResult, out_dir: Path):
     _write_json(candidate_dir / "selector_score.json", candidate.selector_score)
     _write_csv(candidate_dir / "wmape_by_month_of_year.csv", _agg_wmape_by_month(candidate.rolling_rows, "wmape"))
     _write_json(candidate_dir / "xgb_params.json", candidate.xgb_params)
-
 
 def _train_quantile_bundle_if_available(
     dealers,
@@ -534,7 +493,7 @@ def _train_quantile_bundle_if_available(
             q_bundle = qmod.fit(
                 dealers,
                 point_bundle=point_bundle,
-                horizons=selector_config.quantile_horizons or [1, 2, 3, 4, 5, 6],
+                horizons=selector_config.quantile_horizons or [1, 2, 3, 4, 5, 6, 7, 8, 9],
                 quantiles=selector_config.quantiles or [0.05, 0.10, 0.30, 0.50, 0.70, 0.90, 0.95],
             )
             qmod.save_quantile_bundle(q_bundle, bundle_path)
@@ -549,7 +508,6 @@ def _train_quantile_bundle_if_available(
 
     except Exception as e:
         return None, {"status": "failed", "reason": str(e)}
-
 
 def build_and_export_bundles(
     dealers,
@@ -622,7 +580,6 @@ def build_and_export_bundles(
 
     return point_bundle, str(point_bundle_path), quantile_bundle_path, manifest, str(registry_path)
 
-
 def run_selector_pipeline(dealers, selector_config: SelectorConfig) -> dict:
     out_dir = Path(selector_config.out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -687,12 +644,10 @@ def run_selector_pipeline(dealers, selector_config: SelectorConfig) -> dict:
         "out_dir": str(out_dir),
     }
 
-
 def _load_dealers_from_files(files: list[str]):
     from dealer_data_preprocessing import load_and_process_data
     dealers, dealer_codes = load_and_process_data(files)
     return dealers, dealer_codes
-
 
 def run_selector_from_cli(args: argparse.Namespace) -> int:
     selector_config = SelectorConfig.from_args(args)
@@ -733,7 +688,6 @@ def run_selector_from_cli(args: argparse.Namespace) -> int:
     print("quantile_bundle   :", result["quantile_bundle_path"])
     return 0
 
-
 def main():
     ap = argparse.ArgumentParser(description="Offline selector service: baseline / random / optuna -> point bundle / manifest / registry")
     ap.add_argument("--train_mode", default="conservative", choices=["conservative", "standard", "advanced"])
@@ -755,11 +709,10 @@ def main():
     ap.add_argument("--auto_activate", action="store_true")
     ap.add_argument("--model_version_prefix", default="bundle")
     ap.add_argument("--no_quantile_bundle", action="store_true")
-    ap.add_argument("--quantile_horizons", default="1,2,3,4,5,6")
+    ap.add_argument("--quantile_horizons", default="1,2,3,4,5,6,7,8,9")
     ap.add_argument("--quantiles", default="0.05,0.10,0.30,0.50,0.70,0.90,0.95")
     args = ap.parse_args()
     raise SystemExit(run_selector_from_cli(args))
-
 
 if __name__ == "__main__":
     main()

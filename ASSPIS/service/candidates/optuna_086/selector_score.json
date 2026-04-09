@@ -1,0 +1,9 @@
+{
+  "score": 34.03190748265526,
+  "score_components": {
+    "wmape_weighted": 32.452626383300064,
+    "peak_std_11_12": 1.5792810993551922,
+    "dec_mean": 30.026534029588316
+  },
+  "tradeoff_lambda": 1.0
+}

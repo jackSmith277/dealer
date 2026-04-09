@@ -1,6 +1,6 @@
 {
-  "model_version": "bundle_20260314_133423",
-  "trained_at": "2026-03-14 13:34:26",
+  "model_version": "prod_q1_9_20260409_003024",
+  "trained_at": "2026-04-09 00:30:40",
   "feature_version": "point_features_v2",
   "feature_dim": 85,
   "feature_names": [
@@ -96,15 +96,15 @@
     "random_state": 42,
     "n_jobs": -1,
     "tree_method": "hist",
-    "learning_rate": 0.025042452714363762,
-    "n_estimators": 850,
-    "max_depth": 4,
-    "min_child_weight": 7,
-    "subsample": 0.7632630077595446,
-    "colsample_bytree": 0.741368835327228,
-    "reg_lambda": 0.04528676634287067,
-    "reg_alpha": 0.7421937229714413,
-    "gamma": 2.731854451932266
+    "learning_rate": 0.1353463149112721,
+    "n_estimators": 2900,
+    "max_depth": 3,
+    "min_child_weight": 4,
+    "subsample": 0.9841458289243261,
+    "colsample_bytree": 0.6446993323973644,
+    "reg_lambda": 6.822172388876352,
+    "reg_alpha": 0.06544371038930302,
+    "gamma": 1.8959391953521427
   },
   "rolling_summary": {
     "roll_mode": "expanding",
@@ -112,13 +112,13 @@
     "roll_min_train_periods": 22,
     "roll_gap": 0,
     "n_folds": 12,
-    "wmape_mean": 32.64838999020946,
-    "wmape_std": 4.8395331399281405,
-    "wmape_dec_mean": 28.77296603624987,
+    "wmape_mean": 32.69002239650367,
+    "wmape_std": 5.5180761844034185,
+    "wmape_dec_mean": 29.118994054199813,
     "wmape_dec_std": 0.0,
-    "wmape_peak_mean": 28.910488592740094,
-    "wmape_peak_std": 0.13752255649022516,
-    "optimal_trees": 850
+    "wmape_peak_mean": 29.149918614864596,
+    "wmape_peak_std": 0.03092456066478455,
+    "optimal_trees": 2900
   },
   "train_years_months": [
     {
@@ -326,7 +326,7 @@
     "PHASE32_LOSS_L1": true,
     "PHASE32_USE_WEIGHT": true,
     "PHASE34_DISABLE_EARLY_STOP": true,
-    "PHASE34_BASE_TREES": 650,
+    "PHASE34_BASE_TREES": 2900,
     "PHASE34_TREES_GRID": "450,650,900,1150",
     "OPTUNA_N_TRIALS": 300,
     "TRADE_OFF_WEIGHT": 1.0,
