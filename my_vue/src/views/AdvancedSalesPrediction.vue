@@ -34,7 +34,21 @@
                 <option value="3">短期 (1-3月)</option>
                 <option value="6">中期 (3-6月)</option>
                 <option value="12">远期 (6-12月)</option>
+                <option value="custom">自定义</option>
               </select>
+            </div>
+
+            <div class="form-group" v-if="baseline.horizons === 'custom'">
+              <label>自定义月份范围:</label>
+              <div class="custom-month-range">
+                <select id="start_month" name="start_month" v-model="baseline.custom_start_month">
+                  <option v-for="month in 12" :key="month" :value="month">{{ month }}月</option>
+                </select>
+                <span class="range-separator">至</span>
+                <select id="end_month" name="end_month" v-model="baseline.custom_end_month">
+                  <option v-for="month in 12" :key="month" :value="month">{{ month }}月</option>
+                </select>
+              </div>
             </div>
 
             <div class="form-group">
@@ -218,7 +232,9 @@ export default {
         base_year: 2024,
         base_month: 1,
         horizons: 3,
-        interval_strategy: 80
+        interval_strategy: 80,
+        custom_start_month: 1,
+        custom_end_month: 3
       },
       newScenario: {
         dimension: 'leads',
@@ -280,9 +296,20 @@ export default {
       }
     },
     loadMockData() {
-      const horizons = parseInt(this.baseline.horizons);
+      let horizons = 0;
+      let startHorizon = 1;
       
-      const generateBaselineData = (months, dealerCode) => {
+      if (this.baseline.horizons === 'custom') {
+        const startMonth = parseInt(this.baseline.custom_start_month) || 1;
+        const endMonth = parseInt(this.baseline.custom_end_month) || 3;
+        horizons = endMonth - startMonth + 1;
+        startHorizon = startMonth;
+      } else {
+        horizons = parseInt(this.baseline.horizons);
+        startHorizon = 1;
+      }
+      
+      const generateBaselineData = (months, dealerCode, startIdx) => {
         const data = [];
         const baseMonth = parseInt(this.baseline.base_month) || 1;
         const baseYear = 2024;
@@ -292,8 +319,8 @@ export default {
           baseSales = 180;
         }
         
-        for (let i = 1; i <= months; i++) {
-          let targetMonth = baseMonth + i;
+        for (let i = 0; i < months; i++) {
+          let targetMonth = baseMonth + startIdx + i;
           let targetYear = baseYear;
           if (targetMonth > 12) {
             targetMonth = targetMonth - 12;
@@ -348,7 +375,7 @@ export default {
       this.predictionResults = [
         {
           scenario: 'baseline',
-          monthly: generateBaselineData(horizons, this.baseline.dealer_code)
+          monthly: generateBaselineData(horizons, this.baseline.dealer_code, startHorizon)
         }
       ];
       this.processPredictionResults();
@@ -376,10 +403,28 @@ export default {
         this.errorMessage = '';
         this.loading = true;
 
-        const horizons = parseInt(this.baseline.horizons);
-        const horizonsArray = [];
-        for (let i = 1; i <= horizons; i++) {
-          horizonsArray.push(i);
+        let horizonsArray = [];
+        let horizons = 0;
+        
+        if (this.baseline.horizons === 'custom') {
+          const startMonth = parseInt(this.baseline.custom_start_month) || 1;
+          const endMonth = parseInt(this.baseline.custom_end_month) || 3;
+          
+          if (startMonth > endMonth) {
+            this.errorMessage = '起始月份不能大于结束月份';
+            this.loading = false;
+            return;
+          }
+          
+          horizons = endMonth - startMonth + 1;
+          for (let i = startMonth; i <= endMonth; i++) {
+            horizonsArray.push(i);
+          }
+        } else {
+          horizons = parseInt(this.baseline.horizons);
+          for (let i = 1; i <= horizons; i++) {
+            horizonsArray.push(i);
+          }
         }
 
         const scenarios = [];
@@ -433,7 +478,15 @@ export default {
       
       const baseYear = this.baseline.base_year || 2024;
       const baseMonth = this.baseline.base_month || 1;
-      const requestedHorizons = parseInt(this.baseline.horizons) || 12;
+      let requestedHorizons = 12;
+      
+      if (this.baseline.horizons === 'custom') {
+        const startMonth = parseInt(this.baseline.custom_start_month) || 1;
+        const endMonth = parseInt(this.baseline.custom_end_month) || 3;
+        requestedHorizons = endMonth - startMonth + 1;
+      } else {
+        requestedHorizons = parseInt(this.baseline.horizons) || 12;
+      }
       
       for (const [scenarioName, scenarioData] of Object.entries(response.scenarios)) {
         const monthly = [];
@@ -1181,6 +1234,32 @@ export default {
   color: #ff4d4f;
   font-size: 14px;
   margin-top: 12px;
+}
+
+.custom-month-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.custom-month-range select {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+}
+
+.custom-month-range select:focus {
+  outline: none;
+  border-color: #40a9ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.range-separator {
+  color: #666;
+  font-size: 14px;
 }
 
 /* 响应式设计 */
