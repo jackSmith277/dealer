@@ -1,11 +1,16 @@
 import os
+import sys
 import warnings
 from io import BytesIO
+from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from db_config import get_database_uri
 
 warnings.filterwarnings("ignore", message=".*columns*")
 
@@ -26,18 +31,13 @@ def get_db_app() -> Tuple[Optional[Flask], Optional[SQLAlchemy]]:
     return app_db, db_instance
 
 
-DB_CONFIG = {
-    'SQLALCHEMY_DATABASE_URI': 'mysql+pymysql://root:123456@localhost:3306/dealer_management',
-    'SQLALCHEMY_TRACK_MODIFICATIONS': False,
-}
-
-
 def _ensure_db_app():
     global app_db, db_instance
     if app_db is None or db_instance is None:
         from models import db as models_db
         app_db = Flask(__name__)
-        app_db.config.update(DB_CONFIG)
+        app_db.config['SQLALCHEMY_DATABASE_URI'] = get_database_uri()
+        app_db.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
         models_db.init_app(app_db)
         db_instance = models_db
     return app_db, db_instance

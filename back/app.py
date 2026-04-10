@@ -5,17 +5,21 @@ from passlib.hash import pbkdf2_sha256
 import jwt
 import datetime
 import os
+import sys
 import pandas as pd
+from pathlib import Path
 from dotenv import load_dotenv
 from flask_migrate import Migrate
 from wordcloud_service import wordcloud_generator
-# 加载环境变量
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from db_config import get_database_uri
+
 load_dotenv()
 
-# 创建Flask应用
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:123456@localhost:3306/dealer_management'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', get_database_uri())
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # 初始化CORS和数据库
