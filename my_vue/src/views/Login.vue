@@ -6,7 +6,7 @@
         <div class="form-group">
           <label for="role">角色</label>
           <select id="role" v-model="loginForm.role" class="role-select">
-            <option value="admin">管理员</option>
+            <option value="admin">总部经理</option>
             <option value="dealer">经销商</option>
           </select>
         </div>
@@ -132,7 +132,10 @@ export default {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #f5f5f5;
+  background-image: url('~@/../public/7747D6BE4519DEA21FCB78B34BF0E444.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .login-box {

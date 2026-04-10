@@ -300,7 +300,7 @@
               @change="toggleCardSelection('gsev')"
             />
           </div>
-          <h2 class="tith2">GSEV占比</h2>
+          <h2 class="tith2">新能源汽车销量（GSEV）</h2>
           <div class="chart-container" ref="gsevChart"></div>
         </div>
       </div>
@@ -1405,7 +1405,7 @@ export default {
           orient: 'horizontal',
           textStyle: { color: '#6b7280' },
         },
-        grid: { left: 30, right: 30, top: 60, bottom: 40 },
+        grid: { left: 50, right: 10, top: 60, bottom: 40 },
         xAxis: {
           type: 'category',
           data: this.filteredMonths,
