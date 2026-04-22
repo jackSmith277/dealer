@@ -108,6 +108,13 @@
             >
               <span class="sub-menu-title">高级销量预测</span>
             </li>
+            <li 
+              class="sub-menu-item"
+              :class="{ active: $route.path === '/dashboard/decision-support' }"
+              @click="$router.push('/dashboard/decision-support')"
+            >
+              <span class="sub-menu-title">决策支持</span>
+            </li>
           </ul>
         </li>
       </ul>
@@ -148,7 +155,7 @@ export default {
     const path = this.$route.path
     if (path.includes('/profile') || path.includes('/admin/dealers')) {
       this.expandedSubMenus = ['info']
-    } else if (path.includes('/prediction')) {
+    } else if (path.includes('/prediction') || path.includes('/decision-support')) {
       this.expandedSubMenus = ['analysis']
     } else if (path.includes('/dashboard') || path.includes('/radar') || path.includes('/history') || path.includes('/analysis-reports') || path.includes('/policy') || path.includes('/comment')) {
       this.expandedSubMenus = ['dashboard']
@@ -158,7 +165,7 @@ export default {
     '$route.path'(newPath) {
       if (newPath.includes('/profile') || newPath.includes('/admin/dealers')) {
         this.expandedSubMenus = ['info']
-      } else if (newPath.includes('/prediction')) {
+      } else if (newPath.includes('/prediction') || newPath.includes('/decision-support')) {
         this.expandedSubMenus = ['analysis']
       } else if (newPath.includes('/dashboard') || newPath.includes('/radar') || newPath.includes('/history') || newPath.includes('/analysis-reports') || newPath.includes('/policy') || newPath.includes('/comment')) {
         this.expandedSubMenus = ['dashboard']
