@@ -17,6 +17,7 @@ import DealerForm from '../views/DealerForm.vue'
 import DecisionSupport from '../views/DecisionSupport.vue'
 import DataSubmit from '../views/DataSubmit.vue'
 import TaskManagement from '../views/TaskManagement.vue'
+import TaskHistory from '../views/TaskHistory.vue'
 import LayoutContainer from '../components/layout/LayoutContainer.vue'
 
 Vue.use(VueRouter)
@@ -115,6 +116,12 @@ const routes = [
         meta: { requiresAuth: true }
       }
     ]
+  },
+  {
+    path: '/task-history',
+    name: 'taskHistory',
+    component: TaskHistory,
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/admin/dealers/add',

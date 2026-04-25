@@ -124,14 +124,19 @@
             >
               <span class="sub-menu-title">高级销量预测</span>
             </li>
-            <li 
-              class="sub-menu-item"
-              :class="{ active: $route.path === '/dashboard/decision-support' }"
-              @click="$router.push('/dashboard/decision-support')"
-            >
-              <span class="sub-menu-title">决策支持</span>
-            </li>
           </ul>
+        </li>
+        
+        <!-- 决策支持 -->
+        <li class="menu-item" v-if="user.role === 'admin'">
+          <div 
+            class="menu-item-header" 
+            :class="{ 'menu-active': $route.path === '/dashboard/decision-support' || $route.path === '/task-history' }"
+            @click="$router.push('/dashboard/decision-support')"
+          >
+            <span class="menu-icon">🎯</span>
+            <span class="menu-title">决策支持</span>
+          </div>
         </li>
       </ul>
     </div>
@@ -171,11 +176,11 @@ export default {
     const path = this.$route.path
     if (path.includes('/profile') || path.includes('/admin/dealers')) {
       this.expandedSubMenus = ['info']
-    } else if (path.includes('/prediction') || path.includes('/advanced-prediction') || path.includes('/decision-support')) {
+    } else if (path.includes('/prediction') || path.includes('/advanced-prediction')) {
       this.expandedSubMenus = ['analysis']
     } else if (path.includes('/radar') || path.includes('/history') || path.includes('/analysis-reports') || path.includes('/policy') || path.includes('/comment')) {
       this.expandedSubMenus = ['dashboard']
-    } else if (path === '/dashboard/index' || path === '/dashboard') {
+    } else if (path === '/dashboard/index' || path === '/dashboard' || path.includes('/decision-support') || path.includes('/task-history')) {
       this.expandedSubMenus = []
     }
   },
@@ -183,11 +188,11 @@ export default {
     '$route.path'(newPath) {
       if (newPath.includes('/profile') || newPath.includes('/admin/dealers')) {
         this.expandedSubMenus = ['info']
-      } else if (newPath.includes('/prediction') || newPath.includes('/advanced-prediction') || newPath.includes('/decision-support')) {
+      } else if (newPath.includes('/prediction') || newPath.includes('/advanced-prediction')) {
         this.expandedSubMenus = ['analysis']
       } else if (newPath.includes('/radar') || newPath.includes('/history') || newPath.includes('/analysis-reports') || newPath.includes('/policy') || newPath.includes('/comment')) {
         this.expandedSubMenus = ['dashboard']
-      } else if (newPath === '/dashboard/index' || newPath === '/dashboard') {
+      } else if (newPath === '/dashboard/index' || newPath === '/dashboard' || newPath.includes('/decision-support') || newPath.includes('/task-history')) {
         this.expandedSubMenus = []
       }
     }

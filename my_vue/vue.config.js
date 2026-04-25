@@ -5,7 +5,7 @@ module.exports = defineConfig({
   devServer: {
     proxy: {
       '/api': {
-        target: 'http://asspisproject.asia',
+        target: 'http://localhost:5002',
         changeOrigin: true
       }
     },

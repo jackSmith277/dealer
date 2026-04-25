@@ -1,5 +1,17 @@
 <template>
   <div class="decision-support-container">
+    <div class="page-header">
+      <h1 class="page-title">决策支持</h1>
+      <div class="header-controls" v-if="isAdmin">
+        <button class="btn btn-gray" @click="$router.push('/dashboard/index')">
+          <i class="fas fa-arrow-left"></i> 返回
+        </button>
+        <button class="history-btn" @click="$router.push('/task-history')">
+          <i class="fas fa-history"></i> 历史执行记录
+        </button>
+      </div>
+    </div>
+    
     <div class="filter-bar">
       <div class="filter-row">
         <div class="filter-item">
@@ -401,8 +413,25 @@ export default {
       }
       
       return this.dealerList.filter(dealer => {
-        if (this.filters.province && dealer['省份'] !== this.filters.province) return false
-        if (this.filters.region && !this.filteredProvinces.includes(dealer['省份'])) return false
+        const dealerProvince = dealer['省份'] || ''
+        
+        if (this.filters.province) {
+          const filterProvince = this.filters.province.replace(/省|市|自治区/g, '')
+          const cleanDealerProvince = dealerProvince.replace(/省|市|自治区/g, '')
+          if (!cleanDealerProvince.includes(filterProvince) && !filterProvince.includes(cleanDealerProvince)) {
+            return false
+          }
+        }
+        
+        if (this.filters.region) {
+          const matchedProvinces = this.filteredProvinces.map(p => p.replace(/省|市|自治区/g, ''))
+          const cleanDealerProvince = dealerProvince.replace(/省|市|自治区/g, '')
+          const isMatch = matchedProvinces.some(p => 
+            cleanDealerProvince.includes(p) || p.includes(cleanDealerProvince)
+          )
+          if (!isMatch) return false
+        }
+        
         return true
       })
     },
@@ -647,11 +676,18 @@ export default {
       
       return this.filteredMonths.map((m) => {
         let total = 0
+        let validCount = 0
         dealers.forEach(dealer => {
           const value = dealer[metricKeys[key](m)]
-          total += this.toNumber(value)
+          if (value !== null && value !== undefined && value !== '') {
+            const num = parseFloat(value)
+            if (!isNaN(num)) {
+              total += num
+              validCount++
+            }
+          }
         })
-        return Math.round(total / dealers.length)
+        return validCount > 0 ? Math.round(total / validCount) : 0
       })
     },
     
@@ -1004,8 +1040,10 @@ export default {
       let policies = this.policyData || []
       
       if (this.filters.province) {
+        const cleanProvince = this.filters.province.replace(/省|市|自治区/g, '')
         policies = policies.filter(policy => {
-          return policy['省/直辖市/自治区'] === this.filters.province
+          const policyProvince = (policy['省/直辖市/自治区'] || '').replace(/省|市|自治区/g, '')
+          return policyProvince === cleanProvince || policyProvince.includes(cleanProvince) || cleanProvince.includes(policyProvince)
         })
       } else if (this.filters.region) {
         policies = policies.filter(policy => {
@@ -1681,13 +1719,17 @@ export default {
     },
 
     async loadFunnelDiagnosis() {
+      console.log('[前端] loadFunnelDiagnosis 被调用, isAdmin:', this.isAdmin)
       if (!this.isAdmin) return
+      console.log('[前端] 调用漏斗诊断接口, filters:', JSON.stringify(this.filters))
       try {
         const response = await axios.get('/api/decision/funnel-diagnosis', {
           params: this.filters
         })
+        console.log('[前端] 漏斗诊断响应:', response.data)
         if (response.data.success) {
           this.diagnosisAlerts = response.data.alerts || []
+          console.log('[前端] 诊断告警数量:', this.diagnosisAlerts.length)
         }
       } catch (error) {
         console.error('加载漏斗诊断失败:', error)
@@ -1837,6 +1879,7 @@ export default {
       this.updateNetworkGraph()
       this.loadFunnelDiagnosis()
       this.loadROIAnalysis()
+      this.loadTableData()
     },
     'filters.province'() {
       this.calculateMetrics()
@@ -1844,6 +1887,7 @@ export default {
       this.updateNetworkGraph()
       this.loadFunnelDiagnosis()
       this.loadROIAnalysis()
+      this.loadTableData()
     },
     'filters.region'() {
       this.calculateMetrics()
@@ -1851,18 +1895,21 @@ export default {
       this.updateNetworkGraph()
       this.loadFunnelDiagnosis()
       this.loadROIAnalysis()
+      this.loadTableData()
     },
     'filters.startDate'() {
       this.calculateMetrics()
       this.updateTrendChart()
       this.loadFunnelDiagnosis()
       this.loadROIAnalysis()
+      this.loadTableData()
     },
     'filters.endDate'() {
       this.calculateMetrics()
       this.updateTrendChart()
       this.loadFunnelDiagnosis()
       this.loadROIAnalysis()
+      this.loadTableData()
     }
   },
   
@@ -2707,5 +2754,65 @@ export default {
 
 .btn-benchmark-action:hover {
   background: #f6ffed;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.header-controls {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-gray {
+  background: #f5f5f5;
+  color: #666;
+  border: 1px solid #d9d9d9;
+}
+
+.btn-gray:hover {
+  background: #e8e8e8;
+}
+
+.history-btn {
+  padding: 8px 16px;
+  background: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s;
+}
+
+.history-btn:hover {
+  background: #40a9ff;
 }
 </style>

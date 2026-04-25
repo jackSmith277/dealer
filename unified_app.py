@@ -1688,6 +1688,114 @@ def implement_advice():
         return jsonify({'success': False, 'message': f'执行失败: {str(e)}'}), 500
 
 
+@app.route('/api/decision/task-history', methods=['GET'])
+def get_task_history():
+    try:
+        region = request.args.get('region', '')
+        province = request.args.get('province', '')
+        dealer_code = request.args.get('dealerCode', '')
+        start_date = request.args.get('startDate', '')
+        end_date = request.args.get('endDate', '')
+        status = request.args.get('status', '')
+        page = int(request.args.get('page', 1))
+        page_size = int(request.args.get('pageSize', 20))
+        
+        dealer_info_map = {}
+        try:
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province FROM v_dealer_info"))
+            for row in dealer_info_result:
+                dealer_info_map[row[0]] = row[1]
+        except:
+            pass
+
+        region_province_map = {
+            '华东': ['上海', '江苏', '浙江', '安徽', '福建', '江西', '山东'],
+            '华南': ['广东', '广西', '海南'],
+            '华北': ['北京', '天津', '河北', '山西', '内蒙古'],
+            '华中': ['河南', '湖北', '湖南'],
+            '西南': ['重庆', '四川', '贵州', '云南', '西藏'],
+            '西北': ['陕西', '甘肃', '青海', '宁夏', '新疆'],
+            '东北': ['辽宁', '吉林', '黑龙江']
+        }
+        
+        query = db.session.query(DealerTask, DecisionTask).join(DecisionTask, DealerTask.task_id == DecisionTask.id)
+        
+        if dealer_code:
+            query = query.filter(DealerTask.dealer_code == dealer_code)
+        elif province:
+            clean_prov = province.replace('省', '').replace('市', '').replace('自治区', '')
+            matching_dealers = [dc for dc, prov in dealer_info_map.items() if prov and prov.startswith(clean_prov)]
+            if matching_dealers:
+                query = query.filter(DealerTask.dealer_code.in_(matching_dealers))
+        elif region:
+            provs = region_province_map.get(region, [])
+            matching_dealers = [dc for dc, prov in dealer_info_map.items() if prov and any(prov.startswith(p) for p in provs)]
+            if matching_dealers:
+                query = query.filter(DealerTask.dealer_code.in_(matching_dealers))
+        
+        if status:
+            query = query.filter(DealerTask.status == status)
+        if start_date:
+            query = query.filter(DecisionTask.created_at >= start_date)
+        if end_date:
+            query = query.filter(DecisionTask.created_at <= end_date + ' 23:59:59')
+        
+        total_count = query.count()
+        
+        results = query.order_by(DecisionTask.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+        
+        tasks = []
+        for dealer_task, decision_task in results:
+            dealer_province = dealer_info_map.get(dealer_task.dealer_code, '')
+            tasks.append({
+                'id': dealer_task.id,
+                'taskId': decision_task.id,
+                'title': decision_task.title,
+                'description': decision_task.description,
+                'icon': decision_task.icon or '📋',
+                'dealerCode': dealer_task.dealer_code,
+                'dealerProvince': dealer_province,
+                'status': dealer_task.status,
+                'progress': dealer_task.progress or 0,
+                'feedback': dealer_task.feedback or '',
+                'createdAt': decision_task.created_at.strftime('%Y-%m-%d %H:%M'),
+                'filters': decision_task.filters_json
+            })
+        
+        status_stats = db.session.query(
+            DealerTask.status,
+            db.func.count(DealerTask.id)
+        ).group_by(DealerTask.status).all()
+        
+        stats = {
+            'total': total_count,
+            'pending': 0,
+            'in_progress': 0,
+            'completed': 0
+        }
+        for s, count in status_stats:
+            if s == 'pending':
+                stats['pending'] = count
+            elif s == 'in_progress':
+                stats['in_progress'] = count
+            elif s == 'completed':
+                stats['completed'] = count
+        
+        return jsonify({
+            'success': True,
+            'tasks': tasks,
+            'total': total_count,
+            'stats': stats,
+            'page': page,
+            'pageSize': page_size
+        }), 200
+        
+    except Exception as e:
+        print(f'获取任务历史失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
     try:
@@ -1794,6 +1902,9 @@ def get_funnel_diagnosis():
     try:
         region = request.args.get('region', '')
         province = request.args.get('province', '')
+        dealer_code = request.args.get('dealerCode', '')
+        
+        print(f'[漏斗诊断] 接收参数 - region: {region}, province: {province}, dealerCode: {dealer_code}')
         
         dealer_info_map = {}
         try:
@@ -1813,20 +1924,50 @@ def get_funnel_diagnosis():
             '东北': ['辽宁', '吉林', '黑龙江']
         }
 
+        all_records = MonthlyMetrics11d.query.filter(MonthlyMetrics11d.stat_year == 2024).all()
+        
+        global_metrics = {
+            'flow': 0, 'leads': 0, 'potential': 0, 'test_drives': 0, 'sales': 0,
+            'defeat_rate': 0, 'success_resp': 0, 'defeat_resp': 0
+        }
+        global_count = 0
+        
+        for r in all_records:
+            global_metrics['flow'] += float(r.customer_flow or 0)
+            global_metrics['leads'] += float(r.leads or 0)
+            global_metrics['potential'] += float(r.potential_customers or 0)
+            global_metrics['test_drives'] += float(r.test_drives or 0)
+            global_metrics['sales'] += float(r.sales or 0)
+            global_metrics['defeat_rate'] += float(r.defeat_rate or 0)
+            global_metrics['success_resp'] += float(r.success_response_time or 0)
+            global_metrics['defeat_resp'] += float(r.defeat_response_time or 0)
+            global_count += 1
+        
+        global_avg_test_to_sales = global_metrics['sales'] / global_metrics['test_drives'] if global_metrics['test_drives'] > 0 else 0.3
+        global_avg_leads_to_potential = global_metrics['potential'] / global_metrics['leads'] if global_metrics['leads'] > 0 else 0.5
+        global_avg_defeat_rate = global_metrics['defeat_rate'] / global_count if global_count > 0 else 0
+        global_avg_defeat_resp = global_metrics['defeat_resp'] / global_count if global_count > 0 else 0
+
         query = MonthlyMetrics11d.query.filter(MonthlyMetrics11d.stat_year == 2024)
         
-        if province:
+        if dealer_code:
+            print(f'[漏斗诊断] 按经销商筛选: {dealer_code}')
+            query = query.filter(MonthlyMetrics11d.dealer_code == dealer_code)
+        elif province:
             clean_prov = province.replace('省', '').replace('市', '').replace('自治区', '')
             matching_dealers = [dc for dc, prov in dealer_info_map.items() if prov and prov.startswith(clean_prov)]
+            print(f'[漏斗诊断] 按省份筛选: {province}, 匹配经销商数: {len(matching_dealers)}')
             if matching_dealers:
                 query = query.filter(MonthlyMetrics11d.dealer_code.in_(matching_dealers))
         elif region:
             provs = region_province_map.get(region, [])
             matching_dealers = [dc for dc, prov in dealer_info_map.items() if prov and any(prov.startswith(p) for p in provs)]
+            print(f'[漏斗诊断] 按区域筛选: {region}, 匹配经销商数: {len(matching_dealers)}')
             if matching_dealers:
                 query = query.filter(MonthlyMetrics11d.dealer_code.in_(matching_dealers))
 
         records = query.all()
+        print(f'[漏斗诊断] 查询到 {len(records)} 条记录')
         
         dealer_metrics = {}
         total_metrics = {
@@ -1864,13 +2005,51 @@ def get_funnel_diagnosis():
             total_metrics['defeat_resp'] += float(r.defeat_response_time or 0)
             total_count += 1
             
-        avg_flow_to_leads = total_metrics['leads'] / total_metrics['flow'] if total_metrics['flow'] > 0 else 0
-        avg_leads_to_potential = total_metrics['potential'] / total_metrics['leads'] if total_metrics['leads'] > 0 else 0
-        avg_potential_to_test = total_metrics['test_drives'] / total_metrics['potential'] if total_metrics['potential'] > 0 else 0
-        avg_test_to_sales = total_metrics['sales'] / total_metrics['test_drives'] if total_metrics['test_drives'] > 0 else 0
+        avg_test_to_sales = total_metrics['sales'] / total_metrics['test_drives'] if total_metrics['test_drives'] > 0 else global_avg_test_to_sales
+        avg_leads_to_potential = total_metrics['potential'] / total_metrics['leads'] if total_metrics['leads'] > 0 else global_avg_leads_to_potential
+        avg_defeat_rate = total_metrics['defeat_rate'] / total_count if total_count > 0 else global_avg_defeat_rate
+        avg_defeat_resp = total_metrics['defeat_resp'] / total_count if total_count > 0 else global_avg_defeat_resp
         
-        avg_defeat_rate = total_metrics['defeat_rate'] / total_count if total_count > 0 else 0
-        avg_defeat_resp = total_metrics['defeat_resp'] / total_count if total_count > 0 else 0
+        if dealer_code and len(dealer_metrics) == 1:
+            target_dealer_province = dealer_info_map.get(dealer_code, '')
+            if target_dealer_province:
+                clean_prov = target_dealer_province.replace('省', '').replace('市', '').replace('自治区', '')
+                province_dealers = [dc for dc, prov in dealer_info_map.items() if prov and prov.startswith(clean_prov)]
+                if province_dealers:
+                    province_records = [r for r in all_records if r.dealer_code in province_dealers]
+                    province_metrics = {
+                        'flow': 0, 'leads': 0, 'potential': 0, 'test_drives': 0, 'sales': 0,
+                        'defeat_rate': 0, 'success_resp': 0, 'defeat_resp': 0
+                    }
+                    province_count = 0
+                    for r in province_records:
+                        province_metrics['flow'] += float(r.customer_flow or 0)
+                        province_metrics['leads'] += float(r.leads or 0)
+                        province_metrics['potential'] += float(r.potential_customers or 0)
+                        province_metrics['test_drives'] += float(r.test_drives or 0)
+                        province_metrics['sales'] += float(r.sales or 0)
+                        province_metrics['defeat_rate'] += float(r.defeat_rate or 0)
+                        province_metrics['success_resp'] += float(r.success_response_time or 0)
+                        province_metrics['defeat_resp'] += float(r.defeat_response_time or 0)
+                        province_count += 1
+                    
+                    avg_test_to_sales = province_metrics['sales'] / province_metrics['test_drives'] if province_metrics['test_drives'] > 0 else global_avg_test_to_sales
+                    avg_leads_to_potential = province_metrics['potential'] / province_metrics['leads'] if province_metrics['leads'] > 0 else global_avg_leads_to_potential
+                    avg_defeat_rate = province_metrics['defeat_rate'] / province_count if province_count > 0 else global_avg_defeat_rate
+                    avg_defeat_resp = province_metrics['defeat_resp'] / province_count if province_count > 0 else global_avg_defeat_resp
+                    print(f'[漏斗诊断] 单经销商模式，使用省份({target_dealer_province})平均值: 成交率={avg_test_to_sales:.2%}, 线索转化={avg_leads_to_potential:.2%}')
+                else:
+                    avg_test_to_sales = global_avg_test_to_sales
+                    avg_leads_to_potential = global_avg_leads_to_potential
+                    avg_defeat_rate = global_avg_defeat_rate
+                    avg_defeat_resp = global_avg_defeat_resp
+                    print(f'[漏斗诊断] 单经销商模式，省份无数据，使用全局平均值')
+            else:
+                avg_test_to_sales = global_avg_test_to_sales
+                avg_leads_to_potential = global_avg_leads_to_potential
+                avg_defeat_rate = global_avg_defeat_rate
+                avg_defeat_resp = global_avg_defeat_resp
+                print(f'[漏斗诊断] 单经销商模式，无省份信息，使用全局平均值')
         
         alerts = []
         for dc, m in dealer_metrics.items():
