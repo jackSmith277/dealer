@@ -989,7 +989,6 @@
 
 <script>
 import * as echarts from 'echarts'
-import 'echarts-gl'
 import axios from 'axios'
 import * as XLSX from 'xlsx'
 

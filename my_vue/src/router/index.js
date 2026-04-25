@@ -14,6 +14,9 @@ import Policy from '../views/Policy.vue'
 import Comment from '../views/Comment.vue'
 import AdminDealers from '../views/AdminDealers.vue'
 import DealerForm from '../views/DealerForm.vue'
+import DecisionSupport from '../views/DecisionSupport.vue'
+import DataSubmit from '../views/DataSubmit.vue'
+import TaskManagement from '../views/TaskManagement.vue'
 import LayoutContainer from '../components/layout/LayoutContainer.vue'
 
 Vue.use(VueRouter)
@@ -92,6 +95,24 @@ const routes = [
         name: 'adminDealers',
         component: AdminDealers,
         meta: { requiresAuth: true, requiresAdmin: true }
+      },
+      {
+        path: 'decision-support',
+        name: 'decisionSupport',
+        component: DecisionSupport,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'data-submit',
+        name: 'dataSubmit',
+        component: DataSubmit,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'task-management',
+        name: 'taskManagement',
+        component: TaskManagement,
+        meta: { requiresAuth: true }
       }
     ]
   },

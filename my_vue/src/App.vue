@@ -2,6 +2,12 @@
   <div id="app">
     <router-view/>
     <AIAssistant />
+    <footer class="beian-footer">
+      <a href="https://beian.mps.gov.cn/#/query/webSearch?code=34072202000304" rel="noreferrer" target="_blank" class="beian-link">
+        <img src="/备案图标.png" alt="公安备案" class="beian-icon" />
+        皖公网安备34072202000304号
+      </a>
+    </footer>
   </div>
 </template>
 
@@ -52,5 +58,36 @@ html, body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+.beian-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid #e8e8e8;
+  padding: 8px 0;
+  text-align: center;
+  z-index: 100;
+}
+
+.beian-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #666;
+  text-decoration: none;
+  font-size: 12px;
+  transition: color 0.3s;
+}
+
+.beian-link:hover {
+  color: #3498db;
+}
+
+.beian-icon {
+  width: 16px;
+  height: 16px;
 }
 </style>

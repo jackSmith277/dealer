@@ -31,6 +31,20 @@
         <div class="form-group">
           <button type="submit" class="login-btn">登录</button>
         </div>
+        <div class="account-hints">
+          <div class="hint-item">
+            <span class="hint-label">管理员账号：</span>
+            <span class="hint-value">admin</span>
+            <span class="hint-label">，密码：</span>
+            <span class="hint-value">admin123</span>
+          </div>
+          <div class="hint-item">
+            <span class="hint-label">其中一个经销商账号：</span>
+            <span class="hint-value">9210006</span>
+            <span class="hint-label">，密码：</span>
+            <span class="hint-value">123456</span>
+          </div>
+        </div>
         <div class="register-link">
           <span>还没有账号？</span>
           <router-link to="/register">立即注册</router-link>
@@ -57,26 +71,6 @@ export default {
       },
       error: '',
       showPassword: false
-    }
-  },
-  watch: {
-    'loginForm.role'(newRole) {
-      if (newRole === 'admin') {
-        this.loginForm.username = 'admin'
-        this.loginForm.password = 'admin123'
-      } else {
-        this.loginForm.username = '9210006'
-        this.loginForm.password = 'dealer123'
-      }
-    }
-  },
-  created() {
-    if (this.loginForm.role === 'admin') {
-      this.loginForm.username = 'admin'
-      this.loginForm.password = 'admin123'
-    } else {
-      this.loginForm.username = '9210006'
-      this.loginForm.password = 'dealer123'
     }
   },
   methods: {
@@ -129,9 +123,10 @@ export default {
 <style scoped>
 .login-container {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
   height: 100vh;
+  padding-right: 10%;
   background-image: url('~@/../public/7747D6BE4519DEA21FCB78B34BF0E444.png');
   background-size: cover;
   background-position: center;
@@ -237,6 +232,33 @@ export default {
 
 .register-link a:hover {
   text-decoration: underline;
+}
+
+.account-hints {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f0f9ff;
+  border: 1px solid #b3d8ff;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.hint-item {
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.hint-item:last-child {
+  margin-bottom: 0;
+}
+
+.hint-label {
+  color: #606266;
+}
+
+.hint-value {
+  color: #409EFF;
+  font-weight: 500;
 }
 
 .error-message {

@@ -128,10 +128,14 @@ export default {
 <style scoped>
 .register-container {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
   height: 100vh;
-  background-color: #f5f5f5;
+  padding-right: 10%;
+  background-image: url('~@/../public/7747D6BE4519DEA21FCB78B34BF0E444.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .register-box {

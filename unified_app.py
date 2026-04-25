@@ -255,6 +255,31 @@ class ConsumptionPolicy(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class DecisionTask(db.Model):
+    __tablename__ = 'decision_task'
+    __table_args__ = {'extend_existing': True}
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    icon = db.Column(db.String(50), nullable=True)
+    filters_json = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class DealerTask(db.Model):
+    __tablename__ = 'dealer_task'
+    __table_args__ = {'extend_existing': True}
+    
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    task_id = db.Column(db.Integer, nullable=False)
+    dealer_code = db.Column(db.String(50), nullable=False)
+    status = db.Column(db.String(50), default='pending')
+    progress = db.Column(db.Integer, default=0)
+    feedback = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 with app.app_context():
     db.create_all()
     admin = User.query.filter_by(username='admin').first()
@@ -1502,16 +1527,34 @@ def get_dealers_list():
         
         for row in dealers_query:
             dealer_code = row[2]
+            region_str = row[4] or ''
             info = dealer_info_map.get(dealer_code, {'province': '', 'city': ''})
+            province = info['province']
+            city = info['city']
+            
+            if not province and region_str:
+                if '/' in region_str:
+                    parts = region_str.split('/')
+                    province = parts[0] if len(parts) > 0 else ''
+                    city = parts[1] if len(parts) > 1 else ''
+                else:
+                    import re
+                    match = re.match(r'^(.*?[省自治区])(.+)$', region_str)
+                    if match:
+                        province = match.group(1)
+                        city = match.group(2)
+                    else:
+                        province = region_str
+                        
             dealers.append({
                 'id': row[0],
                 'user_id': row[1],
                 'dealer_code': dealer_code,
                 'dealer_name': row[2],
                 'level': row[3] or '',
-                'region': row[4] or '',
-                'province': info['province'],
-                'city': info['city'],
+                'region': region_str,
+                'province': province,
+                'city': city,
                 'contact_name': row[5] or '',
                 'contact_phone': row[6] or '',
                 'address': row[7] or '',
@@ -1597,6 +1640,450 @@ def get_prediction_history_detail(id):
     except Exception as e:
         print(f'获取历史记录详情失败: {str(e)}')
         return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+
+@app.route('/api/decision/implement-advice', methods=['POST'])
+def implement_advice():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': '请求数据不能为空'}), 400
+            
+        advice = data.get('advice', {})
+        dealer_codes = data.get('dealerCodes', [])
+        filters = data.get('filters', {})
+        
+        if not advice or not dealer_codes:
+            return jsonify({'success': False, 'message': '参数缺失'}), 400
+            
+        decision_task = DecisionTask(
+            title=advice.get('title', ''),
+            description=advice.get('description', ''),
+            icon=advice.get('icon', ''),
+            filters_json=json.dumps(filters, ensure_ascii=False)
+        )
+        db.session.add(decision_task)
+        db.session.flush()
+        
+        for code in dealer_codes:
+            dealer_task = DealerTask(
+                task_id=decision_task.id,
+                dealer_code=code,
+                status='pending'
+            )
+            db.session.add(dealer_task)
+            
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '决策建议执行成功',
+            'task_id': decision_task.id
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f'执行决策建议失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'执行失败: {str(e)}'}), 500
+
+
+@app.route('/api/tasks', methods=['GET'])
+def get_tasks():
+    try:
+        dealer_code = request.args.get('dealerCode')
+        status = request.args.get('status')
+        start_date = request.args.get('startDate')
+        end_date = request.args.get('endDate')
+        
+        query = db.session.query(DealerTask, DecisionTask).join(DecisionTask, DealerTask.task_id == DecisionTask.id)
+        
+        if dealer_code:
+            query = query.filter(DealerTask.dealer_code == dealer_code)
+        if status:
+            query = query.filter(DealerTask.status == status)
+        if start_date:
+            query = query.filter(DealerTask.created_at >= start_date)
+        if end_date:
+            query = query.filter(DealerTask.created_at <= end_date + ' 23:59:59')
+            
+        results = query.order_by(DealerTask.created_at.desc()).all()
+        
+        tasks = []
+        for dealer_task, decision_task in results:
+            tasks.append({
+                'id': dealer_task.id,
+                'title': decision_task.title,
+                'description': decision_task.description,
+                'type': 'default',
+                'status': dealer_task.status,
+                'progress': dealer_task.progress or 0,
+                'createdAt': dealer_task.created_at.strftime('%Y-%m-%d %H:%M'),
+                'deadline': '无限期',
+                'publisher': '管理员',
+                'feedback': dealer_task.feedback or ''
+            })
+            
+        return jsonify({'success': True, 'tasks': tasks}), 200
+    except Exception as e:
+        print(f'获取任务列表失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+
+@app.route('/api/tasks/<int:task_id>/start', methods=['POST'])
+def start_task(task_id):
+    try:
+        task = DealerTask.query.get(task_id)
+        if not task:
+            return jsonify({'success': False, 'message': '任务不存在'}), 404
+            
+        task.status = 'in_progress'
+        task.progress = 0
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '任务已开始'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f'开始任务失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'操作失败: {str(e)}'}), 500
+
+
+@app.route('/api/tasks/<int:task_id>/update', methods=['POST'])
+def update_task(task_id):
+    try:
+        data = request.get_json()
+        task = DealerTask.query.get(task_id)
+        if not task:
+            return jsonify({'success': False, 'message': '任务不存在'}), 404
+            
+        if 'progress' in data:
+            task.progress = data['progress']
+        if 'feedback' in data:
+            task.feedback = data['feedback']
+            
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '任务更新成功'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f'更新任务失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'操作失败: {str(e)}'}), 500
+
+
+@app.route('/api/tasks/<int:task_id>/complete', methods=['POST'])
+def complete_task(task_id):
+    try:
+        task = DealerTask.query.get(task_id)
+        if not task:
+            return jsonify({'success': False, 'message': '任务不存在'}), 404
+            
+        task.status = 'completed'
+        task.progress = 100
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '任务已完成'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f'完成任务失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'操作失败: {str(e)}'}), 500
+
+
+@app.route('/api/decision/funnel-diagnosis', methods=['GET'])
+def get_funnel_diagnosis():
+    try:
+        region = request.args.get('region', '')
+        province = request.args.get('province', '')
+        
+        dealer_info_map = {}
+        try:
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province FROM v_dealer_info"))
+            for row in dealer_info_result:
+                dealer_info_map[row[0]] = row[1]
+        except:
+            pass
+
+        region_province_map = {
+            '华东': ['上海', '江苏', '浙江', '安徽', '福建', '江西', '山东'],
+            '华南': ['广东', '广西', '海南'],
+            '华北': ['北京', '天津', '河北', '山西', '内蒙古'],
+            '华中': ['河南', '湖北', '湖南'],
+            '西南': ['重庆', '四川', '贵州', '云南', '西藏'],
+            '西北': ['陕西', '甘肃', '青海', '宁夏', '新疆'],
+            '东北': ['辽宁', '吉林', '黑龙江']
+        }
+
+        query = MonthlyMetrics11d.query.filter(MonthlyMetrics11d.stat_year == 2024)
+        
+        if province:
+            clean_prov = province.replace('省', '').replace('市', '').replace('自治区', '')
+            matching_dealers = [dc for dc, prov in dealer_info_map.items() if prov and prov.startswith(clean_prov)]
+            if matching_dealers:
+                query = query.filter(MonthlyMetrics11d.dealer_code.in_(matching_dealers))
+        elif region:
+            provs = region_province_map.get(region, [])
+            matching_dealers = [dc for dc, prov in dealer_info_map.items() if prov and any(prov.startswith(p) for p in provs)]
+            if matching_dealers:
+                query = query.filter(MonthlyMetrics11d.dealer_code.in_(matching_dealers))
+
+        records = query.all()
+        
+        dealer_metrics = {}
+        total_metrics = {
+            'flow': 0, 'leads': 0, 'potential': 0, 'test_drives': 0, 'sales': 0,
+            'defeat_rate': 0, 'success_resp': 0, 'defeat_resp': 0
+        }
+        total_count = 0
+        
+        for r in records:
+            dc = r.dealer_code
+            if dc not in dealer_metrics:
+                dealer_metrics[dc] = {
+                    'flow': 0, 'leads': 0, 'potential': 0, 'test_drives': 0, 'sales': 0,
+                    'defeat_rate': 0, 'success_resp': 0, 'defeat_resp': 0, 'count': 0
+                }
+            
+            dm = dealer_metrics[dc]
+            dm['flow'] += float(r.customer_flow or 0)
+            dm['leads'] += float(r.leads or 0)
+            dm['potential'] += float(r.potential_customers or 0)
+            dm['test_drives'] += float(r.test_drives or 0)
+            dm['sales'] += float(r.sales or 0)
+            dm['defeat_rate'] += float(r.defeat_rate or 0)
+            dm['success_resp'] += float(r.success_response_time or 0)
+            dm['defeat_resp'] += float(r.defeat_response_time or 0)
+            dm['count'] += 1
+            
+            total_metrics['flow'] += float(r.customer_flow or 0)
+            total_metrics['leads'] += float(r.leads or 0)
+            total_metrics['potential'] += float(r.potential_customers or 0)
+            total_metrics['test_drives'] += float(r.test_drives or 0)
+            total_metrics['sales'] += float(r.sales or 0)
+            total_metrics['defeat_rate'] += float(r.defeat_rate or 0)
+            total_metrics['success_resp'] += float(r.success_response_time or 0)
+            total_metrics['defeat_resp'] += float(r.defeat_response_time or 0)
+            total_count += 1
+            
+        avg_flow_to_leads = total_metrics['leads'] / total_metrics['flow'] if total_metrics['flow'] > 0 else 0
+        avg_leads_to_potential = total_metrics['potential'] / total_metrics['leads'] if total_metrics['leads'] > 0 else 0
+        avg_potential_to_test = total_metrics['test_drives'] / total_metrics['potential'] if total_metrics['potential'] > 0 else 0
+        avg_test_to_sales = total_metrics['sales'] / total_metrics['test_drives'] if total_metrics['test_drives'] > 0 else 0
+        
+        avg_defeat_rate = total_metrics['defeat_rate'] / total_count if total_count > 0 else 0
+        avg_defeat_resp = total_metrics['defeat_resp'] / total_count if total_count > 0 else 0
+        
+        alerts = []
+        for dc, m in dealer_metrics.items():
+            # 1. 试驾成交率诊断
+            if m['test_drives'] > 5:
+                rate = m['sales'] / m['test_drives']
+                if rate < avg_test_to_sales * 0.8:
+                    alerts.append({
+                        'dealerCode': dc,
+                        'level': 'error',
+                        'stage': '试驾成交率',
+                        'value': f"{round(rate*100, 1)}%",
+                        'avg': f"{round(avg_test_to_sales*100, 1)}%",
+                        'title': f"【成交率告警】经销商 {dc} 试驾转成交能力极弱",
+                        'description': f"该店成交率为 {round(rate*100, 1)}%，远低于区域均值 {round(avg_test_to_sales*100, 1)}%。建议下发任务，加强销售收单话术培训。",
+                        'icon': '🚫'
+                    })
+            
+            # 2. 线索转化率诊断
+            if m['leads'] > 10:
+                rate = m['potential'] / m['leads']
+                if rate < avg_leads_to_potential * 0.8:
+                    alerts.append({
+                        'dealerCode': dc,
+                        'level': 'warning',
+                        'stage': '线索转化率',
+                        'value': f"{round(rate*100, 1)}%",
+                        'avg': f"{round(avg_leads_to_potential*100, 1)}%",
+                        'title': f"【转化率预警】经销商 {dc} 线索有效性极低",
+                        'description': f"该店线索转潜客率为 {round(rate*100, 1)}%，低于均值 {round(avg_leads_to_potential*100, 1)}%。建议检查外呼质量及邀约话术。",
+                        'icon': '⚠️'
+                    })
+
+            # 3. 战败与响应时效追踪 (Defeat & Response Analysis)
+            if m['count'] > 0:
+                d_rate = m['defeat_rate'] / m['count']
+                d_resp = m['defeat_resp'] / m['count']
+                if d_resp > avg_defeat_resp * 1.2 and d_rate > avg_defeat_rate * 1.1:
+                    alerts.append({
+                        'dealerCode': dc,
+                        'level': 'error',
+                        'stage': '响应时效',
+                        'value': f"{round(d_resp, 1)}min",
+                        'avg': f"{round(avg_defeat_resp, 1)}min",
+                        'title': f"【时效告警】经销商 {dc} 战败率伴随响应滞后",
+                        'description': f"该店战败响应时间为 {round(d_resp, 1)} 分钟（超均值 20%），且战败率偏高。存在严重客资流失风险，线索跟进时效严重不达标。",
+                        'icon': '⏱️',
+                        'actionTitle': '线索15分钟首响合规性整改',
+                        'actionDesc': '要求经销商在反馈中提交最新的话务报表，并分析响应延迟的根本原因。'
+                    })
+
+        return jsonify({
+            'success': True,
+            'alerts': alerts[:10]
+        }), 200
+        
+    except Exception as e:
+        print(f'漏斗诊断失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/decision/peer-benchmark', methods=['GET'])
+def get_peer_benchmark():
+    try:
+        dealer_code = request.args.get('dealer_code')
+        if not dealer_code:
+            return jsonify({'success': False, 'message': '缺少经销商代码'}), 400
+            
+        # 1. 获取当前经销商的基本信息 (fed_level, province)
+        dealer_info = db.session.execute(db.text("SELECT fed_level, province FROM v_dealer_info WHERE dealer_code = :dc"), {'dc': dealer_code}).fetchone()
+        if not dealer_info:
+            return jsonify({'success': False, 'message': '未找到该经销商信息'}), 404
+            
+        fed_level = dealer_info[0]
+        province = dealer_info[1]
+        
+        # 2. 找到同级 (fed_level) 且在同省份或同区域的对标店
+        query_peers = db.text("""
+            SELECT dealer_code FROM v_dealer_info 
+            WHERE fed_level = :level AND province = :prov AND dealer_code != :dc
+        """)
+        peers = db.session.execute(query_peers, {'level': fed_level, 'prov': province, 'dc': dealer_code}).fetchall()
+        peer_codes = [p[0] for p in peers]
+        
+        if not peer_codes:
+            peers = db.session.execute(db.text("SELECT dealer_code FROM v_dealer_info WHERE fed_level = :level AND dealer_code != :dc"), {'level': fed_level, 'dc': dealer_code}).fetchall()
+            peer_codes = [p[0] for p in peers]
+
+        if not peer_codes:
+            return jsonify({'success': False, 'message': '未找到同级别对标门店'}), 404
+            
+        # 3. 找出雷达图分数提升最快的门店
+        benchmark_query = db.text("""
+            SELECT t1.dealer_code, 
+                   (t1.spread_force + t1.experience_force + t1.conversion_force + t1.service_force + t1.operation_force) - 
+                   (t2.spread_force + t2.experience_force + t2.conversion_force + t2.service_force + t2.operation_force) as growth
+            FROM monthly_radar_scores t1
+            JOIN monthly_radar_scores t2 ON t1.dealer_code = t2.dealer_code
+            WHERE t1.stat_year = 2024 AND t1.stat_month = 10
+              AND t2.stat_year = 2024 AND t2.stat_month = 9
+              AND t1.dealer_code IN :peers
+            ORDER BY growth DESC
+            LIMIT 1
+        """)
+        best_peer = db.session.execute(benchmark_query, {'peers': tuple(peer_codes)}).fetchone()
+        
+        if not best_peer:
+            best_peer = db.session.execute(db.text("""
+                SELECT dealer_code, 0 as growth FROM monthly_radar_scores 
+                WHERE stat_year = 2024 AND stat_month = 10 AND dealer_code IN :peers
+                ORDER BY (spread_force + experience_force + conversion_force + service_force + operation_force) DESC
+                LIMIT 1
+            """), {'peers': tuple(peer_codes)}).fetchone()
+
+        if not best_peer:
+            return jsonify({'success': False, 'message': '未找到对标数据'}), 404
+            
+        benchmark_code = best_peer[0]
+        
+        # 4. 获取该对标店的最佳反馈 (feedback)
+        feedback_query = db.text("""
+            SELECT feedback FROM dealer_task 
+            WHERE dealer_code = :dc AND status = 'completed' AND feedback IS NOT NULL
+            ORDER BY created_at DESC LIMIT 1
+        """)
+        feedback_res = db.session.execute(feedback_query, {'dc': benchmark_code}).fetchone()
+        best_feedback = feedback_res[0] if feedback_res else "该门店近期表现优异，建议参考其销售话术与客户管理流程。"
+        
+        return jsonify({
+            'success': True,
+            'benchmarkDealer': benchmark_code,
+            'feedbackTemplate': best_feedback,
+            'growth': float(best_peer[1]) if len(best_peer) > 1 else 0
+        })
+        
+    except Exception as e:
+        print(f"对标分析失败: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/decision/roi-analysis', methods=['GET'])
+def get_roi_analysis():
+    try:
+        region = request.args.get('region', '')
+        province = request.args.get('province', '')
+        
+        dealer_info_map = {}
+        try:
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province FROM v_dealer_info"))
+            for row in dealer_info_result:
+                dealer_info_map[row[0]] = row[1]
+        except:
+            pass
+
+        region_province_map = {
+            '华东': ['上海', '江苏', '浙江', '安徽', '福建', '江西', '山东'],
+            '华南': ['广东', '广西', '海南'],
+            '华北': ['北京', '天津', '河北', '山西', '内蒙古'],
+            '华中': ['河南', '湖北', '湖南'],
+            '西南': ['重庆', '四川', '贵州', '云南', '西藏'],
+            '西北': ['陕西', '甘肃', '青海', '宁夏', '新疆'],
+            '东北': ['辽宁', '吉林', '黑龙江']
+        }
+
+        query = MonthlyMetrics11d.query.filter(MonthlyMetrics11d.stat_year == 2024)
+        
+        if province:
+            clean_prov = province.replace('省', '').replace('市', '').replace('自治区', '')
+            matching_dealers = [dc for dc, prov in dealer_info_map.items() if prov and prov.startswith(clean_prov)]
+            if matching_dealers:
+                query = query.filter(MonthlyMetrics11d.dealer_code.in_(matching_dealers))
+        elif region:
+            provs = region_province_map.get(region, [])
+            matching_dealers = [dc for dc, prov in dealer_info_map.items() if prov and any(prov.startswith(p) for p in provs)]
+            if matching_dealers:
+                query = query.filter(MonthlyMetrics11d.dealer_code.in_(matching_dealers))
+
+        records = query.all()
+        
+        dealer_data = {}
+        for r in records:
+            dc = r.dealer_code
+            if dc not in dealer_data:
+                dealer_data[dc] = {'sales': 0, 'policy': 0}
+            dealer_data[dc]['sales'] += float(r.sales) if r.sales else 0
+            dealer_data[dc]['policy'] += float(r.policy) if r.policy else 0
+            
+        points = []
+        total_sales = 0
+        total_policy = 0
+        for dc, d in dealer_data.items():
+            points.append({
+                'name': dc,
+                'value': [d['policy'], d['sales']],
+                'province': dealer_info_map.get(dc, '')
+            })
+            total_sales += d['sales']
+            total_policy += d['policy']
+            
+        avg_sales = total_sales / len(dealer_data) if dealer_data else 0
+        avg_policy = total_policy / len(dealer_data) if dealer_data else 0
+        
+        return jsonify({
+            'success': True,
+            'points': points,
+            'avgSales': avg_sales,
+            'avgPolicy': avg_policy
+        }), 200
+        
+    except Exception as e:
+        print(f'ROI分析失败: {str(e)}')
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @app.route('/api/prediction/history', methods=['POST'])
@@ -1757,7 +2244,29 @@ def delete_analysis_report(id):
 @app.route('/api/policies', methods=['GET'])
 def get_policies():
     try:
-        policies_query = ConsumptionPolicy.query.all()
+        province = request.args.get('province', type=str)
+        region = request.args.get('region', type=str)
+        
+        region_province_map = {
+            '华东': ['上海', '江苏', '浙江', '安徽', '福建', '江西', '山东'],
+            '华南': ['广东', '广西', '海南'],
+            '华北': ['北京', '天津', '河北', '山西', '内蒙古'],
+            '华中': ['河南', '湖北', '湖南'],
+            '西南': ['重庆', '四川', '贵州', '云南', '西藏'],
+            '西北': ['陕西', '甘肃', '青海', '宁夏', '新疆'],
+            '东北': ['辽宁', '吉林', '黑龙江']
+        }
+        
+        query = ConsumptionPolicy.query
+        
+        if province:
+            query = query.filter(ConsumptionPolicy.province == province)
+        elif region:
+            provinces = region_province_map.get(region, [])
+            if provinces:
+                query = query.filter(ConsumptionPolicy.province.in_(provinces))
+        
+        policies_query = query.all()
         
         policies = []
         for policy in policies_query:
@@ -2866,6 +3375,146 @@ def get_dashboard_metrics():
         
     except Exception as e:
         print(f'获取仪表盘数据失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+
+@app.route('/api/decision/table-data', methods=['GET'])
+def get_decision_table_data():
+    try:
+        page = request.args.get('page', 1, type=int)
+        page_size = request.args.get('pageSize', 20, type=int)
+        sort_key = request.args.get('sortKey', '', type=str)
+        sort_order = request.args.get('sortOrder', 'asc', type=str)
+        start_date = request.args.get('startDate', '', type=str)
+        end_date = request.args.get('endDate', '', type=str)
+        region = request.args.get('region', '', type=str)
+        province = request.args.get('province', '', type=str)
+        dealer_code = request.args.get('dealerCode', '', type=str)
+        
+        region_province_map = {
+            '华东': ['上海', '江苏', '浙江', '安徽', '福建', '江西', '山东'],
+            '华南': ['广东', '广西', '海南'],
+            '华北': ['北京', '天津', '河北', '山西', '内蒙古'],
+            '华中': ['河南', '湖北', '湖南'],
+            '西南': ['重庆', '四川', '贵州', '云南', '西藏'],
+            '西北': ['陕西', '甘肃', '青海', '宁夏', '新疆'],
+            '东北': ['辽宁', '吉林', '黑龙江']
+        }
+        
+        dealer_info_map = {}
+        try:
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province, city, fed_level FROM v_dealer_info"))
+            for row in dealer_info_result:
+                dealer_info_map[row[0]] = {'province': row[1], 'city': row[2], 'fed_level': row[3]}
+        except:
+            pass
+        
+        query = MonthlyMetrics11d.query.filter(MonthlyMetrics11d.stat_year == 2024)
+        
+        if dealer_code:
+            query = query.filter(MonthlyMetrics11d.dealer_code == dealer_code)
+        elif province:
+            clean_prov = province.replace('省', '').replace('市', '').replace('自治区', '')
+            matching_dealers = [
+                dc for dc, info in dealer_info_map.items() 
+                if info.get('province') and info.get('province').startswith(clean_prov)
+            ]
+            if matching_dealers:
+                query = query.filter(MonthlyMetrics11d.dealer_code.in_(matching_dealers))
+            else:
+                query = query.filter(MonthlyMetrics11d.dealer_code == 'NONE')
+        elif region:
+            provinces = region_province_map.get(region, [])
+            matching_dealers = []
+            for dc, info in dealer_info_map.items():
+                prov = info.get('province')
+                if prov and any(prov.startswith(p) for p in provinces):
+                    matching_dealers.append(dc)
+            
+            if matching_dealers:
+                query = query.filter(MonthlyMetrics11d.dealer_code.in_(matching_dealers))
+            else:
+                query = query.filter(MonthlyMetrics11d.dealer_code == 'NONE')
+        
+        records = query.order_by(MonthlyMetrics11d.dealer_code, MonthlyMetrics11d.stat_month).all()
+        
+        dealer_data_map = {}
+        for record in records:
+            dc = record.dealer_code
+            if dc not in dealer_data_map:
+                info = dealer_info_map.get(dc, {'province': '', 'city': '', 'fed_level': ''})
+                dealer_data_map[dc] = {
+                    'dealerCode': dc,
+                    'province': info['province'],
+                    'city': info['city'],
+                    'fedLevel': info['fed_level'],
+                    'totalSales': 0,
+                    'totalOrders': 0,
+                    'totalTraffic': 0,
+                    'totalLeads': 0,
+                    'totalPotential': 0,
+                    'avgSuccessRate': 0,
+                    'months': 0
+                }
+            
+            dealer_data_map[dc]['totalSales'] += float(record.sales) if record.sales else 0
+            dealer_data_map[dc]['totalOrders'] += float(record.sales) if record.sales else 0
+            dealer_data_map[dc]['totalTraffic'] += float(record.customer_flow) if record.customer_flow else 0
+            dealer_data_map[dc]['totalLeads'] += float(record.leads) if record.leads else 0
+            dealer_data_map[dc]['totalPotential'] += float(record.potential_customers) if record.potential_customers else 0
+            dealer_data_map[dc]['avgSuccessRate'] += float(record.success_rate) if record.success_rate else 0
+            dealer_data_map[dc]['months'] += 1
+        
+        rows = []
+        for dc, data in dealer_data_map.items():
+            if not data.get('province'):
+                continue
+            if data['months'] > 0:
+                data['avgSuccessRate'] = round(data['avgSuccessRate'] / data['months'] * 100, 1)
+            rows.append({
+                'dealerCode': dc,
+                'province': data['province'],
+                'totalSales': int(data['totalSales']),
+                'totalTraffic': int(data['totalTraffic']),
+                'totalPotential': int(data['totalPotential']),
+                'totalLeads': int(data['totalLeads']),
+                'region': data['province'],
+                'dealerCount': 1,
+                'totalOrders': int(data['totalOrders']),
+                'avgProfit': int(data['totalSales'] * 1000),
+                'policyCoverage': 85,
+                'executionScore': data['avgSuccessRate'],
+                'storeName': dc,
+                'sales': int(data['totalSales']),
+                'orders': int(data['totalOrders']),
+                'profit': int(data['totalSales'] * 1000),
+                'satisfaction': data['avgSuccessRate'],
+                'policyStatus': '已执行',
+                'suggestion': '持续优化'
+            })
+        
+        if sort_key and rows:
+            reverse = sort_order == 'desc'
+            rows.sort(key=lambda x: x.get(sort_key, 0) or 0, reverse=reverse)
+        
+        total = len(rows)
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_rows = rows[start_idx:end_idx]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'rows': paginated_rows,
+                'total': total,
+                'page': page,
+                'pageSize': page_size
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f'获取决策表格数据失败: {str(e)}')
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
 
