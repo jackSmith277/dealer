@@ -188,12 +188,12 @@
                 </div>
               </div>
               <div class="diagnosis-actions">
-                <button class="btn-diagnosis-action" @click="implementAdvice({
+                <button class="btn-diagnosis-action" :class="{ 'dispatched': alert.isDispatched }" @click="implementAdvice({
                   title: alert.actionTitle || alert.title,
                   description: alert.actionDesc || alert.description,
                   icon: alert.icon
-                }, [alert.dealerCode])">
-                  {{ alert.actionTitle ? '下发专项整改' : '一键下发任务' }}
+                }, [alert.dealerCode])" :disabled="alert.isDispatched">
+                  {{ alert.isDispatched ? '已下发' : (alert.actionTitle ? '下发专项整改' : '一键下发任务') }}
                 </button>
                 <button v-if="alert.level === 'error' || alert.stage === '试驾成交率'" class="btn-benchmark-action" @click="showPeerBenchmark(alert.dealerCode)">
                   <i class="fas fa-bullseye"></i> 查找对标店
@@ -220,7 +220,7 @@
                 <div class="advice-description">{{ advice.description }}</div>
                 <div class="advice-actions">
                   <button class="btn-action" @click="viewAdviceDetail(advice)">查看详情</button>
-                  <button class="btn-action secondary" @click="implementAdvice(advice)">立即执行</button>
+                  <button class="btn-action secondary" :class="{ 'dispatched': advice.isDispatched }" @click="implementAdvice(advice)" :disabled="advice.isDispatched">{{ advice.isDispatched ? '已下发' : '立即执行' }}</button>
                 </div>
               </div>
             </div>
@@ -242,7 +242,7 @@
                 <div class="advice-description">{{ advice.description }}</div>
                 <div class="advice-actions">
                   <button class="btn-action" @click="viewAdviceDetail(advice)">查看详情</button>
-                  <button class="btn-action secondary" @click="implementAdvice(advice)">立即执行</button>
+                  <button class="btn-action secondary" :class="{ 'dispatched': advice.isDispatched }" @click="implementAdvice(advice)" :disabled="advice.isDispatched">{{ advice.isDispatched ? '已下发' : '立即执行' }}</button>
                 </div>
               </div>
             </div>
@@ -504,7 +504,7 @@ export default {
     },
     
     getCurrentMonth() {
-      return '2024-12'
+      return '2024-10'
     },
     
     async initializeData() {
@@ -869,7 +869,15 @@ export default {
       }
       
       const allPolicies = this.policyData || []
-      const selectedProvince = this.filters.province
+      let selectedProvince = this.filters.province
+      
+      if (this.filters.dealerCode && !selectedProvince) {
+        const dealer = this.dealerList.find(d => d['经销商代码'] === this.filters.dealerCode)
+        if (dealer && dealer['省份']) {
+          selectedProvince = dealer['省份']
+        }
+      }
+      
       const normalizedSelected = selectedProvince ? normalizeProvince(selectedProvince) : null
       
       const provinceCounts = {}
@@ -1039,8 +1047,17 @@ export default {
     getFilteredPolicies() {
       let policies = this.policyData || []
       
-      if (this.filters.province) {
-        const cleanProvince = this.filters.province.replace(/省|市|自治区/g, '')
+      let filterProvince = this.filters.province
+      
+      if (this.filters.dealerCode && !filterProvince) {
+        const dealer = this.dealerList.find(d => d['经销商代码'] === this.filters.dealerCode)
+        if (dealer && dealer['省份']) {
+          filterProvince = dealer['省份']
+        }
+      }
+      
+      if (filterProvince) {
+        const cleanProvince = filterProvince.replace(/省|市|自治区/g, '')
         policies = policies.filter(policy => {
           const policyProvince = (policy['省/直辖市/自治区'] || '').replace(/省|市|自治区/g, '')
           return policyProvince === cleanProvince || policyProvince.includes(cleanProvince) || cleanProvince.includes(policyProvince)
@@ -1288,6 +1305,7 @@ export default {
       }
       
       this.strategyAdvices = advices
+      this.checkAdvicesDispatchStatus()
     },
     
     generateExecutionAdvices() {
@@ -1403,6 +1421,7 @@ export default {
       }
       
       this.executionAdvices = advices
+      this.checkAdvicesDispatchStatus('execution')
     },
     
     extractPolicyKeywords(policies) {
@@ -1578,6 +1597,63 @@ export default {
       alert(`建议详情：\n\n${advice.title}\n\n${advice.description}`)
     },
     
+    async checkAdvicesDispatchStatus(type = 'strategy') {
+      const advices = type === 'strategy' ? this.strategyAdvices : this.executionAdvices
+      if (!advices || advices.length === 0) return
+      
+      const dealers = this.getFilteredDealerData()
+      const dealerCodes = dealers.map(d => d['经销商代码']).filter(code => code)
+      if (dealerCodes.length === 0) return
+      
+      for (let advice of advices) {
+        try {
+          const response = await axios.post('/api/decision/check-task-exists', {
+            title: advice.title,
+            dealerCodes: dealerCodes,
+            filters: this.filters
+          })
+          
+          if (response.data.success && response.data.exists) {
+            this.$set(advice, 'isDispatched', true)
+          } else {
+            this.$set(advice, 'isDispatched', false)
+          }
+        } catch (error) {
+          this.$set(advice, 'isDispatched', false)
+        }
+      }
+      
+      if (type === 'strategy') {
+        this.strategyAdvices = [...advices]
+      } else {
+        this.executionAdvices = [...advices]
+      }
+    },
+    
+    async checkDiagnosisDispatchStatus() {
+      if (!this.diagnosisAlerts || this.diagnosisAlerts.length === 0) return
+      
+      for (let alert of this.diagnosisAlerts) {
+        try {
+          const response = await axios.post('/api/decision/check-task-exists', {
+            title: alert.actionTitle || alert.title,
+            dealerCodes: [alert.dealerCode],
+            filters: this.filters
+          })
+          
+          if (response.data.success && response.data.exists) {
+            this.$set(alert, 'isDispatched', true)
+          } else {
+            this.$set(alert, 'isDispatched', false)
+          }
+        } catch (error) {
+          this.$set(alert, 'isDispatched', false)
+        }
+      }
+      
+      this.diagnosisAlerts = [...this.diagnosisAlerts]
+    },
+    
     async implementAdvice(advice, specificDealerCodes = null) {
       if (!this.isAdmin) {
         alert('只有管理员可以执行决策建议')
@@ -1595,6 +1671,21 @@ export default {
           return
         }
         dealerCodes = dealers.map(d => d['经销商代码']).filter(code => code)
+      }
+      
+      try {
+        const checkResponse = await axios.post('/api/decision/check-task-exists', {
+          title: advice.title,
+          dealerCodes: dealerCodes,
+          filters: this.filters
+        })
+        
+        if (checkResponse.data.success && checkResponse.data.exists) {
+          alert(`该任务已下发过！\n\n${checkResponse.data.message}\n\n请勿重复下发相同任务。`)
+          return
+        }
+      } catch (error) {
+        console.error('检查任务失败:', error)
       }
       
       const confirmed = confirm(`确认要执行此建议吗？\n\n${advice.title}\n\n执行后，${dealerCodes.length}个相关经销商将收到任务通知。`)
@@ -1729,6 +1820,7 @@ export default {
         console.log('[前端] 漏斗诊断响应:', response.data)
         if (response.data.success) {
           this.diagnosisAlerts = response.data.alerts || []
+          this.checkDiagnosisDispatchStatus()
           console.log('[前端] 诊断告警数量:', this.diagnosisAlerts.length)
         }
       } catch (error) {
@@ -2646,6 +2738,27 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.diagnosis-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.diagnosis-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.diagnosis-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.diagnosis-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .diagnosis-card {
@@ -2726,6 +2839,26 @@ export default {
 
 .btn-diagnosis-action:hover {
   background: #40a9ff;
+}
+
+.btn-diagnosis-action.dispatched {
+  background: #d9d9d9;
+  color: #8c8c8c;
+  cursor: not-allowed;
+}
+
+.btn-diagnosis-action.dispatched:hover {
+  background: #d9d9d9;
+}
+
+.btn-action.secondary.dispatched {
+  background: #d9d9d9;
+  color: #8c8c8c;
+  cursor: not-allowed;
+}
+
+.btn-action.secondary.dispatched:hover {
+  background: #d9d9d9;
 }
 
 .roi-row {

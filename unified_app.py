@@ -1642,6 +1642,54 @@ def get_prediction_history_detail(id):
         return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
 
 
+@app.route('/api/decision/check-task-exists', methods=['POST'])
+def check_task_exists():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': '请求数据不能为空'}), 400
+        
+        title = data.get('title', '')
+        dealer_codes = data.get('dealerCodes', [])
+        filters = data.get('filters', {})
+        
+        if not title or not dealer_codes:
+            return jsonify({'success': True, 'exists': False}), 200
+        
+        new_start = filters.get('startDate', '')
+        new_end = filters.get('endDate', '')
+        
+        existing_tasks = db.session.query(DecisionTask, DealerTask).join(
+            DealerTask, DecisionTask.id == DealerTask.task_id
+        ).filter(
+            DecisionTask.title == title,
+            DealerTask.dealer_code.in_(dealer_codes)
+        ).all()
+        
+        for decision_task, dealer_task in existing_tasks:
+            try:
+                existing_filters = json.loads(decision_task.filters_json) if decision_task.filters_json else {}
+                existing_start = existing_filters.get('startDate', '')
+                existing_end = existing_filters.get('endDate', '')
+                
+                if new_start and new_end and existing_start and existing_end:
+                    if not (new_end < existing_start or new_start > existing_end):
+                        return jsonify({
+                            'success': True,
+                            'exists': True,
+                            'taskId': decision_task.id,
+                            'message': f'该任务已于 {decision_task.created_at.strftime("%Y-%m-%d %H:%M")} 下发给经销商 {dealer_task.dealer_code}'
+                        }), 200
+            except:
+                pass
+        
+        return jsonify({'success': True, 'exists': False}), 200
+        
+    except Exception as e:
+        print(f'检查任务是否存在失败: {str(e)}')
+        return jsonify({'success': False, 'message': f'检查失败: {str(e)}'}), 500
+
+
 @app.route('/api/decision/implement-advice', methods=['POST'])
 def implement_advice():
     try:
@@ -2103,7 +2151,7 @@ def get_funnel_diagnosis():
 
         return jsonify({
             'success': True,
-            'alerts': alerts[:10]
+            'alerts': alerts
         }), 200
         
     except Exception as e:
