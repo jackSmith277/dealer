@@ -188,11 +188,7 @@
                 </div>
               </div>
               <div class="diagnosis-actions">
-                <button class="btn-diagnosis-action" :class="{ 'dispatched': alert.isDispatched }" @click="implementAdvice({
-                  title: alert.actionTitle || alert.title,
-                  description: alert.actionDesc || alert.description,
-                  icon: alert.icon
-                }, [alert.dealerCode])" :disabled="alert.isDispatched">
+                <button class="btn-diagnosis-action" :class="{ 'dispatched': alert.isDispatched }" @click="implementAdvice(alert, [alert.dealerCode])" :disabled="alert.isDispatched">
                   {{ alert.isDispatched ? '已下发' : (alert.actionTitle ? '下发专项整改' : '一键下发任务') }}
                 </button>
                 <button v-if="alert.level === 'error' || alert.stage === '试驾成交率'" class="btn-benchmark-action" @click="showPeerBenchmark(alert.dealerCode)">
@@ -1661,6 +1657,13 @@ export default {
       }
       if (!advice) return
       
+      // 处理告警对象和建议对象的标题/描述差异
+      const normalizedAdvice = {
+        title: advice.actionTitle || advice.title,
+        description: advice.actionDesc || advice.description,
+        icon: advice.icon
+      }
+      
       let dealerCodes = []
       if (specificDealerCodes) {
         dealerCodes = Array.isArray(specificDealerCodes) ? specificDealerCodes : [specificDealerCodes]
@@ -1675,31 +1678,35 @@ export default {
       
       try {
         const checkResponse = await axios.post('/api/decision/check-task-exists', {
-          title: advice.title,
+          title: normalizedAdvice.title,
           dealerCodes: dealerCodes,
           filters: this.filters
         })
         
         if (checkResponse.data.success && checkResponse.data.exists) {
           alert(`该任务已下发过！\n\n${checkResponse.data.message}\n\n请勿重复下发相同任务。`)
+          // 同步本地状态
+          this.$set(advice, 'isDispatched', true)
           return
         }
       } catch (error) {
         console.error('检查任务失败:', error)
       }
       
-      const confirmed = confirm(`确认要执行此建议吗？\n\n${advice.title}\n\n执行后，${dealerCodes.length}个相关经销商将收到任务通知。`)
+      const confirmed = confirm(`确认要执行此建议吗？\n\n${normalizedAdvice.title}\n\n执行后，${dealerCodes.length}个相关经销商将收到任务通知。`)
       if (!confirmed) return
       
       try {
         const response = await axios.post('/api/decision/implement-advice', {
-          advice: advice,
+          advice: normalizedAdvice,
           dealerCodes: dealerCodes,
           filters: this.filters
         })
         
         if (response.data.success) {
           alert(`决策建议已成功执行，${dealerCodes.length}个经销商将收到任务通知`)
+          // 关键修复：立即更新本地状态，避免刷新页面
+          this.$set(advice, 'isDispatched', true)
         } else {
           throw new Error(response.data.message || '执行失败')
         }
@@ -1709,6 +1716,7 @@ export default {
         if (error.response && error.response.status === 404) {
           const mockSuccess = confirm('后端API暂未实现，是否模拟执行成功？\n\n点击"确定"模拟成功，点击"取消"放弃操作')
           if (mockSuccess) {
+            this.$set(advice, 'isDispatched', true)
             alert(`模拟执行成功！\n\n已向${dealerCodes.length}个经销商发送任务通知：\n${dealerCodes.slice(0, 5).join(', ')}${dealerCodes.length > 5 ? '...' : ''}`)
           }
         } else {

@@ -930,6 +930,8 @@ class MonthlyMetrics11d(db.Model):
     defeat_response_time = db.Column(db.Numeric(18, 4), nullable=True)
     policy = db.Column(db.Numeric(18, 4), nullable=True)
     gsev = db.Column(db.Numeric(18, 4), nullable=True)
+    good_reviews = db.Column(db.Numeric(18, 4), nullable=True)
+    bad_reviews = db.Column(db.Numeric(18, 4), nullable=True)
 
 
 class MonthlyRadarScores(db.Model):
@@ -1068,6 +1070,8 @@ def get_dashboard_metrics():
             dealer_data_map[dc][f'{month}月政策'] = float(record.policy) if record.policy else None
             dealer_data_map[dc][f'{month}月GSEV'] = float(record.gsev) if record.gsev else None
             dealer_data_map[dc][f'{month}月试驾数'] = float(record.test_drives) if record.test_drives else None
+            dealer_data_map[dc][f'{month}月好评数'] = float(record.good_reviews) if record.good_reviews else None
+            dealer_data_map[dc][f'{month}月差评数'] = float(record.bad_reviews) if record.bad_reviews else None
             
             if dc in evaluation_map and month in evaluation_map[dc]:
                 eval_score = evaluation_map[dc][month]
@@ -1075,6 +1079,16 @@ def get_dashboard_metrics():
                 if eval_score:
                     good_percent = (eval_score / 5.0) * 100
                     bad_percent = 100 - good_percent
+                    dealer_data_map[dc][f'{month}月好评率'] = round(good_percent, 1)
+                    dealer_data_map[dc][f'{month}月差评率'] = round(bad_percent, 1)
+            
+            if f'{month}月好评率' not in dealer_data_map[dc]:
+                good_reviews = float(record.good_reviews) if record.good_reviews else 0
+                bad_reviews = float(record.bad_reviews) if record.bad_reviews else 0
+                total_reviews = good_reviews + bad_reviews
+                if total_reviews > 0:
+                    good_percent = (good_reviews / total_reviews) * 100
+                    bad_percent = (bad_reviews / total_reviews) * 100
                     dealer_data_map[dc][f'{month}月好评率'] = round(good_percent, 1)
                     dealer_data_map[dc][f'{month}月差评率'] = round(bad_percent, 1)
         

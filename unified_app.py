@@ -193,6 +193,8 @@ class MonthlyMetrics11d(db.Model):
     defeat_response_time = db.Column(db.Numeric(18, 4), nullable=True)
     policy = db.Column(db.Numeric(18, 4), nullable=True)
     gsev = db.Column(db.Numeric(18, 4), nullable=True)
+    good_reviews = db.Column(db.Numeric(18, 4), nullable=True)
+    bad_reviews = db.Column(db.Numeric(18, 4), nullable=True)
 
 
 class MonthlyRadarScores(db.Model):
@@ -3645,11 +3647,23 @@ def get_dashboard_metrics():
             dealer_data_map[dc][f'{month}月政策'] = float(record.policy) if record.policy else None
             dealer_data_map[dc][f'{month}月GSEV'] = float(record.gsev) if record.gsev else None
             dealer_data_map[dc][f'{month}月试驾数'] = float(record.test_drives) if record.test_drives else None
+            dealer_data_map[dc][f'{month}月好评数'] = float(record.good_reviews) if record.good_reviews else None
+            dealer_data_map[dc][f'{month}月差评数'] = float(record.bad_reviews) if record.bad_reviews else None
+            
+            # 使用好评数和差评数计算好评率和差评率（优先使用）
+            good_revs = float(record.good_reviews) if record.good_reviews else 0
+            bad_revs = float(record.bad_reviews) if record.bad_reviews else 0
+            total_revs = good_revs + bad_revs
+            
+            if total_revs > 0:
+                dealer_data_map[dc][f'{month}月好评率'] = round((good_revs / total_revs) * 100, 1)
+                dealer_data_map[dc][f'{month}月差评率'] = round((bad_revs / total_revs) * 100, 1)
             
             if dc in evaluation_map and month in evaluation_map[dc]:
                 eval_score = evaluation_map[dc][month]
                 dealer_data_map[dc][f'{month}月评价分'] = eval_score
-                if eval_score:
+                # 如果数据库中没有好评数和差评数，则回退使用原有的评价分计算占比
+                if total_revs <= 0 and eval_score:
                     good_percent = (eval_score / 5.0) * 100
                     bad_percent = 100 - good_percent
                     dealer_data_map[dc][f'{month}月好评率'] = round(good_percent, 1)

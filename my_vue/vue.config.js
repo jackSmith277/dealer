@@ -2,6 +2,7 @@ const { defineConfig } = require('@vue/cli-service')
 
 module.exports = defineConfig({
   transpileDependencies: true,
+  productionSourceMap: false,
   devServer: {
     proxy: {
       '/api': {
@@ -9,13 +10,13 @@ module.exports = defineConfig({
         changeOrigin: true
       }
     },
-    onBeforeSetupMiddleware: function(devServer) {
+    onBeforeSetupMiddleware: function (devServer) {
       if (!devServer) return
-      
+
       const express = require('express')
       const path = require('path')
       const aiPluginPath = path.resolve(__dirname, '../aiplugin/插件')
-      
+
       devServer.app.use('/ai-plugin', express.static(aiPluginPath))
     }
   }
