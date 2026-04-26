@@ -1653,36 +1653,96 @@ def check_task_exists():
         dealer_codes = data.get('dealerCodes', [])
         filters = data.get('filters', {})
         
-        if not title or not dealer_codes:
+        print(f'[任务检查] title: {title}, dealer_codes: {dealer_codes}, filters: {filters}')
+        
+        if not title:
             return jsonify({'success': True, 'exists': False}), 200
         
         new_start = filters.get('startDate', '')
         new_end = filters.get('endDate', '')
+        new_region = filters.get('region', '')
+        new_province = filters.get('province', '')
+        new_dealer_code = filters.get('dealerCode', '')
         
-        existing_tasks = db.session.query(DecisionTask, DealerTask).join(
-            DealerTask, DecisionTask.id == DealerTask.task_id
-        ).filter(
-            DecisionTask.title == title,
-            DealerTask.dealer_code.in_(dealer_codes)
+        print(f'[任务检查] new_start: {new_start}, new_end: {new_end}, new_region: {new_region}, new_province: {new_province}, new_dealer_code: {new_dealer_code}')
+        
+        existing_tasks = db.session.query(DecisionTask).filter(
+            DecisionTask.title == title
         ).all()
         
-        for decision_task, dealer_task in existing_tasks:
+        print(f'[任务检查] 找到 {len(existing_tasks)} 个已存在的同名任务')
+        
+        for decision_task in existing_tasks:
             try:
                 existing_filters = json.loads(decision_task.filters_json) if decision_task.filters_json else {}
                 existing_start = existing_filters.get('startDate', '')
                 existing_end = existing_filters.get('endDate', '')
+                existing_region = existing_filters.get('region', '')
+                existing_province = existing_filters.get('province', '')
+                existing_dealer_code = existing_filters.get('dealerCode', '')
+                
+                print(f'[任务检查] 已存在任务 id={decision_task.id}, existing_start={existing_start}, existing_end={existing_end}, existing_region={existing_region}, existing_province={existing_province}, existing_dealer_code={existing_dealer_code}')
+                
+                same_scope = False
+                scope_desc = ''
+                
+                if new_dealer_code or existing_dealer_code:
+                    if new_dealer_code and existing_dealer_code:
+                        if new_dealer_code == existing_dealer_code:
+                            same_scope = True
+                            scope_desc = f'经销商 {new_dealer_code}'
+                            print(f'[任务检查] 经销商匹配: {new_dealer_code} == {existing_dealer_code}')
+                        else:
+                            print(f'[任务检查] 经销商不匹配: {new_dealer_code} != {existing_dealer_code}')
+                    else:
+                        print(f'[任务检查] 经销商一个有一个没有: new={new_dealer_code}, existing={existing_dealer_code}')
+                elif new_province or existing_province:
+                    if new_province and existing_province:
+                        clean_new = new_province.replace('省', '').replace('市', '').replace('自治区', '')
+                        clean_existing = existing_province.replace('省', '').replace('市', '').replace('自治区', '')
+                        if clean_new == clean_existing or clean_new in clean_existing or clean_existing in clean_new:
+                            same_scope = True
+                            scope_desc = f'省份 {new_province}'
+                            print(f'[任务检查] 省份匹配: {clean_new} == {clean_existing}')
+                        else:
+                            print(f'[任务检查] 省份不匹配: {clean_new} != {clean_existing}')
+                    else:
+                        print(f'[任务检查] 省份一个有一个没有: new={new_province}, existing={existing_province}')
+                elif new_region or existing_region:
+                    if new_region and existing_region:
+                        if new_region == existing_region:
+                            same_scope = True
+                            scope_desc = f'区域 {new_region}'
+                            print(f'[任务检查] 区域匹配: {new_region} == {existing_region}')
+                        else:
+                            print(f'[任务检查] 区域不匹配: {new_region} != {existing_region}')
+                    else:
+                        print(f'[任务检查] 区域一个有一个没有: new={new_region}, existing={existing_region}')
+                else:
+                    same_scope = True
+                    scope_desc = '全国'
+                    print(f'[任务检查] 全国匹配')
+                
+                if not same_scope:
+                    print(f'[任务检查] 范围不匹配，跳过')
+                    continue
                 
                 if new_start and new_end and existing_start and existing_end:
                     if not (new_end < existing_start or new_start > existing_end):
+                        print(f'[任务检查] 时间重叠，返回已存在')
                         return jsonify({
                             'success': True,
                             'exists': True,
                             'taskId': decision_task.id,
-                            'message': f'该任务已于 {decision_task.created_at.strftime("%Y-%m-%d %H:%M")} 下发给经销商 {dealer_task.dealer_code}'
+                            'message': f'该任务已于 {decision_task.created_at.strftime("%Y-%m-%d %H:%M")} 下发（{scope_desc}，时间范围有重叠）'
                         }), 200
-            except:
+                    else:
+                        print(f'[任务检查] 时间不重叠')
+            except Exception as e:
+                print(f'检查任务异常: {str(e)}')
                 pass
         
+        print(f'[任务检查] 未找到重复任务')
         return jsonify({'success': True, 'exists': False}), 200
         
     except Exception as e:

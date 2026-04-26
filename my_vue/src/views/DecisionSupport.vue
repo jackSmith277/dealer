@@ -163,7 +163,7 @@
       <div class="roi-row">
         <div class="chart-container roi-chart">
           <div class="chart-header">
-            <h3>政策投入-产出 ROI 四象限分析</h3>
+            <h3>政策投入 - 销量产出四象限门店分类图</h3>
           </div>
           <div class="chart-body" ref="roiChart"></div>
         </div>
@@ -1853,7 +1853,7 @@ export default {
         
         const option = {
           title: {
-            text: '政策投入-产出 ROI 四象限分析',
+            text: '政策投入 - 销量产出四象限门店分类图',
             left: 'center',
             top: 10,
             textStyle: { fontSize: 16, color: '#333', fontWeight: 'bold' }
@@ -1921,10 +1921,10 @@ export default {
             markArea: {
               silent: true,
               data: [
-                [{ name: '明星店 (高投入高产出)', xAxis: data.avgPolicy, yAxis: data.avgSales, itemStyle: { color: 'rgba(255, 77, 79, 0.03)' }, label: { position: 'insideTopRight', color: '#ff4d4f', opacity: 0.5 } }, { xAxis: 'max', yAxis: 'max' }],
-                [{ name: '潜力股 (低投入高产出)', xAxis: 0, yAxis: data.avgSales, itemStyle: { color: 'rgba(82, 196, 26, 0.03)' }, label: { position: 'insideTopLeft', color: '#52c41a', opacity: 0.5 } }, { xAxis: data.avgPolicy, yAxis: 'max' }],
-                [{ name: '长尾店 (低投入低产出)', xAxis: 0, yAxis: 0, itemStyle: { color: 'rgba(24, 144, 255, 0.03)' }, label: { position: 'insideBottomLeft', color: '#1890ff', opacity: 0.5 } }, { xAxis: data.avgPolicy, yAxis: data.avgSales }],
-                [{ name: '吞金兽 (高投入低产出)', xAxis: data.avgPolicy, yAxis: 0, itemStyle: { color: 'rgba(250, 173, 20, 0.03)' }, label: { position: 'insideBottomRight', color: '#faad14', opacity: 0.5 } }, { xAxis: 'max', yAxis: data.avgSales }]
+                [{ name: '重点扶持型 (高投入高产出)', xAxis: data.avgPolicy, yAxis: data.avgSales, itemStyle: { color: 'rgba(255, 77, 79, 0.03)' }, label: { position: 'insideTopRight', color: '#ff4d4f', opacity: 0.5 } }, { xAxis: 'max', yAxis: 'max' }],
+                [{ name: '优先复制型 (低投入高产出)', xAxis: 0, yAxis: data.avgSales, itemStyle: { color: 'rgba(82, 196, 26, 0.03)' }, label: { position: 'insideTopLeft', color: '#52c41a', opacity: 0.5 } }, { xAxis: data.avgPolicy, yAxis: 'max' }],
+                [{ name: '关注引导型 (低投入低产出)', xAxis: 0, yAxis: 0, itemStyle: { color: 'rgba(24, 144, 255, 0.03)' }, label: { position: 'insideBottomLeft', color: '#1890ff', opacity: 0.5 } }, { xAxis: data.avgPolicy, yAxis: data.avgSales }],
+                [{ name: '整改优化型 (高投入低产出)', xAxis: data.avgPolicy, yAxis: 0, itemStyle: { color: 'rgba(250, 173, 20, 0.03)' }, label: { position: 'insideBottomRight', color: '#faad14', opacity: 0.5 } }, { xAxis: 'max', yAxis: data.avgSales }]
               ]
             }
           }]
