@@ -162,6 +162,7 @@ def login():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
+    selected_role = data.get('role')
     
     if not username or not password:
         return jsonify({'error': '用户名和密码不能为空'}), 400
@@ -170,14 +171,15 @@ def login():
     if not user:
         return jsonify({'error': '用户不存在'}), 401
     
-    # 检查用户状态
     if user.status == 0:
         return jsonify({'error': '账号已禁用'}), 401
     
-    # 暂时不加密，直接比较密码
-    # if not pbkdf2_sha256.verify(password, user.password_hash):
     if password != user.password_hash:
         return jsonify({'error': '密码错误'}), 401
+    
+    if selected_role and user.role != selected_role:
+        role_names = {'admin': '总部经理', 'dealer': '经销商'}
+        return jsonify({'error': f'身份验证失败，该账号是{role_names.get(user.role, user.role)}，请选择正确的角色'}), 401
     
     token = generate_token(user)
     return jsonify({

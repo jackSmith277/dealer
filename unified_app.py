@@ -1073,6 +1073,7 @@ def login():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
+    selected_role = data.get('role')
     
     if not username or not password:
         return jsonify({'error': '用户名和密码不能为空'}), 400
@@ -1086,6 +1087,10 @@ def login():
     
     if password != user.password_hash:
         return jsonify({'error': '密码错误'}), 401
+    
+    if selected_role and user.role != selected_role:
+        role_names = {'admin': '总部经理', 'dealer': '经销商'}
+        return jsonify({'error': f'身份验证失败，该账号是{role_names.get(user.role, user.role)}，请选择正确的角色'}), 401
     
     token = generate_token(user)
     dealer_code = user.username if user.role == 'dealer' else None

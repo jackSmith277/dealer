@@ -88,7 +88,8 @@ export default {
         // 调用后端API进行登录验证
         const response = await axios.post('/api/login', {
           username: this.loginForm.username,
-          password: this.loginForm.password
+          password: this.loginForm.password,
+          role: this.loginForm.role
         })
         
         //console.log('登录成功，后端返回:', response.data)
