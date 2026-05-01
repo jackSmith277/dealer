@@ -2109,7 +2109,7 @@ export default {
       this.policyData.forEach(policy => {
         const city = policy['地级市/自治州']
         const province = policy['省/直辖市/自治区']
-        if (city) {
+        if (city && city !== 'ALL' && province) {
           cities.add(`${province} - ${city}`)
         }
       })
@@ -2310,9 +2310,21 @@ export default {
           data: data.map(d => d.name),
           axisLabel: {
             interval: 0,
-            rotate: 30,
             fontSize: 11,
-            color: '#666'
+            color: '#666',
+            margin: 15,
+            formatter: (value) => {
+              // 每 6 个字符换行
+              const maxLength = 6;
+              if (value.length <= maxLength) {
+                return value;
+              }
+              const lines = [];
+              for (let i = 0; i < value.length; i += maxLength) {
+                lines.push(value.substr(i, maxLength));
+              }
+              return lines.join('\n');
+            }
           },
           axisLine: {
             lineStyle: {

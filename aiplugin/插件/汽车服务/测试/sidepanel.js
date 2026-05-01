@@ -552,11 +552,14 @@ async function analyzeInsight() {
 
                 reportDiv.innerHTML = htmlContent;
 
-                // 如果有原始数据文件路径，可以添加下载链接
-                if (result.report_file) {
+                if (result.markdown_report) {
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                    const filename = `服务质检报告_${timestamp}.md`;
                     reportDiv.innerHTML += `<div style="margin-top: 15px; padding: 10px; background: #f0f4ff; border-radius: 6px; text-align: center;">
-                        <a href="${result.report_file}" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600;">📥 下载完整报告</a>
+                        <a href="javascript:void(0)" onclick="downloadInsightReport()" style="color: #667eea; text-decoration: none; font-weight: 600;">📥 下载完整报告</a>
                     </div>`;
+                    window._insightReportContent = result.markdown_report;
+                    window._insightReportFilename = filename;
                 }
             }
         } else {
@@ -594,6 +597,26 @@ function clearInsightResult() {
     document.getElementById('insightHitRate').textContent = '0%';
 
     showInsightStatus('🗑️ 结果已清空', 'info');
+}
+
+function downloadInsightReport() {
+    const content = window._insightReportContent;
+    const filename = window._insightReportFilename || '服务质检报告.md';
+
+    if (!content) {
+        alert('报告内容不存在，请重新分析');
+        return;
+    }
+
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 // ========== 核心优化：中文分词 ==========

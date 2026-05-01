@@ -1004,10 +1004,10 @@ export default {
       })
     },
     renderFunnel() {
-      const avgTraffic = this.average(this.getSeriesByTimeRange('客流量'))
-      const avgLeads = this.average(this.getSeriesByTimeRange('线索量'))
-      const avgPotential = this.average(this.getSeriesByTimeRange('潜客量'))
-      const avgSales = this.average(this.getSeriesByTimeRange('销量'))
+      const avgTraffic = Math.round(this.average(this.getSeriesByTimeRange('客流量')))
+      const avgLeads = Math.round(this.average(this.getSeriesByTimeRange('线索量')))
+      const avgPotential = Math.round(this.average(this.getSeriesByTimeRange('潜客量')))
+      const avgSales = Math.round(this.average(this.getSeriesByTimeRange('销量')))
       
       // 计算转化率
       const leadConversionRate = (avgLeads / avgTraffic * 100).toFixed(1)

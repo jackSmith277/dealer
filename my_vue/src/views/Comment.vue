@@ -365,7 +365,7 @@
 
           <div class="top-words-section card">
             <div class="section-header">
-              <h2 class="section-title">热门关键词TOP10</h2>
+              <h2 class="section-title">热门关键词 TOP15</h2>
               <p class="section-subtitle">按出现频次排序</p>
             </div>
             <div class="top-words-list">
@@ -700,7 +700,7 @@ export default {
       return null
     },
     topWords() {
-      return this.wordData.slice(0, 10)
+      return this.wordData.slice(0, 15)
     },
     sentimentStats() {
       const total = this.sentimentResults.length || 1
@@ -3056,7 +3056,7 @@ export default {
 }
 
 .side-chart {
-  height: 260px;
+  height: 380px;
 }
 
 .right-section {
