@@ -1,0 +1,43 @@
+[service] 正在加载原始 dealer 数据与离线 bundles...
+[数据源] 使用数据库
+[DB] 从数据库加载完成，共 288 个经销商，288 个唯一代码
+[service] bundles loaded
+  point_bundle    : D:\Vue-Workspace\fronted\ASSPIS\service\bundles\point_bundle.joblib
+  quantile_bundle : D:\Vue-Workspace\fronted\ASSPIS\service\bundles\quantile_bundle.joblib
+[service] init done | dealers=288
+统一后端服务启动，端口: 5002
+ * Serving Flask app 'unified_app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5002
+ * Running on http://10.77.49.78:5002
+Press CTRL+C to quit
+127.0.0.1 - - [02/May/2026 15:38:50] "GET /api/index/header-kpi?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:38:50] "GET /api/index/header-kpi?year=2024&province=辽宁省 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:38:51] "GET /api/index/header-kpi?year=2024&province=广东省 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:16] "POST /api/login HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:16] "GET /api/five-forces/years HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:16] "GET /api/index/metrics-comparison?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:17] "GET /api/index/header-kpi?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:17] "GET /api/index/ranking?year=2024&sort_by=total HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:17] "GET /api/index/region-dashboard?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:17] "GET /api/index/insights?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:17] "GET /api/index/overview?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:20] "GET /api/index/overview?year=2024&province=辽宁省 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:20] "GET /api/index/header-kpi?year=2024&province=辽宁省 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:20] "GET /api/index/ranking?year=2024&sort_by=total&province=辽宁省 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:20] "GET /api/index/area-data?year=2024&province=辽宁省 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:20] "GET /api/index/metrics-comparison?year=2024&province=辽宁省 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:28] "GET /api/five-forces/years HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:28] "GET /api/index/overview?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:28] "GET /api/index/metrics-comparison?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:28] "GET /api/index/region-dashboard?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:28] "GET /api/index/ranking?year=2024&sort_by=total HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:29] "GET /api/index/header-kpi?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:29] "GET /api/index/insights?year=2024 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:32] "GET /api/index/overview?year=2024&province=山东省 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:32] "GET /api/index/header-kpi?year=2024&province=山东省 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:32] "GET /api/index/ranking?year=2024&sort_by=total&province=山东省 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:33] "GET /api/index/area-data?year=2024&province=山东省 HTTP/1.1" 200 -
+127.0.0.1 - - [02/May/2026 15:39:33] "GET /api/index/metrics-comparison?year=2024&province=山东省 HTTP/1.1" 200 -

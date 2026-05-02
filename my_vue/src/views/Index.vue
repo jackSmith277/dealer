@@ -560,7 +560,7 @@ export default {
           this.monthlyAvg = data.monthly_avg
           this.rankingData = data.ranking
           this.warningData = data.warning
-          
+
           this.$nextTick(() => {
             this.initRadarChart()
             this.initLineChart()
@@ -629,7 +629,21 @@ export default {
     },
     async loadHeaderKpi() {
       try {
-        const response = await axios.get(`/api/index/header-kpi?year=${this.selectedYear}`)
+        let url = `/api/index/header-kpi?year=${this.selectedYear}`
+
+        // 统一优先级：城市 > 省份 > 区域 > 全国
+        if (this.currentCity) {
+          url += `&province=${encodeURIComponent(this.currentProvince)}&city=${encodeURIComponent(this.currentCity)}`
+        } else if (this.currentProvince) {
+          url += `&province=${encodeURIComponent(this.currentProvince)}`
+        } else if (this.selectedRegion) {
+          const selectedRegionData = this.regionDashboard.find(r => r.region === this.selectedRegion)
+          if (selectedRegionData && selectedRegionData.provinces && selectedRegionData.provinces.length > 0) {
+            url += `&province=${encodeURIComponent(selectedRegionData.provinces.join(','))}`
+          }
+        }
+
+        const response = await axios.get(url)
         if (response.data.success) {
           this.headerKpi = response.data.data
         }
@@ -650,7 +664,7 @@ export default {
     async loadMetricsComparison() {
       try {
         let url = `/api/index/metrics-comparison?year=${this.selectedYear}`
-        
+
         // 统一优先级：城市 > 省份 > 区域 > 全国
         if (this.currentCity) {
           url += `&province=${encodeURIComponent(this.currentProvince)}&city=${encodeURIComponent(this.currentCity)}`
@@ -662,10 +676,16 @@ export default {
             url += `&province=${encodeURIComponent(selectedRegionData.provinces.join(','))}`
           }
         }
-        
+
+        const savedProvince = this.currentProvince
+        const savedCity = this.currentCity
+        const savedRegion = this.selectedRegion
+
         const response = await axios.get(url)
         if (response.data.success) {
-          this.metricsComparison = response.data.data
+          if (this.currentProvince === savedProvince && this.currentCity === savedCity && this.selectedRegion === savedRegion) {
+            this.metricsComparison = response.data.data
+          }
         }
       } catch (error) {
         console.error('加载核心指标对比失败:', error)
@@ -696,12 +716,18 @@ export default {
         this.mapStack = []
       } else {
         this.selectedRegion = region.region
+        // 选中区域时，清除省份/城市地图状态，确保区域过滤生效
+        this.mapLevel = 'country'
+        this.currentProvince = ''
+        this.currentCity = ''
+        this.mapStack = []
       }
       // 先加载数据
       await this.loadOverviewData()
+      await this.loadHeaderKpi()
+      await this.loadMetricsComparison()
       await this.loadRankingData()
       await this.loadAreaChartData()
-      await this.loadMetricsComparison()
       // 数据加载完成后再渲染地图
       if (this.selectedRegion) {
         const selectedRegionData = this.regionDashboard.find(r => r.region === this.selectedRegion)
@@ -1511,33 +1537,45 @@ export default {
       }
       return cityData
     },
+    async selectProvince(provinceName) {
+      this.mapStack.push({ level: 'country', province: '', city: '' })
+      this.currentProvince = provinceName
+      this.currentCity = ''
+      this.mapLevel = 'province'
+      this.selectedRegion = ''
+
+      await this.loadOverviewData()
+      await this.loadHeaderKpi()
+      await this.loadMetricsComparison()
+      await this.loadRankingData()
+      await this.loadAreaChartData()
+      await this.renderProvinceMap()
+      this.bindProvinceMapEvents()
+    },
+    async selectCity(cityName) {
+      this.currentCity = cityName
+      this.highlightCity(cityName)
+      await this.loadOverviewData()
+      await this.loadHeaderKpi()
+      await this.loadMetricsComparison()
+      await this.loadRankingData()
+      await this.loadAreaChartData()
+    },
     bindMapEvents() {
       this.mapChart.on('click', async (params) => {
         if (this.mapLevel === 'country' && params.componentType === 'series') {
           const provinceName = params.name
           if (provinceName && this.getProvinceStoreCount()[provinceName]) {
-            this.mapStack.push({ level: 'country', province: '', city: '' })
-            this.currentProvince = provinceName
-            this.currentCity = ''
-            this.mapLevel = 'province'
-            
-            // 点击地图不联动区域业绩看板
-            // 不设置 this.selectedRegion
-            
-            // 先加载所有数据
-            await this.loadOverviewData()
-            await this.loadRankingData()
-            await this.loadAreaChartData()
-            await this.loadMetricsComparison()
-            // 数据加载完成后再渲染地图
-            await this.renderProvinceMap()
-            this.bindProvinceMapEvents()
+            await this.selectProvince(provinceName)
           }
         }
       })
     },
     bindProvinceMapEvents() {
-      this.mapChart.on('click', async (params) => {
+      if (this._provinceEventHandler) {
+        this.mapChart.off('click', this._provinceEventHandler)
+      }
+      this._provinceEventHandler = async (params) => {
         if (this.mapLevel === 'province' && params.componentType === 'series') {
           const cityName = params.name
           if (cityName) {
@@ -1553,18 +1591,20 @@ export default {
               const targetCity = matchedCity || cityName
               if (this.currentCity === targetCity) {
                 this.currentCity = ''
+                this.highlightCity('')
+                await this.loadOverviewData()
+                await this.loadHeaderKpi()
+                await this.loadMetricsComparison()
+                await this.loadRankingData()
+                await this.loadAreaChartData()
               } else {
-                this.currentCity = targetCity
+                await this.selectCity(targetCity)
               }
-              this.highlightCity(this.currentCity)
-              await this.loadOverviewData()
-              await this.loadRankingData()
-              await this.loadAreaChartData()
-              await this.loadMetricsComparison()
             }
           }
         }
-      })
+      }
+      this.mapChart.on('click', this._provinceEventHandler)
     },
     highlightCity(cityName) {
       if (!this.mapChart) return
@@ -1596,15 +1636,17 @@ export default {
       this.currentProvince = ''
       this.currentCity = ''
       this.mapStack = []
-      // 不清除 selectedRegion，保持区域看板的选中状态
-      // 先渲染地图（使用旧数据，但会立即显示）
+      this.selectedRegion = ''
+      if (this._provinceEventHandler) {
+        this.mapChart.off('click', this._provinceEventHandler)
+        this._provinceEventHandler = null
+      }
       this.renderMap()
-      // 然后加载数据
       await this.loadOverviewData()
+      await this.loadHeaderKpi()
+      await this.loadMetricsComparison()
       await this.loadRankingData()
       await this.loadAreaChartData()
-      await this.loadMetricsComparison()
-      // 数据加载完成后重新渲染地图
       this.renderMap()
     },
     getProvinceAdcode(provinceName) {

@@ -4008,12 +4008,8 @@ def get_index_overview():
         if city:
             target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('city') == city]
         elif province:
-            # 支持多省份参数（逗号分隔）
             provinces_list = [p.strip() for p in province.split(',') if p.strip()]
-            if len(provinces_list) > 1:
-                target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('province') in provinces_list]
-            else:
-                target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('province') == province]
+            target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('province') in provinces_list]
         else:
             target_dealers = list(dealer_info_map.keys())
         
@@ -4140,12 +4136,8 @@ def get_ranking():
         radar_records = radar_query.all()
         
         if province:
-            # 支持多省份参数（逗号分隔）
             provinces_list = [p.strip() for p in province.split(',') if p.strip()]
-            if len(provinces_list) > 1:
-                radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') in provinces_list]
-            else:
-                radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') == province]
+            radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') in provinces_list]
         if city:
             radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('city', '') == city or 
                            (dealer_info_map.get(r.dealer_code, {}).get('city', '') and dealer_info_map.get(r.dealer_code, {}).get('city', '') in city) or
@@ -4215,7 +4207,9 @@ def get_ranking():
 def get_header_kpi():
     try:
         year = request.args.get('year', type=int, default=2024)
-        
+        province = request.args.get('province', type=str, default='')
+        city = request.args.get('city', type=str, default='')
+
         dealer_info_map = {}
         try:
             dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province, city, fed_level FROM v_dealer_info"))
@@ -4223,10 +4217,18 @@ def get_header_kpi():
                 dealer_info_map[row[0]] = {'province': row[1], 'city': row[2], 'fed_level': row[3]}
         except:
             pass
-        
+
         radar_query = MonthlyRadarScores.query.filter(MonthlyRadarScores.stat_year == year)
         radar_records = radar_query.all()
-        
+
+        if province:
+            province_list = [p.strip() for p in province.split(',') if p.strip()]
+            radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') in province_list]
+        if city:
+            radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('city', '') == city or
+                           (dealer_info_map.get(r.dealer_code, {}).get('city', '') and dealer_info_map.get(r.dealer_code, {}).get('city', '') in city) or
+                           (city and city in dealer_info_map.get(r.dealer_code, {}).get('city', ''))]
+
         dealer_all_scores = {}
         for r in radar_records:
             dc = r.dealer_code
@@ -4234,12 +4236,12 @@ def get_header_kpi():
             if dc not in dealer_all_scores:
                 dealer_all_scores[dc] = []
             dealer_all_scores[dc].append(total)
-        
+
         dealer_scores = {}
         for dc, scores in dealer_all_scores.items():
             dealer_scores[dc] = sum(scores) / len(scores) if scores else 0
-        
-        total_dealers = len(dealer_info_map)
+
+        total_dealers = len(dealer_scores) if province or city else len(dealer_info_map)
         avg_score = round(sum(dealer_scores.values()) / len(dealer_scores), 2) if dealer_scores else 0
         
         warning_count = len([s for s in dealer_scores.values() if s < 3])
@@ -4419,12 +4421,8 @@ def get_metrics_comparison():
         ).all()
         
         if province:
-            # 支持多省份参数（逗号分隔）
             provinces_list = [p.strip() for p in province.split(',') if p.strip()]
-            if len(provinces_list) > 1:
-                metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') in provinces_list]
-            else:
-                metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') == province]
+            metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') in provinces_list]
         if city:
             metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('city', '') == city or 
                              (dealer_info_map.get(r.dealer_code, {}).get('city', '') and dealer_info_map.get(r.dealer_code, {}).get('city', '') in city) or
@@ -4494,12 +4492,8 @@ def get_area_data():
         if city:
             target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('city') == city]
         elif province:
-            # 支持多省份参数（逗号分隔）
             provinces_list = [p.strip() for p in province.split(',') if p.strip()]
-            if len(provinces_list) > 1:
-                target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('province') in provinces_list]
-            else:
-                target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('province') == province]
+            target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('province') in provinces_list]
         else:
             target_dealers = list(dealer_info_map.keys())
         

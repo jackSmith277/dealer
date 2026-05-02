@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python app.py)",
+      "Bash(curl -s \"http://127.0.0.1:5000/api/index/metrics-comparison?year=2024\")",
+      "Bash(python -m json.tool)",
+      "Bash(python3 -c ' *)",
+      "Bash(python *)",
+      "Bash(netstat -ano)",
+      "Bash(kill -f 38328)",
+      "Bash(taskkill /F /PID 38328)",
+      "Bash(taskkill //F //PID 38328)",
+      "Bash(curl -s \"http://localhost:5002/api/index/header-kpi?year=2024&province=%E8%BE%BD%E5%AE%81%E7%9C%81\")",
+      "Bash(curl -s \"http://localhost:5002/api/index/metrics-comparison?year=2024&province=%E8%BE%BD%E5%AE%81%E7%9C%81\")",
+      "Bash(taskkill //F //PID 33384)",
+      "Bash(taskkill //F //PID 27620)",
+      "Bash(nohup python *)",
+      "Bash(echo \"Backend PID: $!\")",
+      "Bash(curl -s \"http://localhost:5002/api/index/header-kpi?year=2024\")",
+      "Bash(curl -s \"http://localhost:5002/api/index/header-kpi?year=2024&province=%E5%B9%BF%E4%B8%9C%E7%9C%81\")",
+      "Bash(curl -s \"http://localhost:8080/js/app.js\")"
+    ]
+  }
+}
