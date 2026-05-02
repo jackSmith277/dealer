@@ -4004,15 +4004,24 @@ def get_index_overview():
         except:
             pass
         
-        radar_query = MonthlyRadarScores.query.filter(MonthlyRadarScores.stat_year == year)
-        radar_records = radar_query.all()
-        
-        if province:
-            radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') == province]
+        # 统一使用与 area-data 相同的经销商过滤逻辑
         if city:
-            radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('city', '') == city or 
-                             (dealer_info_map.get(r.dealer_code, {}).get('city', '') and dealer_info_map.get(r.dealer_code, {}).get('city', '') in city) or
-                             (city and city in dealer_info_map.get(r.dealer_code, {}).get('city', ''))]
+            target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('city') == city]
+        elif province:
+            # 支持多省份参数（逗号分隔）
+            provinces_list = [p.strip() for p in province.split(',') if p.strip()]
+            if len(provinces_list) > 1:
+                target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('province') in provinces_list]
+            else:
+                target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('province') == province]
+        else:
+            target_dealers = list(dealer_info_map.keys())
+        
+        radar_query = MonthlyRadarScores.query.filter(
+            MonthlyRadarScores.stat_year == year,
+            MonthlyRadarScores.dealer_code.in_(target_dealers)
+        )
+        radar_records = radar_query.all()
         
         avg_spread = sum(float(r.spread_force or 0) for r in radar_records) / len(radar_records) if radar_records else 0
         avg_experience = sum(float(r.experience_force or 0) for r in radar_records) / len(radar_records) if radar_records else 0
@@ -4028,15 +4037,11 @@ def get_index_overview():
             '经营力': round(avg_operation, 2)
         }
         
-        metrics_query = MonthlyMetrics11d.query.filter(MonthlyMetrics11d.stat_year == year)
+        metrics_query = MonthlyMetrics11d.query.filter(
+            MonthlyMetrics11d.stat_year == year,
+            MonthlyMetrics11d.dealer_code.in_(target_dealers)
+        )
         metrics_records = metrics_query.all()
-        
-        if province:
-            metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') == province]
-        if city:
-            metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('city', '') == city or 
-                             (dealer_info_map.get(r.dealer_code, {}).get('city', '') and dealer_info_map.get(r.dealer_code, {}).get('city', '') in city) or
-                             (city and city in dealer_info_map.get(r.dealer_code, {}).get('city', ''))]
         
         monthly_avg = {}
         for month in range(1, 13):
@@ -4135,7 +4140,12 @@ def get_ranking():
         radar_records = radar_query.all()
         
         if province:
-            radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') == province]
+            # 支持多省份参数（逗号分隔）
+            provinces_list = [p.strip() for p in province.split(',') if p.strip()]
+            if len(provinces_list) > 1:
+                radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') in provinces_list]
+            else:
+                radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') == province]
         if city:
             radar_records = [r for r in radar_records if dealer_info_map.get(r.dealer_code, {}).get('city', '') == city or 
                            (dealer_info_map.get(r.dealer_code, {}).get('city', '') and dealer_info_map.get(r.dealer_code, {}).get('city', '') in city) or
@@ -4392,11 +4402,33 @@ def get_metrics_comparison():
     try:
         year = request.args.get('year', type=int, default=2024)
         month = request.args.get('month', type=int, default=10)
+        province = request.args.get('province', type=str, default='')
+        city = request.args.get('city', type=str, default='')
+        
+        dealer_info_map = {}
+        try:
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province, city, fed_level FROM v_dealer_info"))
+            for row in dealer_info_result:
+                dealer_info_map[row[0]] = {'province': row[1], 'city': row[2], 'fed_level': row[3]}
+        except:
+            pass
         
         metrics_records = MonthlyMetrics11d.query.filter(
             MonthlyMetrics11d.stat_year == year,
             MonthlyMetrics11d.stat_month == month
         ).all()
+        
+        if province:
+            # 支持多省份参数（逗号分隔）
+            provinces_list = [p.strip() for p in province.split(',') if p.strip()]
+            if len(provinces_list) > 1:
+                metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') in provinces_list]
+            else:
+                metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') == province]
+        if city:
+            metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('city', '') == city or 
+                             (dealer_info_map.get(r.dealer_code, {}).get('city', '') and dealer_info_map.get(r.dealer_code, {}).get('city', '') in city) or
+                             (city and city in dealer_info_map.get(r.dealer_code, {}).get('city', ''))]
         
         total_sales = sum(float(r.sales or 0) for r in metrics_records)
         total_flow = sum(float(r.customer_flow or 0) for r in metrics_records)
@@ -4440,6 +4472,116 @@ def get_metrics_comparison():
         
     except Exception as e:
         print(f'获取核心指标对比失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+
+@app.route('/api/index/area-data', methods=['GET'])
+def get_area_data():
+    try:
+        year = request.args.get('year', type=int, default=2024)
+        province = request.args.get('province', default='')
+        city = request.args.get('city', default='')
+        
+        dealer_info_map = {}
+        try:
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province, city, fed_level FROM v_dealer_info"))
+            for row in dealer_info_result:
+                dealer_info_map[row[0]] = {'province': row[1], 'city': row[2], 'fed_level': row[3]}
+        except:
+            pass
+        
+        if city:
+            target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('city') == city]
+        elif province:
+            # 支持多省份参数（逗号分隔）
+            provinces_list = [p.strip() for p in province.split(',') if p.strip()]
+            if len(provinces_list) > 1:
+                target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('province') in provinces_list]
+            else:
+                target_dealers = [dc for dc, info in dealer_info_map.items() if info.get('province') == province]
+        else:
+            target_dealers = list(dealer_info_map.keys())
+        
+        radar_query = MonthlyRadarScores.query.filter(
+            MonthlyRadarScores.stat_year == year,
+            MonthlyRadarScores.dealer_code.in_(target_dealers)
+        )
+        radar_records = radar_query.all()
+        
+        avg_spread = sum(float(r.spread_force or 0) for r in radar_records) / len(radar_records) if radar_records else 0
+        avg_experience = sum(float(r.experience_force or 0) for r in radar_records) / len(radar_records) if radar_records else 0
+        avg_conversion = sum(float(r.conversion_force or 0) for r in radar_records) / len(radar_records) if radar_records else 0
+        avg_service = sum(float(r.service_force or 0) for r in radar_records) / len(radar_records) if radar_records else 0
+        avg_operation = sum(float(r.operation_force or 0) for r in radar_records) / len(radar_records) if radar_records else 0
+        
+        radar_avg = {
+            '传播获客力': round(avg_spread, 2),
+            '体验力': round(avg_experience, 2),
+            '转化力': round(avg_conversion, 2),
+            '服务力': round(avg_service, 2),
+            '经营力': round(avg_operation, 2)
+        }
+        
+        metrics_query = MonthlyMetrics11d.query.filter(
+            MonthlyMetrics11d.stat_year == year,
+            MonthlyMetrics11d.dealer_code.in_(target_dealers)
+        )
+        metrics_records = metrics_query.all()
+        
+        monthly_avg = {}
+        for month in range(1, 13):
+            month_records = [r for r in metrics_records if r.stat_month == month]
+            if month_records:
+                monthly_avg[month] = {
+                    '销量': round(sum(float(r.sales or 0) for r in month_records) / len(month_records), 0),
+                    '客流量': round(sum(float(r.customer_flow or 0) for r in month_records) / len(month_records), 0),
+                    '线索量': round(sum(float(r.leads or 0) for r in month_records) / len(month_records), 0),
+                    '潜客量': round(sum(float(r.potential_customers or 0) for r in month_records) / len(month_records), 0)
+                }
+        
+        dealer_scores = {}
+        for r in radar_records:
+            dc = r.dealer_code
+            if dc not in dealer_scores:
+                total = float(r.spread_force or 0) * 0.2 + float(r.experience_force or 0) * 0.2 + float(r.conversion_force or 0) * 0.4 + float(r.service_force or 0) * 0.1 + float(r.operation_force or 0) * 0.1
+                dealer_scores[dc] = {
+                    'code': dc,
+                    'province': dealer_info_map.get(dc, {}).get('province', ''),
+                    'city': dealer_info_map.get(dc, {}).get('city', ''),
+                    'totalScore': round(total, 2)
+                }
+        
+        ranking_data = sorted(dealer_scores.values(), key=lambda x: x['totalScore'], reverse=True)
+        
+        warning_red = sorted([d for d in dealer_scores.values() if d['totalScore'] < 3], key=lambda x: x['totalScore'])
+        warning_orange = sorted([d for d in dealer_scores.values() if 3 <= d['totalScore'] < 4], key=lambda x: x['totalScore'])
+        warning_green = sorted([d for d in dealer_scores.values() if d['totalScore'] >= 4], key=lambda x: -x['totalScore'])
+        
+        pie_data = [
+            {'name': '高风险 (总分<3)', 'value': len(warning_red)},
+            {'name': '中风险 (3≤总分<4)', 'value': len(warning_orange)},
+            {'name': '健康 (总分≥4)', 'value': len(warning_green)}
+        ]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'radar_avg': radar_avg,
+                'monthly_avg': monthly_avg,
+                'ranking': ranking_data,
+                'warning': {
+                    'red': warning_red,
+                    'orange': warning_orange,
+                    'green': warning_green
+                },
+                'pie_data': pie_data,
+                'dealer_count': len(target_dealers)
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f'获取区域数据失败: {str(e)}')
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
 

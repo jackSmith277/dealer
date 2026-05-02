@@ -323,7 +323,13 @@
         </div>
         <div class="review-charts-container">
           <div class="review-charts-row">
-            <div v-for="(month, index) in months" :key="month" class="review-chart-item">
+            <div v-for="(month, index) in months.slice(0, 6)" :key="month" class="review-chart-item">
+              <div class="review-chart-title">{{ month }}</div>
+              <div ref="reviewCharts" class="review-chart"></div>
+            </div>
+          </div>
+          <div class="review-charts-row">
+            <div v-for="(month, index) in months.slice(6)" :key="month" class="review-chart-item">
               <div class="review-chart-title">{{ month }}</div>
               <div ref="reviewCharts" class="review-chart"></div>
             </div>
@@ -3795,19 +3801,18 @@ export default {
 }
 
 .review-charts-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   gap: 15px;
-  justify-content: space-between;
 }
 
 .review-chart-item {
-  width: calc(10% - 13.5px);
-  min-width: 80px;
+  width: 100%;
+  min-width: 120px;
   background: #f8f9fa;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  padding: 15px;
+  padding: 20px 15px;
   text-align: center;
   transition: all 0.3s;
   display: flex;

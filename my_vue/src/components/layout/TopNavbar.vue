@@ -129,7 +129,8 @@ export default {
   z-index: 1000;
 }
 
-.user-dropdown > div {
+/* 使用 :not 排除分割线，避免给分割线加上内边距 */
+.user-dropdown > div:not(.dropdown-divider) {
   padding: 8px 16px;
   font-size: 14px;
   color: #333;
@@ -137,13 +138,15 @@ export default {
   transition: background-color 0.3s;
 }
 
-.user-dropdown > div:hover {
+/* 同样排除分割线，避免鼠标经过分割线时出现 hover 背景色 */
+.user-dropdown > div:not(.dropdown-divider):hover {
   background-color: #f0f0f0;
 }
 
 .dropdown-divider {
   height: 1px;
   background-color: #e8e8e8;
-  margin: 4px 0;
+  padding: 0;
+  cursor: default;
 }
 </style>

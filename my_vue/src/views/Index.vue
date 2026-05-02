@@ -69,14 +69,8 @@
               <span class="sub-title">{{ mapTitle }}</span>
             </div>
             <div class="map-nav-bar" v-if="mapLevel !== 'country'">
-              <button class="nav-btn" @click="goBackLevel">
-                <span>← 返回上一级</span>
-              </button>
               <button class="nav-btn" @click="goToCountry">
-                <span>回到全国</span>
-              </button>
-              <button class="nav-btn detail-btn" @click="showProvinceDetail">
-                <span>查看详情</span>
+                <span>← 回到全国</span>
               </button>
               <span class="current-location">当前位置：{{ currentLocation }}</span>
             </div>
@@ -289,77 +283,6 @@
         </div>
       </div>
     </main>
-
-    <div class="store-detail-modal" v-if="showStoreDetailModal" @click.self="closeStoreDetailModal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>{{ selectedProvince }}门店详情</h2>
-          <button class="close-btn" @click="closeStoreDetailModal">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="store-list-section">
-            <div class="section-header">
-              <h3>门店列表</h3>
-              <div class="sort-controls">
-                <label>排序：</label>
-                <select v-model="storeSortBy" @change="sortStoreList">
-                  <option value="sales">按业绩</option>
-                  <option value="totalScore">按评分</option>
-                </select>
-              </div>
-            </div>
-            <div class="store-table-wrapper">
-              <table class="store-table">
-                <thead>
-                  <tr>
-                    <th>门店代码</th>
-                    <th>城市</th>
-                    <th>销量</th>
-                    <th>评分</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="store in sortedProvinceStores" :key="store.id">
-                    <td>{{ store.name }}</td>
-                    <td>{{ store.city }}</td>
-                    <td>{{ store.sales }}</td>
-                    <td>{{ store.totalScore.toFixed(2) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="top-bottom-section">
-            <div class="top-stores">
-              <h4>🏆 TOP 10 门店</h4>
-              <div class="mini-list">
-                <div v-for="(store, index) in top10Stores" :key="store.id" class="mini-item">
-                  <span class="rank">{{ index + 1 }}</span>
-                  <span class="name">{{ store.name }}</span>
-                  <span class="score">{{ store.totalScore.toFixed(2) }}</span>
-                </div>
-              </div>
-            </div>
-            <div class="bottom-stores">
-              <h4>⚠️ 末 10 门店（重点优化）</h4>
-              <div class="mini-list">
-                <div v-for="(store, index) in bottom10Stores" :key="store.id" class="mini-item warning">
-                  <span class="rank">{{ sortedProvinceStores.length - 9 + index }}</span>
-                  <span class="name">{{ store.name }}</span>
-                  <span class="score">{{ store.totalScore.toFixed(2) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="trend-section">
-            <h4>📈 核心指标趋势（近3个月）</h4>
-            <div ref="trendChart" class="trend-chart"></div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -384,7 +307,6 @@ export default {
       lineChart: null,
       pieChart: null,
       mapChart: null,
-      trendChart: null,
       resizeObserver: null,
       selectedYear: 2024,
       availableYears: [2024, 2023, 2022],
@@ -402,10 +324,6 @@ export default {
       currentProvince: '',
       currentCity: '',
       mapStack: [],
-      provinceStores: [],
-      showStoreDetailModal: false,
-      selectedProvince: '',
-      storeSortBy: 'sales',
       headerKpi: {
         totalDealers: 0,
         totalDealersChange: 0,
@@ -421,17 +339,13 @@ export default {
       },
       regionDashboard: [],
       selectedRegion: '',
-      metricsComparison: {
-        totalSales: 0,
-        salesChangePct: 0,
-        totalFlow: 0,
-        flowChangePct: 0,
-        totalLeads: 0,
-        leadsChangePct: 0,
-        avgSuccessRate: 0,
-        successRateChange: 0,
-        totalPotential: 0
-      },
+      // Index.vue 的 data() 中：
+    metricsComparison: {
+      sales: { total: 0, max: 0, min: 0, avg: 0 },
+      flow: { total: 0, max: 0, min: 0, avg: 0 },
+      leads: { total: 0, max: 0, min: 0, avg: 0 },
+      potential: { total: 0, max: 0, min: 0, avg: 0 }
+    },
       insights: [],
       dealerYearlyData: null
     }
@@ -485,25 +399,14 @@ export default {
       return ''
     },
     chartAreaTitle() {
+      // 优先检查是否选中了区域
+      if (this.selectedRegion) {
+        return this.selectedRegion + '地区'
+      }
       if (this.mapLevel === 'country') return '全国'
       if (this.mapLevel === 'province' && this.currentCity) return this.currentCity
       if (this.mapLevel === 'province') return this.currentProvince
       return '全国'
-    },
-    sortedProvinceStores() {
-      let stores = [...this.provinceStores]
-      if (this.storeSortBy === 'sales') {
-        stores.sort((a, b) => b.sales - a.sales)
-      } else if (this.storeSortBy === 'totalScore') {
-        stores.sort((a, b) => b.totalScore - a.totalScore)
-      }
-      return stores
-    },
-    top10Stores() {
-      return this.sortedProvinceStores.slice(0, 10)
-    },
-    bottom10Stores() {
-      return this.sortedProvinceStores.slice(-10).reverse()
     },
     metricsCards() {
       return [
@@ -637,10 +540,17 @@ export default {
     async loadAreaChartData() {
       try {
         let url = `/api/index/area-data?year=${this.selectedYear}`
+        
+        // 统一优先级：城市 > 省份 > 区域 > 全国
         if (this.currentCity) {
           url += `&province=${encodeURIComponent(this.currentProvince)}&city=${encodeURIComponent(this.currentCity)}`
-        } else if (this.mapLevel === 'province' && this.currentProvince) {
+        } else if (this.currentProvince) {
           url += `&province=${encodeURIComponent(this.currentProvince)}`
+        } else if (this.selectedRegion) {
+          const selectedRegionData = this.regionDashboard.find(r => r.region === this.selectedRegion)
+          if (selectedRegionData && selectedRegionData.provinces && selectedRegionData.provinces.length > 0) {
+            url += `&province=${encodeURIComponent(selectedRegionData.provinces.join(','))}`
+          }
         }
         
         const response = await axios.get(url)
@@ -664,12 +574,19 @@ export default {
     async loadOverviewData() {
       try {
         let url = `/api/index/overview?year=${this.selectedYear}`
-        if (this.currentProvince) {
-          url += `&province=${encodeURIComponent(this.currentProvince)}`
-        }
+        
+        // 统一优先级：城市 > 省份 > 区域 > 全国
         if (this.currentCity) {
-          url += `&city=${encodeURIComponent(this.currentCity)}`
+          url += `&province=${encodeURIComponent(this.currentProvince)}&city=${encodeURIComponent(this.currentCity)}`
+        } else if (this.currentProvince) {
+          url += `&province=${encodeURIComponent(this.currentProvince)}`
+        } else if (this.selectedRegion) {
+          const selectedRegionData = this.regionDashboard.find(r => r.region === this.selectedRegion)
+          if (selectedRegionData && selectedRegionData.provinces && selectedRegionData.provinces.length > 0) {
+            url += `&province=${encodeURIComponent(selectedRegionData.provinces.join(','))}`
+          }
         }
+        
         const response = await axios.get(url)
         if (response.data.success) {
           const data = response.data.data
@@ -689,12 +606,19 @@ export default {
     async loadRankingData() {
       try {
         let url = `/api/index/ranking?year=${this.selectedYear}&sort_by=${this.rankingSortBy}`
-        if (this.currentProvince) {
-          url += `&province=${encodeURIComponent(this.currentProvince)}`
-        }
+        
+        // 统一优先级：城市 > 省份 > 区域 > 全国
         if (this.currentCity) {
-          url += `&city=${encodeURIComponent(this.currentCity)}`
+          url += `&province=${encodeURIComponent(this.currentProvince)}&city=${encodeURIComponent(this.currentCity)}`
+        } else if (this.currentProvince) {
+          url += `&province=${encodeURIComponent(this.currentProvince)}`
+        } else if (this.selectedRegion) {
+          const selectedRegionData = this.regionDashboard.find(r => r.region === this.selectedRegion)
+          if (selectedRegionData && selectedRegionData.provinces && selectedRegionData.provinces.length > 0) {
+            url += `&province=${encodeURIComponent(selectedRegionData.provinces.join(','))}`
+          }
         }
+        
         const response = await axios.get(url)
         if (response.data.success) {
           this.rankingData = response.data.data
@@ -725,7 +649,21 @@ export default {
     },
     async loadMetricsComparison() {
       try {
-        const response = await axios.get(`/api/index/metrics-comparison?year=${this.selectedYear}`)
+        let url = `/api/index/metrics-comparison?year=${this.selectedYear}`
+        
+        // 统一优先级：城市 > 省份 > 区域 > 全国
+        if (this.currentCity) {
+          url += `&province=${encodeURIComponent(this.currentProvince)}&city=${encodeURIComponent(this.currentCity)}`
+        } else if (this.currentProvince) {
+          url += `&province=${encodeURIComponent(this.currentProvince)}`
+        } else if (this.selectedRegion) {
+          const selectedRegionData = this.regionDashboard.find(r => r.region === this.selectedRegion)
+          if (selectedRegionData && selectedRegionData.provinces && selectedRegionData.provinces.length > 0) {
+            url += `&province=${encodeURIComponent(selectedRegionData.provinces.join(','))}`
+          }
+        }
+        
+        const response = await axios.get(url)
         if (response.data.success) {
           this.metricsComparison = response.data.data
         }
@@ -747,13 +685,31 @@ export default {
       const maxScore = 25
       return Math.min((score / maxScore) * 100, 100)
     },
-    selectRegion(region) {
+    async selectRegion(region) {
       if (this.selectedRegion === region.region) {
+        // 取消选中区域
         this.selectedRegion = ''
-        this.clearMapHighlight()
+        // 强制恢复地图到全国视图（无论当前在什么层级）
+        this.mapLevel = 'country'
+        this.currentProvince = ''
+        this.currentCity = ''
+        this.mapStack = []
       } else {
         this.selectedRegion = region.region
-        this.highlightMapRegion(region.provinces)
+      }
+      // 先加载数据
+      await this.loadOverviewData()
+      await this.loadRankingData()
+      await this.loadAreaChartData()
+      await this.loadMetricsComparison()
+      // 数据加载完成后再渲染地图
+      if (this.selectedRegion) {
+        const selectedRegionData = this.regionDashboard.find(r => r.region === this.selectedRegion)
+        if (selectedRegionData) {
+          this.highlightMapRegion(selectedRegionData.provinces)
+        }
+      } else {
+        this.renderMap()
       }
     },
     clearMapHighlight() {
@@ -769,17 +725,17 @@ export default {
         return {
           name: province,
           value: storeCount[province],
-          itemStyle: {
-            areaColor: isHighlighted ? '#faad14' : undefined,
-            borderColor: isHighlighted ? '#d48806' : undefined,
-            borderWidth: isHighlighted ? 2 : 1
-          },
-          label: {
+          itemStyle: isHighlighted ? {
+            areaColor: '#faad14',
+            borderColor: '#d48806',
+            borderWidth: 2
+          } : undefined,
+          label: isHighlighted ? {
             show: true,
-            color: isHighlighted ? '#fff' : '#666',
-            fontSize: isHighlighted ? 12 : 10,
-            fontWeight: isHighlighted ? 'bold' : 'normal'
-          }
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 'bold'
+          } : undefined
         }
       })
       
@@ -834,7 +790,21 @@ export default {
               color: '#fff',
               fontSize: 12
             }
-          }
+          },
+          regions: provinces.map(province => ({
+            name: province,
+            itemStyle: {
+              areaColor: '#faad14',
+              borderColor: '#d48806',
+              borderWidth: 2
+            },
+            label: {
+              show: true,
+              color: '#fff',
+              fontSize: 12,
+              fontWeight: 'bold'
+            }
+          }))
         },
         series: [
           {
@@ -1551,15 +1521,16 @@ export default {
             this.currentCity = ''
             this.mapLevel = 'province'
             
-            const region = PROVINCE_REGION_MAP[provinceName]
-            if (region) {
-              this.selectedRegion = region
-            }
+            // 点击地图不联动区域业绩看板
+            // 不设置 this.selectedRegion
             
+            // 先加载所有数据
             await this.loadOverviewData()
-            await this.renderProvinceMap()
             await this.loadRankingData()
             await this.loadAreaChartData()
+            await this.loadMetricsComparison()
+            // 数据加载完成后再渲染地图
+            await this.renderProvinceMap()
             this.bindProvinceMapEvents()
           }
         }
@@ -1589,6 +1560,7 @@ export default {
               await this.loadOverviewData()
               await this.loadRankingData()
               await this.loadAreaChartData()
+              await this.loadMetricsComparison()
             }
           }
         }
@@ -1619,28 +1591,20 @@ export default {
         })
       }
     },
-    async goBackLevel() {
-      if (this.mapStack.length > 0) {
-        const prev = this.mapStack.pop()
-        this.mapLevel = prev.level
-        this.currentProvince = prev.province
-        this.currentCity = ''
-        this.selectedRegion = ''
-        await this.loadOverviewData()
-        await this.loadRankingData()
-        await this.loadAreaChartData()
-        this.renderMap()
-      }
-    },
     async goToCountry() {
       this.mapLevel = 'country'
       this.currentProvince = ''
       this.currentCity = ''
       this.mapStack = []
-      this.selectedRegion = ''
+      // 不清除 selectedRegion，保持区域看板的选中状态
+      // 先渲染地图（使用旧数据，但会立即显示）
+      this.renderMap()
+      // 然后加载数据
       await this.loadOverviewData()
       await this.loadRankingData()
       await this.loadAreaChartData()
+      await this.loadMetricsComparison()
+      // 数据加载完成后重新渲染地图
       this.renderMap()
     },
     getProvinceAdcode(provinceName) {
@@ -1679,108 +1643,11 @@ export default {
       }
       return adcodeMap[provinceName] || '100000'
     },
-    async showProvinceDetail() {
-      this.selectedProvince = this.currentProvince
-      try {
-        const response = await axios.get(`/api/index/province-stores?year=${this.selectedYear}&province=${encodeURIComponent(this.selectedProvince)}`)
-        if (response.data.success) {
-          this.provinceStores = response.data.data
-        }
-      } catch (error) {
-        console.error('获取省份门店数据失败:', error)
-        this.provinceStores = []
-      }
-      this.showStoreDetailModal = true
-      this.$nextTick(() => {
-        this.initTrendChart()
-      })
-    },
-    closeStoreDetailModal() {
-      this.showStoreDetailModal = false
-      if (this.trendChart) {
-        this.trendChart.dispose()
-        this.trendChart = null
-      }
-    },
-    sortStoreList() {
-    },
-    initTrendChart() {
-      if (!this.$refs.trendChart) return
-      
-      this.trendChart = echarts.init(this.$refs.trendChart)
-      
-      const months = ['1月', '2月', '3月']
-      const achieveRateData = [75, 82, 88]
-      const avgSalesData = [120, 135, 142]
-      
-      const option = {
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: {
-            type: 'cross'
-          }
-        },
-        legend: {
-          data: ['达标率', '单店平均业绩'],
-          top: 0
-        },
-        grid: {
-          left: '3%',
-          right: '4%',
-          bottom: '3%',
-          top: '15%',
-          containLabel: true
-        },
-        xAxis: {
-          type: 'category',
-          data: months
-        },
-        yAxis: [
-          {
-            type: 'value',
-            name: '达标率(%)',
-            position: 'left',
-            min: 0,
-            max: 100
-          },
-          {
-            type: 'value',
-            name: '业绩(万元)',
-            position: 'right'
-          }
-        ],
-        series: [
-          {
-            name: '达标率',
-            type: 'line',
-            data: achieveRateData,
-            yAxisIndex: 0,
-            smooth: true,
-            itemStyle: {
-              color: '#1890ff'
-            }
-          },
-          {
-            name: '单店平均业绩',
-            type: 'line',
-            data: avgSalesData,
-            yAxisIndex: 1,
-            smooth: true,
-            itemStyle: {
-              color: '#52c41a'
-            }
-          }
-        ]
-      }
-      
-      this.trendChart.setOption(option)
-    },
     handleResize() {
       if (this.radarChart) this.radarChart.resize()
       if (this.lineChart) this.lineChart.resize()
       if (this.pieChart) this.pieChart.resize()
       if (this.mapChart) this.mapChart.resize()
-      if (this.trendChart) this.trendChart.resize()
     }
   }
 }

@@ -1709,11 +1709,28 @@ def get_metrics_comparison():
     try:
         year = request.args.get('year', type=int, default=2024)
         month = request.args.get('month', type=int, default=10)
+        province = request.args.get('province', type=str, default='')
+        city = request.args.get('city', type=str, default='')
+        
+        dealer_info_map = {}
+        try:
+            dealer_info_result = db.session.execute(db.text("SELECT dealer_code, province, city, fed_level FROM v_dealer_info"))
+            for row in dealer_info_result:
+                dealer_info_map[row[0]] = {'province': row[1], 'city': row[2], 'fed_level': row[3]}
+        except:
+            pass
         
         metrics_records = MonthlyMetrics11d.query.filter(
             MonthlyMetrics11d.stat_year == year,
             MonthlyMetrics11d.stat_month == month
         ).all()
+        
+        if province:
+            metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('province', '') == province]
+        if city:
+            metrics_records = [r for r in metrics_records if dealer_info_map.get(r.dealer_code, {}).get('city', '') == city or 
+                             (dealer_info_map.get(r.dealer_code, {}).get('city', '') and dealer_info_map.get(r.dealer_code, {}).get('city', '') in city) or
+                             (city and city in dealer_info_map.get(r.dealer_code, {}).get('city', ''))]
         
         total_sales = sum(float(r.sales or 0) for r in metrics_records)
         total_flow = sum(float(r.customer_flow or 0) for r in metrics_records)
