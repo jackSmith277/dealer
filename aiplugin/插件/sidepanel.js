@@ -973,6 +973,44 @@ function switchTab(tabName) {
     }
 }
 
+async function autoLoadDefaultKnowledgeBase() {
+    if (API_CONFIG.knowledgeBase.length > 0) return;
+
+    const kbPath = './wuling_16888_rag_knowledge_base.docx';
+
+    try {
+        const response = await fetch(kbPath);
+        if (!response.ok) {
+            console.warn('⚠️ 默认知识库文件不存在，跳过自动加载');
+            return;
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+
+        if (!result.value || result.value.trim().length === 0) {
+            console.warn('⚠️ 默认知识库内容为空');
+            return;
+        }
+
+        const title = '五菱车型价格知识库';
+        const fileName = 'wuling_16888_rag_knowledge_base.docx';
+        const chunks = chunkText(result.value, title, fileName);
+
+        chunks.forEach(chunk => {
+            API_CONFIG.knowledgeBase.push(chunk);
+        });
+
+        saveConfigToStorage();
+
+        if (DEBUG_MODE) {
+            console.log(`📚 默认知识库已自动加载 (${chunks.length} 个片段)`);
+        }
+    } catch (error) {
+        console.warn('⚠️ 默认知识库自动加载失败:', error.message);
+    }
+}
+
 window.onload = async function () {
     domElements = getDOMElements();
 
@@ -1063,6 +1101,7 @@ window.onload = async function () {
         }
 
         buildSearchIndex();
+        await autoLoadDefaultKnowledgeBase();
 
         if (DEBUG_MODE) {
             console.log('💾 配置已加载，知识库条目:', API_CONFIG.knowledgeBase.length);
