@@ -911,8 +911,6 @@ def delete_analysis_report(id):
         db.session.rollback()
         print(f'删除分析报告失败: {str(e)}')
         return jsonify({'success': False, 'message': f'删除失败: {str(e)}'}), 500
-
-
 class MonthlyMetrics11d(db.Model):
     __tablename__ = 'monthly_metrics_11d'
     __table_args__ = {'extend_existing': True}

@@ -52,13 +52,21 @@
             >
               <span class="sub-menu-title">任务管理</span>
             </li>
-            <li 
-              v-if="user.role === 'admin' " 
+            <li
+              v-if="user.role === 'admin' "
               class="sub-menu-item"
               :class="{ active: $route.path === '/dashboard/admin/dealers' }"
               @click="$router.push('/dashboard/admin/dealers')"
             >
               <span class="sub-menu-title">经销商列表</span>
+            </li>
+            <li
+              v-if="user.role === 'admin' "
+              class="sub-menu-item"
+              :class="{ active: $route.path === '/dashboard/admin/submissions' }"
+              @click="$router.push('/dashboard/admin/submissions')"
+            >
+              <span class="sub-menu-title">数据审核</span>
             </li>
           </ul>
         </li>
@@ -174,7 +182,7 @@ export default {
   },
   mounted() {
     const path = this.$route.path
-    if (path.includes('/profile') || path.includes('/admin/dealers')) {
+    if (path.includes('/profile') || path.includes('/admin/dealers') || path.includes('/admin/submissions')) {
       this.expandedSubMenus = ['info']
     } else if (path.includes('/prediction') || path.includes('/advanced-prediction')) {
       this.expandedSubMenus = ['analysis']

@@ -12,7 +12,7 @@ import traceback
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -280,6 +280,23 @@ class DealerTask(db.Model):
     progress = db.Column(db.Integer, default=0)
     feedback = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class DataSubmission(db.Model):
+    __tablename__ = 'data_submissions'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    dealer_code = db.Column(db.String(50), nullable=False)
+    data_type = db.Column(db.String(20), nullable=False)
+    file_name = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    month = db.Column(db.String(7), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='pending')
+    note = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'back', 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 with app.app_context():
@@ -4731,6 +4748,238 @@ def get_radar_data():
         print(f'获取雷达数据失败: {str(e)}')
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+
+# ======================== 数据提交相关API ========================
+
+# 数据提交API - 销售数据
+@app.route('/api/data-submit/sales', methods=['POST'])
+def submit_sales_data():
+    try:
+        file = request.files.get('file')
+        month = request.form.get('month')
+        dealer_code = request.form.get('dealerCode')
+
+        if not file or not month or not dealer_code:
+            return jsonify({'success': False, 'message': '缺少必要参数'}), 400
+
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        safe_filename = f"{dealer_code}_sales_{month}_{timestamp}_{file.filename}"
+        file_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+        file.save(file_path)
+
+        submission = DataSubmission(
+            dealer_code=dealer_code,
+            data_type='sales',
+            file_name=file.filename,
+            file_path=file_path,
+            month=month,
+            status='pending'
+        )
+        db.session.add(submission)
+        db.session.commit()
+
+        print(f"销售数据提交成功: dealer={dealer_code}, month={month}, file={file.filename}")
+
+        return jsonify({
+            'success': True,
+            'message': '销售数据提交成功',
+            'data': {
+                'id': submission.id,
+                'submitTime': submission.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f'销售数据提交失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'提交失败: {str(e)}'}), 500
+
+
+# 数据提交API - 政策数据
+@app.route('/api/data-submit/policy', methods=['POST'])
+def submit_policy_data():
+    try:
+        file = request.files.get('file')
+        month = request.form.get('month')
+        dealer_code = request.form.get('dealerCode')
+
+        if not file or not month or not dealer_code:
+            return jsonify({'success': False, 'message': '缺少必要参数'}), 400
+
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        safe_filename = f"{dealer_code}_policy_{month}_{timestamp}_{file.filename}"
+        file_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+        file.save(file_path)
+
+        submission = DataSubmission(
+            dealer_code=dealer_code,
+            data_type='policy',
+            file_name=file.filename,
+            file_path=file_path,
+            month=month,
+            status='pending'
+        )
+        db.session.add(submission)
+        db.session.commit()
+
+        print(f"政策数据提交成功: dealer={dealer_code}, month={month}, file={file.filename}")
+
+        return jsonify({
+            'success': True,
+            'message': '政策数据提交成功',
+            'data': {
+                'id': submission.id,
+                'submitTime': submission.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f'政策数据提交失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'提交失败: {str(e)}'}), 500
+
+
+# 数据提交API - 获取提交历史（经销商端）
+@app.route('/api/data-submit/history', methods=['GET'])
+def get_submit_history():
+    try:
+        dealer_code = request.args.get('dealerCode')
+
+        query = DataSubmission.query
+        if dealer_code:
+            query = query.filter_by(dealer_code=dealer_code)
+
+        submissions = query.order_by(DataSubmission.created_at.desc()).all()
+
+        history = []
+        for sub in submissions:
+            data_type_label = '销售数据' if sub.data_type == 'sales' else '政策数据'
+            history.append({
+                'id': sub.id,
+                'submitTime': sub.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'dataType': data_type_label,
+                'fileName': sub.file_name,
+                'status': sub.status,
+                'note': sub.note or ''
+            })
+
+        return jsonify({
+            'success': True,
+            'history': history
+        }), 200
+
+    except Exception as e:
+        print(f'获取提交历史失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+
+# 数据提交API - 管理员获取所有提交记录
+@app.route('/api/data-submit/admin/list', methods=['GET'])
+def get_all_submissions():
+    try:
+        status = request.args.get('status')
+        dealer_code = request.args.get('dealerCode')
+
+        query = DataSubmission.query
+        if status:
+            query = query.filter_by(status=status)
+        if dealer_code:
+            query = query.filter_by(dealer_code=dealer_code)
+
+        submissions = query.order_by(DataSubmission.created_at.desc()).all()
+
+        dealer_names = {}
+        dealers = Dealer.query.all()
+        for d in dealers:
+            user = User.query.get(d.user_id)
+            if user:
+                dealer_names[user.username] = d.dealer_name
+
+        result = []
+        for sub in submissions:
+            data_type_label = '销售数据' if sub.data_type == 'sales' else '政策数据'
+            result.append({
+                'id': sub.id,
+                'dealerCode': sub.dealer_code,
+                'dealerName': dealer_names.get(sub.dealer_code, sub.dealer_code),
+                'dataType': data_type_label,
+                'fileName': sub.file_name,
+                'month': sub.month,
+                'status': sub.status,
+                'note': sub.note or '',
+                'submitTime': sub.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+
+        return jsonify({
+            'success': True,
+            'data': result
+        }), 200
+
+    except Exception as e:
+        print(f'获取所有提交记录失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'获取失败: {str(e)}'}), 500
+
+
+# 数据提交API - 管理员审核
+@app.route('/api/data-submit/<int:submission_id>/review', methods=['PUT'])
+def review_submission(submission_id):
+    try:
+        data = request.get_json()
+        action = data.get('action')
+        note = data.get('note', '')
+
+        if action not in ('approve', 'reject'):
+            return jsonify({'success': False, 'message': '操作类型无效'}), 400
+
+        submission = DataSubmission.query.get(submission_id)
+        if not submission:
+            return jsonify({'success': False, 'message': '提交记录不存在'}), 404
+
+        new_status = 'approved' if action == 'approve' else 'rejected'
+        submission.status = new_status
+        if note:
+            submission.note = note
+
+        db.session.commit()
+
+        status_label = '已通过' if action == 'approve' else '已拒绝'
+        print(f"提交记录审核完成: id={submission_id}, status={status_label}")
+
+        return jsonify({
+            'success': True,
+            'message': f'审核完成，状态：{status_label}'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f'审核提交记录失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'审核失败: {str(e)}'}), 500
+
+
+# 数据提交API - 下载上传的文件
+@app.route('/api/data-submit/<int:submission_id>/download', methods=['GET'])
+def download_submission_file(submission_id):
+    try:
+        submission = DataSubmission.query.get(submission_id)
+        if not submission:
+            return jsonify({'success': False, 'message': '提交记录不存在'}), 404
+
+        file_path = submission.file_path
+        if not os.path.exists(file_path):
+            return jsonify({'success': False, 'message': '文件不存在'}), 404
+
+        return send_file(file_path, as_attachment=True, download_name=submission.file_name)
+
+    except Exception as e:
+        print(f'文件下载失败: {str(e)}')
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'下载失败: {str(e)}'}), 500
 
 
 if __name__ == "__main__":

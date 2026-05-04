@@ -16,6 +16,7 @@ import AdminDealers from '../views/AdminDealers.vue'
 import DealerForm from '../views/DealerForm.vue'
 import DecisionSupport from '../views/DecisionSupport.vue'
 import DataSubmit from '../views/DataSubmit.vue'
+import AdminSubmissionReview from '../views/AdminSubmissionReview.vue'
 import TaskManagement from '../views/TaskManagement.vue'
 import TaskHistory from '../views/TaskHistory.vue'
 import LayoutContainer from '../components/layout/LayoutContainer.vue'
@@ -108,6 +109,12 @@ const routes = [
         name: 'dataSubmit',
         component: DataSubmit,
         meta: { requiresAuth: true }
+      },
+      {
+        path: 'admin/submissions',
+        name: 'adminSubmissions',
+        component: AdminSubmissionReview,
+        meta: { requiresAuth: true, requiresAdmin: true }
       },
       {
         path: 'task-management',
